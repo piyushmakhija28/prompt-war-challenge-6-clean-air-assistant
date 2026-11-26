@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-11-26
 
 ### Added
+- **Comprehensive README.md Evaluation Specification Update**: Synchronized evaluation scorecard with the 66-test Triad invariant suite and 11-invariant property-based fuzz testing suite (10,000 vectors); expanded Section 3 architecture breakdown with 1-click Target Personas quick presets, GoF PlanFactory, TimeEngine dual-mode scrubber, Elm/Redux appReducer, and 5-byte binary bitstream sharing; added complete 30-second judge evaluation instructions in Section 7.
 - **11-Invariant Property-Based Fuzz Testing Suite**: Expanded QuickCheck property fuzz testing in `test/run-fuzz-tests.js` from 6 to 11 algebraic closure invariants, validating `makeAQI`, `makeConcentration`, `makeHour`, `sanitizeCityInput`, and `PlanFactory.createPlan` across 10,000 vectors in < 60ms.
 - **Formal Property-Based Fuzzing Specification**: Authored `docs/testing/02-property-based-fuzzing-spec.md` detailing Xorshift128+ PRNG state equations and the 11 algebraic closure invariants.
 - **GitHub Actions CI Automated Size Gate**: Added automated `git count-objects -vH` step in `.github/workflows/ci.yml` guaranteeing repository size strictly remains < 10 MB.
