@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CleanAir Guardian (VayuRakshak) — Winter Smog & Community Assistant</title>
+  <meta name="description" content="Autonomous AI Assistant for navigating severe winter temperature inversions, diurnal pollution routines, and low-cost DIY clean air hacks. Powered by Google Gemini 3.8 Flash.">
+  <link rel="stylesheet" href="src/css/style.css">
+</head>
+<body>
+  <!-- Accessible Live Announcement Region for Screen Readers (WCAG 2.1 AA) -->
+  <div id="a11y-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Header -->
+  <header class="app-header" role="banner">
+    <div>
+      <h1 class="brand-title">CleanAir Guardian <span style="font-weight:400; opacity:0.8;">(VayuRakshak)</span></h1>
+      <p class="brand-subtitle">Winter Smog & Planetary Boundary Layer Navigation Engine</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span id="active-engine-badge" class="badge-engine">INITIALIZING</span>
+      <span id="plan-spinner" class="badge-engine hidden" style="color:#f59e0b; border-color:#f59e0b;">Computing...</span>
+    </div>
+  </header>
+
+  <!-- Status / Degradation Banner -->
+  <div id="status-banner" class="status-banner hidden" role="alert"></div>
+
+  <!-- Main Grid -->
+  <main class="app-main" id="app" role="main">
+    <!-- Left Column: Context Configuration Form -->
+    <section class="glass-panel" aria-labelledby="heading-context">
+      <h2 id="heading-context" style="font-size:1.25rem; font-weight:700; margin-bottom:16px;">Household & Urban Profile</h2>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Urban Air Basin</legend>
+        <label for="input-city" class="form-label">Location</label>
+        <select id="input-city" class="form-select"></select>
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Air Quality Index (AQI)</legend>
+        <div class="form-label">
+          <span>Ambient AQI</span>
+          <span id="label-aqi-value" style="font-family:monospace; font-weight:700; color:#38bdf8;">395</span>
+        </div>
+        <input type="range" id="input-aqi-slider" class="range-slider" min="10" max="800" step="5" value="395" aria-label="Ambient Air Quality Index">
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Diurnal Inversion Scrubber</legend>
+        <div class="form-label">
+          <span>Simulated Time of Day</span>
+          <span id="label-time-value" style="font-family:monospace; font-weight:700; color:#38bdf8;">07:30</span>
+        </div>
+        <input type="range" id="input-time-slider" class="range-slider" min="0" max="23.75" step="0.25" value="7.5" aria-label="Diurnal Time Scrubber">
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Vulnerability Shield</legend>
+        <div class="checkbox-grid">
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input input-vuln-checkbox" data-bit="1" checked>
+            <span>Infant / Toddler (&lt; 2y)</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input input-vuln-checkbox" data-bit="2" checked>
+            <span>Asthma / Respiratory Compromise</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input input-vuln-checkbox" data-bit="4">
+            <span>Senior Citizen (65+)</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input input-vuln-checkbox" data-bit="8">
+            <span>Pregnant Mother</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input input-vuln-checkbox" data-bit="16">
+            <span>Outdoor Worker / Street Vendor</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <div style="margin-top:24px; display:flex; flex-direction:column; gap:12px;">
+        <button id="btn-generate-plan" class="btn-primary" type="button">
+          <span>Recalculate Clean Air Plan</span>
+        </button>
+        <button id="btn-copy-advisory" class="btn-secondary" type="button">
+          Copy WhatsApp Advisory
+        </button>
+      </div>
+
+      <!-- Ephemeral Gemini Key Drawer -->
+      <div class="key-drawer">
+        <h3 style="font-size:0.875rem; font-weight:600; margin-bottom:8px; color:#94a3b8;">Gemini 3.8 Flash Settings</h3>
+        <input type="password" id="input-gemini-key" class="form-input" placeholder="Paste Gemini API Key (Ephemeral)" autocomplete="off">
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button id="btn-save-key" class="btn-secondary" type="button" style="min-height:38px; padding:6px 12px;">Save Key</button>
+          <button id="btn-clear-key" class="btn-secondary" type="button" style="min-height:38px; padding:6px 12px; color:#f87171;">Clear</button>
+        </div>
+        <p id="key-status-text" class="key-status">Zero Persistent Storage: Held in ephemeral byte buffer</p>
+      </div>
+    </section>
+
+    <!-- Right Column: Live Plan & Quantitative Telemetry -->
+    <section class="glass-panel" aria-labelledby="heading-plan">
+      <!-- Severity Overview -->
+      <div class="hero-overview">
+        <div class="hero-header">
+          <span id="hero-aqi-number" class="aqi-large">395</span>
+          <span id="hero-severity-badge" class="severity-pill">SEVERE</span>
+        </div>
+        <p id="hero-inversion-notice" class="inversion-notice">Evaluating diurnal planetary boundary layer height...</p>
+      </div>
+
+      <!-- Telemetry Metrics Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div id="metric-pm25-avoided" class="metric-value">-- µg</div>
+          <div class="metric-label">PM2.5 Avoided</div>
+        </div>
+        <div class="metric-card">
+          <div id="metric-cigarettes-avoided" class="metric-value">--</div>
+          <div class="metric-label">Cigarettes Eq.</div>
+        </div>
+        <div class="metric-card">
+          <div id="metric-carbon-saved" class="metric-value">-- kg</div>
+          <div class="metric-label">CO₂e Avoided</div>
+        </div>
+        <div class="metric-card">
+          <div id="metric-protection-score" class="metric-value">--%</div>
+          <div class="metric-label">Protection Score</div>
+        </div>
+      </div>
+
+      <!-- Diurnal Hourly Schedule -->
+      <h3 style="font-size:1.125rem; font-weight:700; margin-bottom:12px;">Hourly Low-Emission Schedule</h3>
+      <div id="hourly-schedule-container" class="schedule-container"></div>
+
+      <!-- Verified DIY IAQ Hack -->
+      <div class="iaq-box">
+        <div class="iaq-header">
+          <span id="iaq-hack-title" class="iaq-title">DIY Corsi-Rosenthal Box</span>
+          <div class="iaq-badges">
+            <span id="iaq-hack-cadr" class="iaq-badge">CADR: 273 CFM</span>
+            <span id="iaq-hack-cost" class="iaq-badge">Cost: $35</span>
+          </div>
+        </div>
+        <ol id="iaq-hack-steps" class="iaq-steps-list"></ol>
+      </div>
+
+      <!-- Sustainable Alternatives -->
+      <h3 style="font-size:1.125rem; font-weight:700; margin-bottom:12px;">Sustainable Lifestyle Shifts</h3>
+      <div id="alternatives-container" class="alt-container"></div>
+    </section>
+  </main>
+
+  <script type="module" src="src/js/app.js"></script>
+</body>
+</html>
