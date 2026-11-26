@@ -57,6 +57,7 @@ CleanAir Guardian ingests real-time localized environmental data (AQI, PM2.5, PM
 
 For the exhaustive engineering specifications, reference the authoritative documentation suite:
 - [Detailed SRS & Verification Index (VCRX)](file:///docs/05-srs-detailed.md)
+- [Gemini 3.8 Flash Prompt Engineering Specification](file:///docs/02-gemini-prompt-engineering.md)
 - [High-Level Design & C4 Models](file:///docs/02-hld.md)
 - [API Contracts & JSON Schemas](file:///docs/03-api-contract.md)
 - [The 10 Architectural Decision Records (ADRs)](file:///docs/06-adr/)

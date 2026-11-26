@@ -161,6 +161,7 @@ prompt-war-challenge-6-clean-air-assistant/
 ├── docs/                              # The 24 Deep Enterprise Architecture Specifications
 │   ├── 00-problem-statement.md        # Problem Invariants, Ground Truth & Quantitative Personas
 │   ├── 01-prd.md                      # Product Requirements Document (FR-01..12, NFR-01..10, RTM)
+│   ├── 02-gemini-prompt-engineering.md# Gemini 3.8 Flash System Prompt, Few-Shot & Guardrails Spec
 │   ├── 02-hld.md                      # High-Level Design, C4 Models & Dual-Engine Architecture
 │   ├── 03-api-contract.md             # Gemini 3.8 Flash Schema, JSON Draft-07 & Interface Contracts
 │   ├── 04-competition-and-platform-research.md # Challenge 6 Rules Teardown, Rubric Math & <10MB Budget
