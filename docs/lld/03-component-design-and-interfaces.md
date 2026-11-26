@@ -168,3 +168,13 @@ To prevent Forced Synchronous Layouts:
 1. DOM read phase: Measure dimensions or scroll positions first.
 2. DOM write phase: Batch all text updates and class toggles inside `window.requestAnimationFrame()`.
 3. Elements apply CSS `contain: content;` to isolate repaints.
+
+---
+
+## 5. Foundational Coding Rigor Cross-References
+
+For deep algorithmic, memory, and type-system specifications, reference the companion LLD modules:
+- [LLD-04: Data Structures, Algorithms & Computational Complexity](file:///docs/lld/04-data-structures-and-algorithms.md) — Asymptotic Big-O complexity matrices, vulnerability bitmask algebra, and `Float64Array` ring buffers.
+- [LLD-05: State Management, Event Loop & Memory Model](file:///docs/lld/05-state-management-and-event-loop.md) — Elm/Redux unidirectional data flow, FastDOM scheduler, and V8 Scavenge GC churn mitigation.
+- [LLD-06: Error Handling, Algebraic Types & Branded Primitives](file:///docs/lld/06-error-handling-and-algebraic-types.md) — Dimensional unit safety (`AQIScalar`, `PM25Concentration`), Railway-Oriented Programming (ROP), and `Result<T, E>` monad.
+

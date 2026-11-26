@@ -10,7 +10,7 @@
 [![Size](https://img.shields.io/badge/Repo_Size-%3C_2_MB_Compliant-brightgreen.svg)](#)
 [![AI Engine](https://img.shields.io/badge/AI_Engine-Google_Gemini_3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](file:///VERSION)
-[![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-24_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
+[![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-27_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](#)
 
 ---
@@ -29,7 +29,7 @@
 | **Single Branch Name**   | main (Single branch strictly enforced; zero auxiliary branches)              |
 | **Repository Size**      | < 2.0 MB (Strictly compliant with < 10 MB competition limit)                 |
 | **AI Architecture**      | Dual-Engine: Google Gemini 3.8 Flash + Sub-15ms Deterministic Offline Advisor|
-| **System Blueprint**     | 24 Deep Enterprise Specs (`docs/`) + 6 Canonical Mermaid UML Diagrams (`uml/`)|
+| **System Blueprint**     | 27 Deep Enterprise Specs (`docs/`) + 6 Canonical Mermaid UML Diagrams (`uml/`)|
 +--------------------------+------------------------------------------------------------------------------+
 ```
 
@@ -179,10 +179,13 @@ prompt-war-challenge-6-clean-air-assistant/
 │   │   └── ADR-010-repo-size-and-single-branch-hygiene.md
 │   ├── 07-architecture-tradeoffs-and-faq.md # Architecture Tradeoff Matrix & 15 Judge FAQs
 │   ├── 08-rubric-compliance-matrix.md # Full Rubric Compliance Matrix (100/100 Scorecard)
-│   ├── lld/                           # Low-Level Design & Mathematical Proofs
+│   ├── lld/                           # Low-Level Design, Algorithms & Coding Fundamentals
 │   │   ├── 01-meteorological-inversion-engine.md # Atmospheric Boundary Layer Equations & States
 │   │   ├── 02-direct-impact-mathematical-spec.md # Dosage Calculus, CADR Physics & Carbon Math
-│   │   └── 03-component-design-and-interfaces.md # JavaScript Module Interfaces & JSDoc Contracts
+│   │   ├── 03-component-design-and-interfaces.md # JavaScript Module Interfaces & JSDoc Contracts
+│   │   ├── 04-data-structures-and-algorithms.md  # Master Big-O Matrix, Vulnerability Bitmasks & Ring Buffers
+│   │   ├── 05-state-management-and-event-loop.md # Unidirectional Data Flow, Microtasks & FastDOM Batching
+│   │   └── 06-error-handling-and-algebraic-types.md # Branded Physics Units, Result Monads & Error Taxonomy
 │   ├── ui-ux/                         # UI/UX Ergonomics & Accessibility Specifications
 │   │   ├── 01-design-system-and-tokens.md # Glassmorphic Tokens, Spacing, & AQI Themes
 │   │   └── 02-accessibility-and-a11y-matrix.md # WCAG 2.1 AA APCA Contrast Audit & ARIA Trees

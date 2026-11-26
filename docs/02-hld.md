@@ -211,3 +211,16 @@ $$\text{Total Execution Time} = t_{\text{parse}} + t_{\text{triage}} + t_{\text{
 | **Total Cold Request (Offline)**| **100 ms (0.1s)**   | **~35 ms**          | **Instantaneous UI Paint**|
 +-------------------------------+-----------------------+---------------------+---------------------------+
 ```
+
+---
+
+## 5. Low-Level Design (LLD) Suite Decomposition
+
+For comprehensive mathematical, algorithmic, memory, and type-system specifications:
+1. **[LLD-01: Meteorological Inversion Engine](file:///docs/lld/01-meteorological-inversion-engine.md)** — Atmospheric Boundary Layer (ABL), Bulk Richardson Number ($Ri_b$), Diurnal Inversion States, and TimeEngine scrubber.
+2. **[LLD-02: Direct Impact Mathematical Specification](file:///docs/lld/02-direct-impact-mathematical-spec.md)** — EPA/CPCB Breakpoints, Stable $1 - \exp(-\lambda t)$ Decay (`Math.expm1`), Alveolar Particulate Dosage, and WTW Carbon Factors.
+3. **[LLD-03: Component Design & Interfaces](file:///docs/lld/03-component-design-and-interfaces.md)** — SOLID principles, GoF Strategy/Observer patterns, JSDoc contracts, and V8 monomorphic classes.
+4. **[LLD-04: Data Structures & Algorithms](file:///docs/lld/04-data-structures-and-algorithms.md)** — Big-O master matrix, 5-bit vulnerability bitmasks, binary search breakpoint mapping, and `Float64Array` circular ring buffers.
+5. **[LLD-05: State Management & Event Loop](file:///docs/lld/05-state-management-and-event-loop.md)** — Elm/Redux unidirectional data flow, microtask/macrotask scheduling, and FastDOM zero layout thrashing.
+6. **[LLD-06: Error Handling & Algebraic Types](file:///docs/lld/06-error-handling-and-algebraic-types.md)** — Nominal/branded dimensional units (`AQIScalar`, `PM25Concentration`), `Result<T, E>` monad, and Railway-Oriented Programming (ROP).
+
