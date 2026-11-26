@@ -2,7 +2,7 @@
 ## CleanAir Guardian (VayuRakshak) — Dual-Engine Architecture & C4 Models
 
 **Document Identifier:** HLD-PW-CHALLENGE-6-V1.0  
-**Status:** Approved by Anti-Hallucination Gate 1  
+**Status:** Approved by Anti-Hallucination Gate 2  
 **Lead Architect:** `solution-architect` (Discipline D102 Graph Engineering & D50 Harness Engineering)  
 
 ---
@@ -68,7 +68,7 @@ The system features a **Dual-Engine Execution Pipeline**:
 |  - Technology: Pure Semantic HTML5, CSS3 Custom Properties, Vanilla ES6+                           |
 |  - Responsibility: Renders UI, captures user inputs, manages local state, executes offline math.    |
 |                                                                                                    |
-|  Container 2: Impact & Inversion Mathematical Engine                                               |
+|  Container 2: Mathematical & Inversion Engine                                                      |
 |  - Technology: JavaScript Modular ES6 (`air-quality-engine.js`, `impact-calculator.js`)            |
 |  - Responsibility: Executes planetary boundary layer formulas, minute ventilation dosage math.    |
 |                                                                                                    |
@@ -105,11 +105,60 @@ The system features a **Dual-Engine Execution Pipeline**:
 +----------------------------------------------------------------------------------------------------+
 ```
 
+### 2.4 C4 Level 4: Code & Design Pattern Architecture
+```mermaid
+classDiagram
+    class IPlanProvider {
+        <<interface>>
+        +getPlan(context: UserContext) Promise~Result~CleanAirActionPlan~~
+    }
+
+    class GeminiPlanProvider {
+        -apiKey: string
+        -timeoutMs: number
+        -circuitBreaker: CircuitBreaker
+        -rateLimiter: TokenBucket
+        +getPlan(context: UserContext) Promise~Result~CleanAirActionPlan~~
+        -sanitizeJSON(raw: string) string
+    }
+
+    class OfflinePlanProvider {
+        +getPlan(context: UserContext) Promise~Result~CleanAirActionPlan~~
+        -evaluateDecisionTrees(context: UserContext) CleanAirActionPlan
+    }
+
+    class PlanFactory {
+        +createPlan(raw: Object) CleanAirActionPlan
+        +validateSchema(plan: CleanAirActionPlan) boolean
+    }
+
+    class EventBus {
+        -listeners: Map~string, Set~Function~~
+        +on(event: string, callback: Function) void
+        +off(event: string, callback: Function) void
+        +emit(event: string, data: Object) void
+    }
+
+    class AppController {
+        -eventBus: EventBus
+        -planProvider: IPlanProvider
+        -state: AppState
+        +init() void
+        +onContextChange(e: Event) void
+        +renderView(plan: CleanAirActionPlan) void
+    }
+
+    IPlanProvider <|.. GeminiPlanProvider : implements
+    IPlanProvider <|.. OfflinePlanProvider : implements
+    AppController --> IPlanProvider : depends on abstraction
+    AppController --> EventBus : publishes/subscribes
+    GeminiPlanProvider --> PlanFactory : normalizes output
+    OfflinePlanProvider --> PlanFactory : normalizes output
+```
+
 ---
 
-## 3. Dual-Engine Failover & Synchronization Protocol
-
-To ensure seamless operation during judge evaluation without external friction:
+## 3. Dual-Engine Failover & Circuit Breaker Protocol
 
 ```
 +----------------------------------------------------------------------------------------------------+

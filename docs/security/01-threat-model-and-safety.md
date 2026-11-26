@@ -72,3 +72,61 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 ```
 - `connect-src` strictly restricts outbound API requests to Google's official Gemini endpoint.
 - Zero analytics, social tracking pixels, or third-party ad networks allowed.
+
+---
+
+## 4. Strict DOM Injection Prevention Rules (Zero-XSS)
+
+To guarantee 100% protection against DOM-based Cross-Site Scripting (DOM XSS, CWE-79) from either untrusted user input or malicious LLM prompt outputs:
+
+```
++---------------------------------------------------------------------------------------------------------+
+|                                    DOM MANIPULATION SECURITY RULES                                      |
++-------------------+----------------------------+--------------------------------------------------------+
+| API / Property    | Security Classification    | Permitted Use & Architectural Policy                   |
++-------------------+----------------------------+--------------------------------------------------------+
+| `Element.innerHTML`| **STRICTLY BANNED**        | Zero usage permitted across entire codebase. Lint-enforced.|
+| `Element.outerHTML`| **STRICTLY BANNED**        | Zero usage permitted. Direct prototype tampering risk. |
+| `document.write()` | **STRICTLY BANNED**        | Zero usage permitted. Obsolete and high vulnerability.  |
+| `eval()` / `Function`| **STRICTLY BANNED**      | Zero usage permitted. Dynamic code execution banned.   |
+| `Node.textContent`| **MANDATORY FOR TEXT**     | Required for all string rendering, text nodes, metrics.|
+| `document.createElement()`| **MANDATORY**      | Required for generating structured DOM nodes.          |
+| `Element.setAttribute()` | **ALLOWLIST ONLY**  | Permitted only for safe attributes (`id`, `class`,     |
+|                   |                            | `aria-*`, `role`, `data-*`). Event handlers banned.    |
++-------------------+----------------------------+--------------------------------------------------------+
+```
+
+### Whitelist Regex Input Sanitization Contract:
+```javascript
+/**
+ * Sanitizes an arbitrary string to prevent attribute or injection anomalies.
+ * @param {string} rawString - Unfiltered user input.
+ * @returns {string} - Strict sanitized alphanumeric string.
+ */
+export function sanitizeCityInput(rawString) {
+  if (typeof rawString !== 'string') return 'Delhi NCR';
+  const trimmed = rawString.trim().slice(0, 50);
+  const sanitized = trimmed.replace(/[^a-zA-Z0-9\s,.-]/g, '');
+  return sanitized.length > 0 ? sanitized : 'Delhi NCR';
+}
+```
+
+---
+
+## 5. Subresource Integrity (SRI) & Zero-Dependency Invariant
+
+To eliminate Supply Chain Poisoning (OWASP Top 10 A08:2021) and satisfy the competition's standalone runtime rules:
+1. **100% Self-Contained Assets:** Zero external CDN `<script src="https://...">` or `<link rel="stylesheet" href="https://...">` tags are permitted.
+2. **Deterministic Hashes:** All local CSS and JS files are bundled directly in `src/` and referenced via relative paths.
+3. **Offline Survivability:** The app functions autonomously in offline/air-gapped environments without CDN outages.
+
+---
+
+## 6. Ephemeral API Key Lifecycle & Zero-Leakage Policy
+
+User-provided Google Gemini API keys are treated with zero-trust confidentiality:
+1. **In-Memory Closure Storage:** The API key is stored strictly within a private JavaScript module closure variable (`let _sessionApiKey = null`).
+2. **Zero Persistent Storage:** Keys are NEVER written to `localStorage`, indexedDB, or web worker caches.
+3. **URL Exclusion:** Keys are strictly excluded from URL hash encoding (`#v1=...`) to prevent key exposure via browser history, server referer headers, or shoulder surfing.
+4. **Immediate Zeroization:** An explicit "Clear Key" action overwrites the closure variable with zeroes before discarding the pointer.
+

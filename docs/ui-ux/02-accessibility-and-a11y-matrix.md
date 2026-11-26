@@ -99,3 +99,31 @@ To ensure screen reader users receive immediate auditory confirmation when a pla
        |
 [ Tab 11: "Share Link" Action Button ]
 ```
+
+---
+
+## 5. Input Debounce & Assistive Speech Queue Throttle Architecture
+
+During intense user interaction (e.g., rapidly dragging the AQI slider from 50 to 500):
+1. **250ms Event Debounce:** Real-time calculation triggers are debounced by $250\text{ms}$ to prevent main-thread layout thrashing and computational waste.
+2. **1,000ms Speech Queue Throttle:** Screen readers (NVDA, JAWS, VoiceOver) reading `aria-live` regions experience audio buffer overflow if updated multiple times per second. CleanAir Guardian throttles auditory status announcements to a maximum rate of 1 announcement per $1,000\text{ms}$:
+
+```javascript
+/**
+ * Throttles live announcements to protect screen reader speech queues.
+ */
+let lastSpeechAnnouncement = 0;
+const SPEECH_THROTTLE_MS = 1000;
+
+export function announceToScreenReader(message) {
+  const now = Date.now();
+  if (now - lastSpeechAnnouncement < SPEECH_THROTTLE_MS) return;
+  lastSpeechAnnouncement = now;
+
+  const announcer = document.getElementById('a11y-announcer');
+  if (announcer) {
+    announcer.textContent = message;
+  }
+}
+```
+

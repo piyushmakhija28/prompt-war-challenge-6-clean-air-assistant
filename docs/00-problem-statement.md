@@ -78,78 +78,28 @@ During winter, continental urban basins experience intense nocturnal radiative g
 
 ---
 
-## 5. Multi-Tier Stakeholder Matrix
-
-```
-+---------------------------------------------------------------------------------------------------------+
-|                                        STAKEHOLDER MATRIX                                               |
-+-------------------------+----------------------------------+--------------------------------------------+
-| Stakeholder Group       | Operational Context              | Primary Need & Friction Point              |
-+-------------------------+----------------------------------+--------------------------------------------+
-| **Multigenerational**   | Families with infants (<2y) and  | Balancing daily life (cooking, heating,    |
-| **Households**          | grandparents (>65y) living       | school drops) without poisoning vulnerable |
-|                         | in 2-3 BHK apartments / houses   | family members indoors.                    |
-+-------------------------+----------------------------------+--------------------------------------------+
-| **School Communities**  | PTAs, school boards, teachers,   | Safe bus stop timings, morning outdoor     |
-|                         | and student transport pools      | assembly cancellation, zero-idle gates.    |
-+-------------------------+----------------------------------+--------------------------------------------+
-| **Resident Welfare**    | Apartment societies, gated       | Collective community air filtration builds |
-| **Associations (RWAs)** | communities, neighborhood blocks | (Corsi-Rosenthal hackathons), shared clean |
-|                         |                                  | transit, banning open biomass fires.       |
-+-------------------------+----------------------------------+--------------------------------------------+
-| **Daily Urban**         | Two-wheeler riders, auto         | Surviving daily 45-90 min commutes in heavy|
-| **Commuters**           | commuters, bus passengers        | traffic without sealed vehicle filters.    |
-+-------------------------+----------------------------------+--------------------------------------------+
-```
-
----
-
-## 6. Quantitative Target Personas
+## 5. Quantitative Target Personas
 
 ### Persona A: Ananya (Mother of 18-Month-Old Infant, Delhi-NCR)
 - **Profile:** 29-year-old software engineer working hybrid; lives in a 3rd-floor apartment in Noida.
 - **Vulnerabilities:** 18-month-old infant (Aarav) with recovering bronchiolitis; elderly mother-in-law (67y).
 - **Current Baseline:** Outdoor AQI 425; cooking on LPG gas; using electric fan heaters; taking baby out in stroller at 08:30 AM for morning sun.
-- **Critical Failure Mode:** 08:30 AM is the diurnal peak smog trap window. Infant stroller is $0.6\text{ m}$ off the ground where vehicular particulate concentrations are highest.
-- **CleanAir Guardian Intervention:** Shifts outdoor sun exposure to 01:15 PM (solar dispersal window); prescribes DIY Corsi-Rosenthal nursery filter; provides wet-mopping protocol. Inhaled dose avoided: **$114.7\ \mu\text{g PM}_{2.5}/\text{day}$**.
+- **CleanAir Intervention:** Shifts stroller walk to 01:15 PM (solar dispersal); deploys DIY Corsi-Rosenthal nursery filter; wet-mopping protocol. Inhaled dose avoided: **$114.7\ \mu\text{g PM}_{2.5}/\text{day}$**.
 
 ### Persona B: Rajesh (68-Year-Old Asthmatic Retiree, Lahore)
 - **Profile:** Retired bank officer; lifelong asthma patient with Baseline $FEV_1 = 64\%$.
 - **Vulnerabilities:** Acute cold-induced bronchospasm; coronary artery disease.
 - **Current Baseline:** Outdoor AQI 380; morning walk in neighborhood park at 06:45 AM; dry-brooming dust off balcony twice daily.
-- **Critical Failure Mode:** Morning walk during cold inversion causes acute deep lung alveolar inflammation; dry brooming resuspends coarse toxic road dust.
-- **CleanAir Guardian Intervention:** Replaces morning outdoor walk with indoor stretching; replaces broom with damp microfiber mopping; configures bedroom air sealing with natural snake plant bio-filter.
+- **CleanAir Intervention:** Replaces morning outdoor walk with indoor stretching; damp microfiber mopping; bedroom air sealing.
 
 ### Persona C: Vikram (32-Year-Old Two-Wheeler Commuter, Gurugram)
 - **Profile:** Field sales manager riding a 150cc motorcycle 22 km daily across arterial highways.
 - **Vulnerabilities:** Unfiltered airway exposure during peak morning (09:00 AM) and evening (07:30 PM) rush hour.
 - **Current Baseline:** Wears standard cloth mask (3% filtration efficiency for submicron particles); idling at signal intersections.
-- **Critical Failure Mode:** High minute ventilation rate while driving ($V_E = 1.1\text{ m}^3/\text{h}$); inhaling $420\ \mu\text{g/m}^3$ directly into lung parenchyma.
-- **CleanAir Guardian Intervention:** Upgrades to N95/FFP2 with verified seal; routes commute via Metro rail or carpool cluster; uses zero-idle stop techniques.
+- **CleanAir Intervention:** Upgrades to N95/FFP2 with verified seal; routes commute via Metro rail or carpool cluster; uses zero-idle stop techniques.
 
----
-
-## 7. Mission Traceability & Success Criteria
-
-```
-+---------------------------------------------------------------------------------------------------------+
-|                                    MISSION TRACEABILITY MATRIX                                          |
-+----------------------+------------------------------------------+---------------------------------------+
-| Objective ID         | Measurable System Target                 | Verification Mechanism                |
-+----------------------+------------------------------------------+---------------------------------------+
-| **OBJ-01**           | Context-aware diurnal routine generation | Inversion window detection test suite |
-|                      | shifting activities away from peaks.     | (`test/run-tests.js`).                |
-+----------------------+------------------------------------------+---------------------------------------+
-| **OBJ-02**           | Deliver verified DIY IAQ hacks achieving | Mathematical CADR comparison table in |
-|                      | CADR $\ge 200\text{ CFM}$ at $<\$35$.   | `docs/lld/02-direct-impact-spec.md`.  |
-+----------------------+------------------------------------------+---------------------------------------+
-| **OBJ-03**           | Accurate mathematical quantification of  | EPA Exposure Factors formula balance  |
-|                      | inhaled PM2.5 avoidance ($\mu\text{g}$). | verified by Anti-Hallucination Gate.  |
-+----------------------+------------------------------------------+---------------------------------------+
-| **OBJ-04**           | Zero-friction evaluation on GitHub Pages | Static single-page runtime with zero  |
-|                      | with Dual-Engine failover.               | server dependencies.                  |
-+----------------------+------------------------------------------+---------------------------------------+
-| **OBJ-05**           | Strict repository size under 10 MB and   | Git object footprint and branch audit |
-|                      | single branch `main`.                    | by `architecture-conformance-auditor`.|
-+----------------------+------------------------------------------+---------------------------------------+
-```
+### Persona D: Ramesh (44-Year-Old Traffic Officer / Street Vendor, Central Delhi)
+- **Profile:** Traffic sub-inspector standing at major arterial intersections for 8 to 10 hours daily.
+- **Vulnerabilities:** Prolonged high-ventilation ambient exposure ($V_E = 1.25\text{ m}^3/\text{h}$); zero home structural envelope during duty shifts.
+- **Current Baseline:** Standing directly in vehicular tailpipe slipstreams in AQI 450+ ($C_{\text{outdoor}} \approx 420\ \mu\text{g/m}^3$). Daily baseline alveolar dose: **$1,176\ \mu\text{g PM}_{2.5}/\text{day}$** ($\approx 17.7$ cigarettes equivalent).
+- **CleanAir Intervention:** Prescribes fitted dual-strap elastomeric N95 respirators (95% penetration reduction); schedules duty rotations away from traffic bottlenecks during morning/evening inversion peaks; prescribes evening nasal saline irrigation to clear macro-particulates. Dose avoided: **$882\ \mu\text{g PM}_{2.5}/\text{day}$**.

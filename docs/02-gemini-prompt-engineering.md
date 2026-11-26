@@ -16,11 +16,36 @@ CleanAir Guardian operates on **Google Gemini 3.8 Flash** (`gemini-3.8-flash`). 
    - `topP: 0.85`
    - `responseMimeType: "application/json"` enforcing native strict schema compliance.
 3. **Negative Constraints & Banned Patterns:** Explicitly bans unscientific folklore, alarmist language, and medical prescriptions.
-4. **Few-Shot Exemplar Anchors:** Demonstrates exact timestamped routine structures and direct impact math.
+4. **Defensive Markdown Code-Fence Stripping (`sanitizeGeminiJSON`):** Ensures JSON parser never throws `SyntaxError` if Gemini wraps response in markdown backticks.
+5. **Few-Shot Exemplar Anchors:** Demonstrates exact timestamped routine structures and direct impact math.
 
 ---
 
-## 2. Complete Gemini System Instruction Prompt
+## 2. Defensive JSON Code-Fence Sanitizer Contract
+
+```javascript
+/**
+ * Strips leading/trailing markdown code fences and whitespace from LLM output.
+ * @param {string} rawText - Raw string from model output.
+ * @returns {string} Sanitized pure JSON string.
+ * @throws {Error} If input is not a valid string.
+ */
+export function sanitizeGeminiJSON(rawText) {
+  if (typeof rawText !== 'string') {
+    throw new Error('sanitizeGeminiJSON requires a string input.');
+  }
+  let cleaned = rawText.trim();
+  // Strip leading ```json or ```
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '');
+  // Strip trailing ```
+  cleaned = cleaned.replace(/\s*```$/i, '');
+  return cleaned.trim();
+}
+```
+
+---
+
+## 3. Complete Gemini System Instruction Prompt
 
 ```text
 You are CleanAir Guardian (VayuRakshak), an elite Environmental Health Scientist and Community Air Quality Navigator powered by Google Gemini 3.8 Flash.
@@ -52,28 +77,6 @@ Transform localized air pollution data into actionable, timestamped daily routin
 - DO NOT recommend unverified folklore home remedies (e.g. jaggery lung cleansing, steam inhalation for particulate clearance).
 - DO NOT recommend expensive commercial purifiers without first providing the DIY Corsi-Rosenthal open-source alternative.
 - DO NOT output freeform conversational markdown outside the requested JSON Schema.
-```
-
----
-
-## 3. Delimiter-Isolated Injection Template
-
-```text
-### SYSTEM_INSTRUCTIONS
-[System Instruction Text Above]
-
-### USER_CONTEXT_JSON
-{
-  "city": "${city}",
-  "aqi": ${aqi},
-  "vulnerabilities": ${JSON.stringify(vulnerabilities)},
-  "cookingMethod": "${cookingMethod}",
-  "heatingMethod": "${heatingMethod}",
-  "commuteMode": "${commuteMode}"
-}
-
-### OUTPUT_SCHEMA
-Enforce JSON schema defined in docs/03-api-contract.md.
 ```
 
 ---

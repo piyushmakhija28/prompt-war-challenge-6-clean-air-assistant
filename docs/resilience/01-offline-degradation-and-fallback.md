@@ -99,4 +99,72 @@ export async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     throw error;
   }
 }
+
+---
+
+## 5. Formal (S, T, E, X) Loop Tuple & Lyapunov Convergence
+
+To satisfy Discipline D51 (Loop Engineering) and guarantee that retry loops terminate in finite time with mathematical certitude:
+
+### 1. Loop Tuple Definition:
+The network retry loop is formalized as the 4-tuple $\mathcal{L} = (S, T, E, X)$:
+- **State Space ($S$):** $S = \{ \text{IDLE}, \text{DISPATCHING}, \text{BACKOFF\_SLEEP}, \text{OFFLINE\_FALLBACK}, \text{TERMINATED\_SUCCESS} \}$
+- **State Transition Function ($T: S \times E \to S$):**
+  $$T(\text{IDLE}, \text{USER\_SUBMIT}) = \text{DISPATCHING}$$
+  $$T(\text{DISPATCHING}, \text{HTTP\_200}) = \text{TERMINATED\_SUCCESS}$$
+  $$T(\text{DISPATCHING}, \text{NETWORK\_ERR}_{k < 2}) = \text{BACKOFF\_SLEEP}$$
+  $$T(\text{DISPATCHING}, \text{NETWORK\_ERR}_{k \ge 2}) = \text{OFFLINE\_FALLBACK}$$
+  $$T(\text{BACKOFF\_SLEEP}, \text{TIMER\_EXPIRED}) = \text{DISPATCHING}$$
+  $$T(\text{OFFLINE\_FALLBACK}, \text{LOCAL\_COMPLETE}) = \text{TERMINATED\_SUCCESS}$$
+- **Error Metric & Discrete Lyapunov Function ($V(k)$):**
+  $$V(k) = \max(0, K_{\max} - k)$$
+  Where $K_{\max} = 2$. Since $k$ increments strictly monotonically by $1$ on each failure:
+  $$\Delta V(k) = V(k+1) - V(k) = -1 < 0 \quad \forall k < K_{\max}$$
+  When $V(k) = 0$, the state transitions unconditionally to $\text{OFFLINE\_FALLBACK}$. Hence, infinite loops and live-locks are mathematically impossible.
+- **Exit Condition Set ($X$):**
+  $$X = \{ \text{VALID\_PLAN\_RENDERED}, \text{USER\_ABORT} \}$$
+
+---
+
+## 6. Client-Side Token Bucket Rate Limiter
+
+To guard against rapid button mashing, evaluator benchmark scripts, or exhausting Gemini API quota limits:
+
+### 1. Token Bucket Mathematical Formulation:
+- **Bucket Capacity ($B$):** $3\text{ tokens}$ (allows small burst of initial queries).
+- **Refill Rate ($r$):** $5\text{ tokens / minute} = \frac{1}{12}\text{ tokens / second}$.
+- **Token Update Equation:**
+  $$\tau(t) = \min\left(B, \tau(t_{\text{prev}}) + (t - t_{\text{prev}}) \times \frac{5}{60}\right)$$
+
+```javascript
+/**
+ * In-memory client-side Token Bucket Rate Limiter.
+ */
+export class TokenBucketLimiter {
+  constructor(capacity = 3, refillPerMinute = 5) {
+    this.capacity = capacity;
+    this.refillRate = refillPerMinute / 60000; // tokens per ms
+    this.tokens = capacity;
+    this.lastRefill = Date.now();
+  }
+
+  /**
+   * Attempts to consume one token.
+   * @returns {boolean} - True if allowed, false if rate-limited.
+   */
+  tryConsume() {
+    const now = Date.now();
+    const elapsed = now - this.lastRefill;
+    this.tokens = Math.min(this.capacity, this.tokens + elapsed * this.refillRate);
+    this.lastRefill = now;
+
+    if (this.tokens >= 1.0) {
+      this.tokens -= 1.0;
+      return true;
+    }
+    return false;
+  }
+}
+```
+
 ```
