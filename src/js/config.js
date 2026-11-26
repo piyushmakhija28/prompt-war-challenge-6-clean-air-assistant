@@ -108,3 +108,59 @@ export const DEFAULT_PRESET = Object.freeze({
   commuteMode: 'two_wheeler',
   commuteKm: 14
 });
+
+/**
+ * 4 Quantitative Target Personas from Problem Statement (docs/00 §5).
+ * @readonly
+ * @type {Readonly<Object<string, {id: string, name: string, city: string, aqi: number, vulnBits: number, housingType: string, cookingMethod: string, heatingMethod: string, commuteMode: string, commuteKm: number}>>}
+ */
+export const TARGET_PERSONAS = Object.freeze({
+  ananya: {
+    id: 'ananya',
+    name: 'Ananya (Infant 18m)',
+    city: 'Delhi NCR',
+    aqi: 425,
+    vulnBits: VULN_FLAGS.INFANT,
+    housingType: 'standard_flat',
+    cookingMethod: 'lpg',
+    heatingMethod: 'space_heater',
+    commuteMode: 'two_wheeler',
+    commuteKm: 8
+  },
+  rajesh: {
+    id: 'rajesh',
+    name: 'Rajesh (Asthma & Senior 68y)',
+    city: 'Lahore',
+    aqi: 380,
+    vulnBits: VULN_FLAGS.ASTHMA | VULN_FLAGS.SENIOR,
+    housingType: 'sealed_apartment',
+    cookingMethod: 'png',
+    heatingMethod: 'electric_radiator',
+    commuteMode: 'walk_cycle',
+    commuteKm: 2
+  },
+  vikram: {
+    id: 'vikram',
+    name: 'Vikram (2-Wheeler Commute)',
+    city: 'Delhi NCR',
+    aqi: 410,
+    vulnBits: 0,
+    housingType: 'standard_flat',
+    cookingMethod: 'induction',
+    heatingMethod: 'heat_pump',
+    commuteMode: 'two_wheeler',
+    commuteKm: 22
+  },
+  ramesh: {
+    id: 'ramesh',
+    name: 'Ramesh (Outdoor Worker)',
+    city: 'Delhi NCR',
+    aqi: 460,
+    vulnBits: VULN_FLAGS.OUTDOOR_WORKER,
+    housingType: 'drafty_home',
+    cookingMethod: 'biomass',
+    heatingMethod: 'open_fire',
+    commuteMode: 'walk_cycle',
+    commuteKm: 14
+  }
+});

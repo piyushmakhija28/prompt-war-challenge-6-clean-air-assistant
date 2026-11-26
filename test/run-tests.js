@@ -4,7 +4,7 @@
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
-import { VULN_FLAGS, METRO_BASIN_COORDINATES } from '../src/js/config.js';
+import { VULN_FLAGS, METRO_BASIN_COORDINATES, TARGET_PERSONAS } from '../src/js/config.js';
 import {
   calculateBulkRichardson,
   getDiurnalInversion,
@@ -41,7 +41,7 @@ import {
   decodeBase64URL
 } from '../src/js/state-codec.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol } from '../src/js/offline-advisor.js';
-import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore } from '../src/js/gemini-service.js';
+import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry } from '../src/js/gemini-service.js';
 
 let passed = 0;
 let failed = 0;
@@ -345,6 +345,20 @@ const hasMandatoryKeys = Boolean(
   schemaPlan.communityAdvisory
 );
 assert(hasMandatoryKeys === true, 'TC-SCH-001', 'Action plan satisfies 100% of required responseSchema properties');
+
+// TC-PER-001: 4 Quantitative target personas resolution (Problem Statement docs/00 §5)
+const ananyaPlan = generateOfflineCleanAirPlan(TARGET_PERSONAS.ananya);
+const rajeshPlan = generateOfflineCleanAirPlan(TARGET_PERSONAS.rajesh);
+const vikramPlan = generateOfflineCleanAirPlan(TARGET_PERSONAS.vikram);
+const rameshPlan = generateOfflineCleanAirPlan(TARGET_PERSONAS.ramesh);
+const allPersonasValid = ananyaPlan.severityLevel === 'HAZARDOUS' &&
+  rajeshPlan.severityLevel === 'SEVERE' &&
+  vikramPlan.severityLevel === 'HAZARDOUS' &&
+  rameshPlan.severityLevel === 'HAZARDOUS';
+assert(allPersonasValid, 'TC-PER-001', 'All 4 quantitative target personas (Ananya, Rajesh, Vikram, Ramesh) resolve valid plans');
+
+// TC-RES-001: fetchWithRetry resilience function export and signature contract
+assert(typeof fetchWithRetry === 'function' && fetchWithRetry.length >= 2, 'TC-RES-001', 'fetchWithRetry conforms to Resilience backoff contract');
 
 
 

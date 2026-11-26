@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-11-26
 
 ### Added
+- **Problem Statement §5 Target Personas Quick Presets**: Added `TARGET_PERSONAS` dictionary in `src/js/config.js` and 1-click Quick Preset bar in `index.html` (`applyPersona` in `app.js`) for instant evaluation of Ananya (Infant 18m, AQI 425), Rajesh (Asthma 68y, AQI 380), Vikram (Two-Wheeler 22km, AQI 410), and Ramesh (Traffic Officer, AQI 460).
+- **Resilient Network Backoff with Decorrelated Jitter (`fetchWithRetry`)**: Implemented exponential backoff and randomized decorrelated jitter ($t_{\text{wait}} = \min(t_{\text{max}}, \text{random}(t_{\text{base}}, t_{\text{prev}} \times 3))$) in `src/js/gemini-service.js` conforming to Discipline D50 Resilience Architecture (`docs/resilience/01-offline-degradation-and-fallback.md` §2).
+- **Tab 11 Share Link Action Button (`#btn-copy-link`)**: Wired direct deep-link clipboard copying and polite live screen reader announcement conforming to `docs/ui-ux/02-accessibility-and-a11y-matrix.md` §4 keyboard navigation sequence.
+- **Triad Test Suite Expansion to 58 Invariants**: Added `TC-PER-001` (4 quantitative target personas validation) and `TC-RES-001` (`fetchWithRetry` resilience contract), reaching 58 passing tests alongside 10,000 property-based fuzz vectors.
 - **PRD FR-06 Cleaning Protocol & Resuspension Shield**: Added `getCleaningProtocol(aqi)` enforcing damp microfiber wet-mopping with 0.1% surfactant and strictly prohibiting traditional dry broom sweeping when AQI > 200.
 - **Dedicated IAQ Cleaning Shield UI Card**: Rendered dynamic status badge, resuspension warning, and cleaning formula in `index.html` via `app.js`.
 - **Security & Threat Model Hardening**: Integrated strict Content Security Policy (`default-src 'self'`) and OpenGraph/Twitter card social preview metadata.

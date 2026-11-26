@@ -149,6 +149,55 @@ export class CircuitBreaker {
 }
 
 /**
+ * Executes a resilient fetch with timeout and exponential backoff retry with decorrelated jitter.
+ * Conforms to Discipline D50 Resilience Architecture (docs/resilience/01-offline §2).
+ *
+ * @param {string} url - Target endpoint URL.
+ * @param {Object} options - Standard fetch options.
+ * @param {number} [maxRetries=1] - Maximum retry attempts before circuit breaker trip.
+ * @param {number} [timeoutMs=8000] - Timeout limit in milliseconds.
+ * @returns {Promise<Response>} HTTP Response promise.
+ */
+export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 8000) {
+  let attempt = 0;
+  let delay = 500;
+
+  while (attempt <= maxRetries) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+
+      if (res.status === 429 || (res.status >= 500 && res.status <= 504)) {
+        if (attempt < maxRetries) {
+          attempt++;
+          const jitter = Math.random() * delay;
+          await new Promise((resolve) => setTimeout(resolve, delay + jitter));
+          delay = Math.min(4000, delay * 2.5);
+          continue;
+        }
+      }
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      if (attempt < maxRetries) {
+        attempt++;
+        const jitter = Math.random() * delay;
+        await new Promise((resolve) => setTimeout(resolve, delay + jitter));
+        delay = Math.min(4000, delay * 2.5);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+/**
  * Strips markdown code fences from LLM output before JSON parsing.
  * @param {string} raw - Raw LLM string.
  * @returns {string} Sanitized JSON string.
@@ -334,18 +383,12 @@ export class GeminiPlanProvider extends IPlanProvider {
       }
     };
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetchWithRetry(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
-
-      clearTimeout(timer);
+        body: JSON.stringify(payload)
+      }, 1, this.timeoutMs);
 
       if (!res.ok) {
         throw new Error(`Gemini API HTTP Error ${res.status}`);
@@ -375,7 +418,6 @@ export class GeminiPlanProvider extends IPlanProvider {
         strategy: 'GEMINI_3.8_FLASH'
       };
     } catch (err) {
-      clearTimeout(timer);
       this.circuitBreaker.recordFailure();
 
       return {

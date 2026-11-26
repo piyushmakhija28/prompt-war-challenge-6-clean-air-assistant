@@ -46,6 +46,17 @@
     <section class="glass-panel" aria-labelledby="heading-context">
       <h2 id="heading-context" style="font-size:1.25rem; font-weight:700; margin-bottom:16px;">Household & Urban Profile</h2>
 
+      <!-- Target Personas Quick Preset Bar (Problem Statement docs/00 §5) -->
+      <fieldset class="form-fieldset" style="margin-bottom:16px;">
+        <legend class="form-legend">Target Personas (Docs 00 §5)</legend>
+        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px;">
+          <button type="button" class="btn-secondary btn-persona" data-persona="ananya" style="min-height:36px; font-size:11px; padding:4px 6px;">👶 Ananya (Infant)</button>
+          <button type="button" class="btn-secondary btn-persona" data-persona="rajesh" style="min-height:36px; font-size:11px; padding:4px 6px;">🫁 Rajesh (Asthma 68y)</button>
+          <button type="button" class="btn-secondary btn-persona" data-persona="vikram" style="min-height:36px; font-size:11px; padding:4px 6px;">🛵 Vikram (2-Wheeler)</button>
+          <button type="button" class="btn-secondary btn-persona" data-persona="ramesh" style="min-height:36px; font-size:11px; padding:4px 6px;">🦺 Ramesh (Vendor)</button>
+        </div>
+      </fieldset>
+
       <fieldset class="form-fieldset">
         <legend class="form-legend">Urban Air Basin</legend>
         <label for="input-city" class="form-label">Location</label>
@@ -240,7 +251,10 @@
           <button id="btn-toggle-lang" class="btn-secondary" type="button" style="flex:1; min-height:40px; font-size:12px; padding:4px 8px;" title="Switch Advisory Language">
             Language: <span id="label-current-lang" style="font-weight:700; color:#38bdf8;">English</span> (हिन्दी)
           </button>
-          <button id="btn-print-protocol" class="btn-secondary" type="button" style="min-height:40px; padding:0 12px; font-size:12px;" title="Print 1-Page Emergency Action Protocol">
+          <button id="btn-copy-link" class="btn-secondary" type="button" style="min-height:40px; padding:0 10px; font-size:12px;" title="Copy 5-byte Sharable State URL (Tab 11)">
+            Link 🔗
+          </button>
+          <button id="btn-print-protocol" class="btn-secondary" type="button" style="min-height:40px; padding:0 10px; font-size:12px;" title="Print 1-Page Emergency Action Protocol">
             Print 🖨️
           </button>
         </div>

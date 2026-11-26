@@ -6,7 +6,7 @@
  * @module app
  */
 
-import { VULN_FLAGS, DEFAULT_PRESET, METRO_BASIN_PRESETS, METRO_BASIN_COORDINATES } from './config.js';
+import { VULN_FLAGS, DEFAULT_PRESET, TARGET_PERSONAS, METRO_BASIN_PRESETS, METRO_BASIN_COORDINATES } from './config.js';
 import { getDiurnalInversion, DiurnalRingBuffer, generateDiurnalCurve } from './air-quality-engine.js';
 import { SecureKeyStore, GeminiPlanProvider } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
@@ -448,6 +448,61 @@ export function syncUrlHash() {
 }
 
 /**
+ * Applies a ground-truth quantitative target persona from docs/00 §5.
+ *
+ * @param {string} personaId - Ananya | Rajesh | Vikram | Ramesh.
+ */
+export function applyPersona(personaId) {
+  const p = TARGET_PERSONAS[personaId];
+  if (!p) return;
+
+  state.city = p.city;
+  state.aqi = p.aqi;
+  state.vulnBits = p.vulnBits;
+  state.housingType = p.housingType;
+  state.cookingMethod = p.cookingMethod;
+  state.heatingMethod = p.heatingMethod;
+  state.commuteMode = p.commuteMode;
+  state.commuteKm = p.commuteKm;
+
+  const citySelect = document.getElementById('input-city');
+  if (citySelect) citySelect.value = p.city;
+
+  const aqiSlider = document.getElementById('input-aqi-slider');
+  const aqiNumberInput = document.getElementById('input-aqi-number');
+  if (aqiSlider) aqiSlider.value = String(p.aqi);
+  if (aqiNumberInput) aqiNumberInput.value = String(p.aqi);
+
+  const housingSelect = document.getElementById('select-housing-type');
+  if (housingSelect) housingSelect.value = p.housingType;
+
+  const cookRadio = document.querySelector(`input[name="radio-cooking"][value="${p.cookingMethod}"]`);
+  if (cookRadio) cookRadio.checked = true;
+
+  const heatRadio = document.querySelector(`input[name="radio-heating"][value="${p.heatingMethod}"]`);
+  if (heatRadio) heatRadio.checked = true;
+
+  const commuteRadio = document.querySelector(`input[name="radio-commute"][value="${p.commuteMode}"]`);
+  if (commuteRadio) commuteRadio.checked = true;
+
+  const commuteKmSlider = document.getElementById('input-commute-km');
+  const commuteKmLabel = document.getElementById('label-commute-km');
+  if (commuteKmSlider) commuteKmSlider.value = String(p.commuteKm);
+  if (commuteKmLabel) commuteKmLabel.textContent = `${p.commuteKm} km`;
+
+  const vulnCheckboxes = document.querySelectorAll('.input-vuln-checkbox');
+  vulnCheckboxes.forEach((cb) => {
+    const bit = Number(cb.getAttribute('data-bit'));
+    cb.checked = (p.vulnBits & bit) !== 0;
+  });
+
+  syncUrlHash();
+  renderDiurnalSplineCurve();
+  triggerPlanGeneration();
+  announceA11y(`Loaded target persona ${p.name}. City ${p.city}, AQI ${p.aqi}.`);
+}
+
+/**
  * Initializes DOM listeners and hydrates state from initial URL hash.
  */
 export function initApp() {
@@ -697,6 +752,33 @@ export function initApp() {
       window.print();
     });
   }
+
+  // 6c. Copy Link Button (Tab 11)
+  const btnCopyLink = document.getElementById('btn-copy-link');
+  if (btnCopyLink) {
+    btnCopyLink.addEventListener('click', async () => {
+      const currentUrl = window.location.href;
+      try {
+        await navigator.clipboard.writeText(currentUrl);
+        btnCopyLink.textContent = 'Copied! ✓';
+        setTimeout(() => {
+          btnCopyLink.textContent = 'Link 🔗';
+        }, 2000);
+        announceA11y('Shareable clean air link copied to clipboard.');
+      } catch (e) {
+        // Fallback
+      }
+    });
+  }
+
+  // 6d. Target Persona Quick Presets (Docs 00 §5)
+  const personaButtons = document.querySelectorAll('.btn-persona');
+  personaButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const personaId = btn.getAttribute('data-persona');
+      applyPersona(personaId);
+    });
+  });
 
   // 6c. Selectable 4-Hack IAQ Catalog Switcher
   const hackTabs = document.querySelectorAll('.hack-tab-btn');
