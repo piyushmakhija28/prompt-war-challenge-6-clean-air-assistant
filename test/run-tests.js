@@ -40,7 +40,7 @@ import {
   encodeBase64URL,
   decodeBase64URL
 } from '../src/js/state-codec.js';
-import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory } from '../src/js/offline-advisor.js';
+import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol } from '../src/js/offline-advisor.js';
 import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON } from '../src/js/gemini-service.js';
 
 let passed = 0;
@@ -316,6 +316,14 @@ for (let i = 0; i < diurnalCurve.points.length; i++) {
   if (p.multiplier > maxMultiplier) maxMultiplier = p.multiplier;
 }
 assert(minMultiplier <= 0.90 && maxMultiplier >= 2.0, 'TC-CURVE-002', 'Diurnal inversion multiplier exhibits physical atmospheric range (min ~0.85-0.90, max >= 2.0)');
+
+// TC-CLN-001: Wet-mopping vs dry-sweeping protocol enforcement (AQI > 200)
+const cleanSevere = getCleaningProtocol(350);
+assert(cleanSevere.isTriggered === true && cleanSevere.severity === 'WARNING' && cleanSevere.recommendation.includes('damp microfiber') && cleanSevere.warning.includes('Traditional broom dry-sweeping'), 'TC-CLN-001', 'AQI > 200 enforces damp mopping and prohibits dry sweeping per PRD FR-06');
+
+// TC-CLN-002: Relaxed cleaning protocol for low ambient pollution (AQI <= 200)
+const cleanGood = getCleaningProtocol(85);
+assert(cleanGood.isTriggered === false && cleanGood.severity === 'SAFE' && cleanGood.statusBadge === 'STANDARD DAMP DUSTING', 'TC-CLN-002', 'AQI <= 200 reports standard damp cleaning with low resuspension risk');
 
 
 

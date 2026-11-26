@@ -14,33 +14,58 @@ This repository contains the design, source code, and documentation for **CleanA
 ```
 prompt-war-challenge-6-clean-air-assistant/
 ├── .gitignore                         # Exclusions guaranteeing repo size < 10 MB
+├── .nojekyll                          # Bypasses Jekyll on GitHub Pages for raw asset serving
+├── manifest.webmanifest               # PWA Progressive Web App install manifest
+├── sw.js                              # PWA Offline Service Worker (Cache-First runtime)
+├── package.json                       # Zero-dependency npm scripts metadata
 ├── SRS.md                             # Authoritative IEEE 29148 Software Requirements Spec
 ├── README.md                          # Official submission document & evaluation playbook
 ├── GEMINI.md                          # Gemini developer guidelines and project context
 ├── agent.md                           # Core GenAI persona, system instructions & prompt specs
-├── VERSION                            # Single source of truth version (1.0.0)
+├── VERSION                            # Single source of truth version (1.1.0)
 ├── CHANGELOG.md                       # Release notes and changelog
 ├── index.html                         # Responsive web application interface
-├── docs/                              # Deep architectural and domain documentation
-│   ├── 01-architecture-and-logic.md   # Mathematical model, thermal inversion, AQI triage
-│   ├── 02-gemini-prompt-engineering.md# Prompt templates, few-shot schemas, guardrails
-│   └── 03-rubric-compliance-matrix.md # Evaluation rubric mapping (High/Med/Low impact)
+├── .github/workflows/ci.yml           # Automated GitHub Actions test workflow
+├── docs/                              # Deep 28-document architecture suite
+│   ├── 00-problem-statement.md        # IEEE 29148 Problem statement & meteorology
+│   ├── 01-prd.md                      # BDD Gherkin functional requirements (FR-01 to FR-12)
+│   ├── 02-gemini-prompt-engineering.md# Gemini 3.8 Flash prompt engineering specification
+│   ├── 02-hld.md                      # C4 High-Level Architecture Specification
+│   ├── 03-api-contract.md             # Formal REST & JSON Schema Contracts
+│   ├── 04-competition-and-platform-research.md # Competitor benchmark matrix
+│   ├── 05-srs-detailed.md             # Detailed engineering specifications
+│   ├── 07-architecture-tradeoffs-and-faq.md # Tradeoff analysis & evaluators FAQ
+│   ├── 08-rubric-compliance-matrix.md # Competition rubric compliance matrix
+│   ├── 06-adr/                        # Architectural Decision Records (ADR-001 to ADR-006)
+│   ├── lld/                           # Low-Level Design (LLD-01 to LLD-07)
+│   ├── resilience/                    # Offline degradation & chaos tolerance specs
+│   ├── security/                      # Threat model & API key zero-persistence specs
+│   ├── testing/                       # Triad testing strategy & Hoare logic specs
+│   └── ui-ux/                         # Design tokens, accessibility & WCAG 2.1 AA specs
 ├── uml/                               # Visual Mermaid architecture & sequence diagrams
-│   ├── architecture-flow.mmd          # Component and data flow diagram
-│   └── decision-sequence.mmd          # User context to recommendation sequence
+│   ├── 01-system-context.mmd          # C4 System Context
+│   ├── 02-container-diagram.mmd       # C4 Container Diagram
+│   ├── 03-component-diagram.mmd       # C4 Component Architecture
+│   ├── 04-decision-sequence.mmd       # Sequence diagram
+│   ├── 05-diurnal-inversion-state.mmd # FSM state diagram
+│   └── 06-impact-calculation-flow.mmd # Impact calculation flow
 ├── src/                               # Clean, modular application source code
-│   ├── css/                           # Design tokens, air quality indicators, glassmorphic UI
-│   │   ├── style.css                  # Core layout & typography
-│   │   └── aqi-themes.css             # Dynamic AQI visual indicator styles
-│   └── js/                            # Modular JavaScript modules
-│       ├── config.js                  # AQI thresholds, emission constants, default presets
-│       ├── air-quality-engine.js      # Diurnal smog inversion detection & vulnerability scoring
-│       ├── impact-calculator.js       # Mathematical PM2.5 exposure and CO2e reduction math
+│   ├── css/style.css                  # Design tokens, glassmorphism, responsive grid & print
+│   └── js/                            # Pure vanilla ES6+ modular architecture
+│       ├── config.js                  # AQI thresholds, emission constants, basin presets
+│       ├── air-quality-engine.js      # Diurnal inversion engine & 24h spline generator
+│       ├── impact-calculator.js       # PM2.5 dosage, Kahan-Neumaier sum & CO2e math
+│       ├── cadr-calculator.js         # Room clearance decay & Haversine geo distance
+│       ├── signals.js                 # Micro-reactive fine-grained dependency graph
+│       ├── errors.js                  # Typed domain error hierarchy
+│       ├── event-bus.js               # Synchronous typed EventBus pub-sub
+│       ├── state-codec.js             # 5-byte Base64URL compact bitstream encoder/decoder
 │       ├── gemini-service.js          # Google Gemini 3.8 Flash API integration
-│       ├── offline-advisor.js         # Deterministic rule engine fallback
-│       └── app.js                     # UI controller, accessibility & event handlers
-└── test/                              # Automated test suite
-    └── run-tests.js                   # Node.js automated test runner for all calculations
+│       ├── offline-advisor.js         # Deterministic rule engine fallback & 4-hack catalog
+│       └── app.js                     # FastDOM scheduler, Result monad & UI controller
+└── test/                              # Automated zero-dependency test suite
+    ├── run-tests.js                   # Node.js runner for all 54 Triad invariant tests
+    └── run-fuzz-tests.js              # 10,000 Property-based fuzz tests (Xorshift128+)
 ```
 
 ---

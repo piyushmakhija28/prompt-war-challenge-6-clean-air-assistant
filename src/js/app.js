@@ -332,6 +332,23 @@ export function renderActivePlan() {
       }
     }
 
+    if (plan.cleaningProtocol) {
+      const badgeCleaning = document.getElementById('badge-cleaning-status');
+      if (badgeCleaning) {
+        badgeCleaning.textContent = plan.cleaningProtocol.statusBadge;
+        if (plan.cleaningProtocol.isTriggered) {
+          badgeCleaning.style.background = '#ef4444';
+          badgeCleaning.style.color = '#ffffff';
+        } else {
+          badgeCleaning.style.background = '#10b981';
+          badgeCleaning.style.color = '#ffffff';
+        }
+      }
+      setSafeText('cleaning-warning-text', plan.cleaningProtocol.warning);
+      setSafeText('cleaning-rec-text', plan.cleaningProtocol.recommendation);
+      setSafeText('cleaning-formula-text', plan.cleaningProtocol.surfactantRatio);
+    }
+
     // 5. Sustainable Alternatives
     const altContainer = document.getElementById('alternatives-container');
     if (altContainer && plan.sustainableAlternatives) {

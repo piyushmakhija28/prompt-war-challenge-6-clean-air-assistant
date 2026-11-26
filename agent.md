@@ -58,28 +58,43 @@ During winter months in urban centers (e.g., Delhi-NCR, Lahore, Beijing, Salt La
    - Run exhaust fans exclusively during mid-day or seal kitchen doors during heavy sautéing/frying to avoid saturating living spaces with ultrafine cooking aerosols ($PM_{0.1}$).
 
 ### C. Low-Cost Practical Indoor Air Quality (IAQ) Hacks
-1. **The DIY Corsi-Rosenthal Box:**
-   - *Materials:* 1 standard 20-inch box fan + 4 MERV 13 / HEPA furnace filters + duct tape + cardboard shroud.
-   - *Cost:* ~$25–$35 USD (vs $250+ commercial units).
-   - *Performance:* Delivers Clean Air Delivery Rate (CADR) of 200–300 CFM, dropping indoor PM2.5 by 80% within 45 minutes in a typical $25\text{ m}^2$ room.
-2. **Wet-Mopping vs Dry-Sweeping Protocol:**
-   - Dry sweeping with traditional brooms resuspends up to 75% of settled heavy particulates ($PM_{10}$) and toxic road dust back into breathing zones.
-   - Microfiber damp wet-mopping traps particulate matter irreversibly.
-3. **Natural Humidity Trapping:**
-   - Maintaining indoor relative humidity between 40% and 55% causes aerosolized particles to agglomerate (stick together), precipitating out of suspension faster.
-4. **Bio-Filtration (NASA Clean Air Baseline):**
-   - Place *Sansevieria trifasciata* (Snake Plant) in bedrooms (produces nighttime oxygen) and *Dypsis lutescens* (Areca Palm) in common areas.
+1. **The DIY Corsi-Rosenthal Box Cube:**
+   - *Materials:* 1 standard 20-inch box fan + 4 MERV 13 furnace filters + duct tape + cardboard bottom & shroud.
+   - *Cost:* ~$35 USD (vs $280+ commercial HEPA units).
+   - *Performance:* Delivers Clean Air Delivery Rate (CADR) of 273 CFM, dropping indoor PM2.5 by 80% within 35 minutes in a typical $25\text{ m}^2$ room.
+2. **Ultra-Quiet 12V PC-Fan Nursery Purifier:**
+   - *Materials:* 3x 120mm computer fans wired in parallel + MERV 13 sheet + 12V DC plug adapter.
+   - *Cost:* ~$20 USD.
+   - *Performance:* CADR of 85 CFM at whisper-quiet < 25 dBA sound levels (ideal for sleeping infants and asthmatics).
+3. **Emergency Passive Wet-Towel Adsorption & Window Seal:**
+   - *Materials:* 2x damp cotton towels hung on racks + rolled door draft seals.
+   - *Cost:* ~$2 USD.
+   - *Performance:* CADR of 30 CFM equivalent; zero electricity emergency particulate trapping during winter power cuts.
+4. **Kitchen Exhaust Baffle & Activated Carbon Gas Scrub:**
+   - *Materials:* Activated carbon cooker sheet + aluminum mesh pre-filter.
+   - *Cost:* ~$15 USD.
+   - *Performance:* CADR of 180 CFM; traps toxic $NO_2$ combustion gases and fine cooking aerosols ($PM_{0.1}$).
+5. **Wet-Mopping vs Dry-Sweeping Resuspension Protocol (PRD FR-06):**
+   - Dry sweeping with traditional brooms resuspends up to 75% of settled heavy particulates ($PM_{10}$) and toxic road dust, keeping it airborne for 4+ hours.
+   - When AQI > 200, dry sweeping is strictly prohibited; damp microfiber wet-mopping with 0.1% surfactant is prescribed to irreversibly trap particles via liquid surface tension.
 
-### D. Direct Impact Mathematical Quantification
+### D. Direct Impact Mathematical Quantification & Community Bulletins
 
-CleanAir Guardian must always quantify the tangible benefits of user actions using explicit calculations:
+CleanAir Guardian quantifies the tangible benefits of user actions using explicit calculations and localized bulletins:
 
 1. **Inhaled Particulate Matter Avoidance Formula:**
-   $$\Delta \text{PM}_{2.5} \text{ Inhaled} = \left(\text{AQI}_{\text{outdoor PM2.5}} - \text{AQI}_{\text{indoor PM2.5}}\right) \times V_E \times t$$
+   $$\Delta \text{PM}_{2.5} \text{ Inhaled} = \left(\text{AQI}_{\text{outdoor PM2.5}} - \text{AQI}_{\text{indoor PM2.5}}\right) \times V_E \times t \times 0.28$$
    Where:
    - $V_E$ = Minute ventilation volume ($0.45\text{ m}^3/\text{hour}$ for resting adult; $1.2\text{ m}^3/\text{hour}$ for moderate exercise; $0.3\text{ m}^3/\text{hour}$ for child).
    - $t$ = Exposure duration avoided (hours).
    - Expressed clearly in **micrograms ($\mu g$) avoided** and equivalent cigarettes non-inhaled (using Berkeley Earth metric: $22\mu g/m^3 \cdot 24\text{h} \approx 1\text{ cigarette}$).
+
+2. **Room CADR Exponential Clearance Decay:**
+   $$C(t) = C_0 \cdot e^{-N t}, \quad N = \frac{\text{CADR} \times 60}{V_{\text{room}}}$$
+   Calculates precise times to 50% ($t_{50}$), 90% ($t_{90}$), and 99% ($t_{99}$) room particulate removal.
+
+3. **Bilingual Community Broadcast Bulletins:**
+   Generates instant WhatsApp/RWA advisories in English and Hindi (हिन्दी) summarizing local AQI severity, inversion warnings, safe solar windows, low-cost hacks, and community micrograms saved.
 
 2. **Household Emissions Avoided:**
    - Shifting from private car commute (solo $10\text{ km}$) to metro/carpooling saves approximately $1.8\text{ kg CO}_2\text{e}$ and $24\text{ g PM}_{2.5}$ per trip.

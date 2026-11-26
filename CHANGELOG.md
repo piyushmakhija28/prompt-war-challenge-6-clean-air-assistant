@@ -5,6 +5,22 @@ All notable changes to the **CleanAir Assistant** (Prompt War Challenge No. 6) w
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-11-26
+
+### Added
+- **PRD FR-06 Cleaning Protocol & Resuspension Shield**: Added `getCleaningProtocol(aqi)` enforcing damp microfiber wet-mopping with 0.1% surfactant and strictly prohibiting traditional dry broom sweeping when AQI > 200.
+- **Dedicated IAQ Cleaning Shield UI Card**: Rendered dynamic status badge, resuspension warning, and cleaning formula in `index.html` via `app.js`.
+- **Security & Threat Model Hardening**: Integrated strict Content Security Policy (`default-src 'self'`) and OpenGraph/Twitter card social preview metadata.
+- **Triad Test Suite Expansion**: Added `TC-CLN-001` and `TC-CLN-002`, expanding the automated verification suite to 54 passing tests.
+- **Micro-Reactive Signals Graph (`signals.js`)**: Pure dependency-tracking signals engine (`createSignal`, `createComputed`, `createEffect`) for zero dirty reads.
+- **Continuous 24-Hour Diurnal Spline Curve**: Analytical 96-point spline model of atmospheric boundary layer mixing height with live animated SVG time marker.
+- **Room CADR Clearance Calculator (`cadr-calculator.js`)**: Interactive dimensional volume, ACH turnover, and exponential clearance times ($t_{50}, t_{90}, t_{99}$).
+- **PWA Service Worker (`sw.js`) & Manifest**: Offline Progressive Web App support with Cache-First asset runtime.
+- **5-Byte Base64URL State Bitstream Codec**: Isomorphic URL hash state sharing (`#b=...`) with zero external serialization dependencies.
+- **4-Hack IAQ Catalog**: DIY Corsi-Rosenthal box (273 CFM), PC-fan stealth nursery purifier (85 CFM), wet-towel emergency filter (30 CFM), and activated carbon kitchen vent scrub (180 CFM).
+- **Bilingual Community Bulletins**: Localized WhatsApp/RWA broadcast generator supporting English and Hindi (हिन्दी).
+- **Zero-Drift Documentation Synchronization**: Synchronized test catalog, architecture file trees, and system prompt specifications.
+
 ## [1.0.0] - 2026-11-26
 
 ### Added

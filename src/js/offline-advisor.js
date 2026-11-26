@@ -99,6 +99,45 @@ export const IAQ_HACKS_CATALOG = Object.freeze({
 });
 
 /**
+ * Evaluates indoor cleaning and particulate resuspension protocols (PRD FR-06).
+ * Prohibits traditional broom dry-sweeping when AQI > 200 to prevent coarse particle resuspension.
+ *
+ * @param {number} aqi - Ambient or indoor Air Quality Index.
+ * @returns {{
+ *   isTriggered: boolean,
+ *   severity: 'WARNING' | 'SAFE',
+ *   statusBadge: string,
+ *   warning: string,
+ *   recommendation: string,
+ *   surfactantRatio: string
+ * }} Structured cleaning and resuspension protocol.
+ */
+export function getCleaningProtocol(aqi) {
+  const numericAQI = Number(aqi) || 0;
+  const isTriggered = numericAQI > 200;
+
+  if (isTriggered) {
+    return {
+      isTriggered: true,
+      severity: 'WARNING',
+      statusBadge: 'DRY SWEEPING PROHIBITED',
+      warning: 'Traditional broom dry-sweeping resuspends up to 75% of settled PM10 and coarse toxic dust back into the breathing zone, keeping it airborne for 4+ hours in stagnant air.',
+      recommendation: 'Prohibit dry broom sweeping. Prescribe damp microfiber wet-mopping with 0.1% surfactant to capture settled particulates irreversibly via liquid surface tension.',
+      surfactantRatio: '0.1% mild liquid detergent (approx. 1 tsp per 5 liters clean water)'
+    };
+  }
+
+  return {
+    isTriggered: false,
+    severity: 'SAFE',
+    statusBadge: 'STANDARD DAMP DUSTING',
+    warning: 'Ambient particulate resuspension risk is low under current air quality conditions.',
+    recommendation: 'Perform routine damp dusting and maintain standard room filtration hygiene.',
+    surfactantRatio: 'Clean damp microfiber cloth or standard household water'
+  };
+}
+
+/**
  * Generates formatted community advisories in English or Hindi (हिन्दी).
  *
  * @param {Object} ctx - Household lifestyle context.
@@ -145,6 +184,7 @@ export function generateCommunityAdvisory(ctx, plan, lang = 'en') {
  * @property {Array<{timeSlot: string, activity: string, recommendation: string, actionType: string}>} hourlyRoutines - Timestamped schedule.
  * @property {{title: string, materials: string[], cadrEstimate: string, costEstimate: string, steps: string[]}} iaqHack - Verified DIY hack.
  * @property {Array<{category: string, currentChoice: string, cleanAlternative: string, benefit: string}>} sustainableAlternatives - Low-carbon shifts.
+ * @property {{isTriggered: boolean, severity: string, statusBadge: string, warning: string, recommendation: string, surfactantRatio: string}} cleaningProtocol - PRD FR-06 surface particulate protocol.
  * @property {{pm25InhalationAvoidedMicrograms: number, cigaretteEquivalentsAvoided: number, co2eSavedKg: number, protectionScorePercent: number}} quantifiedImpact - Direct mathematical impact telemetry.
  * @property {string} communityAdvisory - RWA / WhatsApp community broadcast bulletin.
  */
@@ -279,6 +319,7 @@ export function generateOfflineCleanAirPlan(ctx, options = {}) {
     diurnalWindowNotice: diurnal.advisory,
     hourlyRoutines,
     iaqHack,
+    cleaningProtocol: getCleaningProtocol(rawAQI),
     sustainableAlternatives,
     quantifiedImpact: {
       pm25InhalationAvoidedMicrograms: dosageAvoided,
