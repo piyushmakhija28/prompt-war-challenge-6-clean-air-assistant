@@ -130,3 +130,59 @@ User-provided Google Gemini API keys are treated with zero-trust confidentiality
 3. **URL Exclusion:** Keys are strictly excluded from URL hash encoding (`#v1=...`) to prevent key exposure via browser history, server referer headers, or shoulder surfing.
 4. **Immediate Zeroization:** An explicit "Clear Key" action overwrites the closure variable with zeroes before discarding the pointer.
 
+---
+
+## 7. Cryptographic Memory Zeroization Protocol for Ephemeral API Keys
+
+Standard garbage collection in managed runtimes (V8 / JavaScript) does not clear deallocated string memory buffers immediately, leaving sensitive API keys susceptible to browser heap dump extraction or shoulder surfing memory inspections.
+
+### 1. Zero-Trust Byte Buffer Architecture:
+CleanAir Guardian manages API keys as binary byte arrays (`Uint8Array`) rather than immutable JavaScript strings:
+
+```javascript
+/**
+ * Ephemeral Secure Key Container with cryptographic memory zeroization.
+ */
+export class SecureKeyStore {
+  constructor() {
+    this.keyBuffer = null;
+  }
+
+  /**
+   * Sets the API key into an ephemeral Uint8Array buffer.
+   * @param {string} rawKey - API key string.
+   */
+  setKey(rawKey) {
+    this.purge();
+    const encoder = new TextEncoder();
+    this.keyBuffer = encoder.encode(rawKey.trim());
+  }
+
+  /**
+   * Reads key as UTF-8 string for immediate fetch authorization.
+   * @returns {string}
+   */
+  getKey() {
+    if (!this.keyBuffer) return '';
+    const decoder = new TextDecoder();
+    return decoder.decode(this.keyBuffer);
+  }
+
+  /**
+   * Cryptographically overwrites and wipes the key buffer from heap memory.
+   */
+  purge() {
+    if (this.keyBuffer) {
+      // Step 1: Overwrite with cryptographically secure random entropy
+      if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(this.keyBuffer);
+      }
+      // Step 2: Zeroize all bytes
+      this.keyBuffer.fill(0);
+      this.keyBuffer = null;
+    }
+  }
+}
+```
+
+

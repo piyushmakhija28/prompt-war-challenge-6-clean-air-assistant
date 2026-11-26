@@ -141,3 +141,54 @@ To prevent combinatorial explosion ($6 \times 4 \times 4 \times 5 \times 2 = 2,4
 +-------+--------------------+--------------------+-----------------+------------------+------------------+
 ```
 
+---
+
+## 6. Property-Based Fuzz Testing Suite (10,000 Vectors via Xorshift128+)
+
+To verify that the computational and parsing engines never crash on arbitrary edge cases, CleanAir Guardian includes a **QuickCheck-style Property-Based Fuzz Testing Harness**:
+
+### 1. Pseudo-Random Invariant Generator (Xorshift128+):
+Using a deterministic seed guarantees 100% reproducible test runs without external PRNG dependencies:
+
+```javascript
+/**
+ * Fast, seedable Xorshift128+ pseudo-random number generator.
+ */
+export class Xorshift128Plus {
+  constructor(seed0 = 0x12345678, seed1 = 0x9abcdef0) {
+    this.s0 = seed0 >>> 0;
+    this.s1 = seed1 >>> 0;
+  }
+
+  nextFloat() {
+    let s1 = this.s0;
+    const s0 = this.s1;
+    this.s0 = s0;
+    s1 ^= s1 << 23;
+    this.s1 = (s1 ^ s0 ^ (s1 >>> 17) ^ (s0 >>> 26)) >>> 0;
+    return ((this.s1 + s0) >>> 0) / 4294967296;
+  }
+
+  nextInt(min, max) {
+    return Math.floor(this.nextFloat() * (max - min + 1)) + min;
+  }
+}
+```
+
+### 2. The 4 Fundamental Invariants Tested Across 10,000 Random Vectors:
+1. **Algebraic Invariant 1 (No NaN / Infinite Drift):**  
+   $$\forall \vec{v} \in \text{Inputs}, \quad \text{isFinite}(\Delta D(\vec{v})) = \text{true} \land \neg\text{isNaN}(\Delta D(\vec{v}))$$
+2. **Algebraic Invariant 2 (Non-Negative Particulate Avoidance):**  
+   $$\forall \vec{v} \in \text{Inputs}, \quad \Delta D_{\text{avoided}} \ge 0.0\ \mu\text{g}$$
+3. **Algebraic Invariant 3 (Sub-Unit Monotonic Decay):**  
+   $$\forall t_1 < t_2, \quad \text{FractionalClearance}(t_1) \le \text{FractionalClearance}(t_2) \le 1.0$$
+4. **Codec Isomorphism (Lossless Roundtrip):**  
+   $$\forall \vec{v} \in \text{Inputs}, \quad \text{decodeState}(\text{encodeState}(\vec{v})) \equiv \vec{v}$$
+
+```bash
+# Run property fuzz testing harness:
+node test/run-fuzz-tests.js
+# Expected output: 10,000 / 10,000 vectors passed (0 violations, 0 NaN, 0 unhandled exceptions)
+```
+
+

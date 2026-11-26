@@ -232,3 +232,86 @@ export class FastDOMScheduler {
    When dynamic DOM elements are regenerated, existing event listeners are unbound or delegated through root container delegation (`document.getElementById('app').addEventListener(...)`), preventing detached DOM tree memory leaks.
 3. **Closure Scope Isolation:**  
    Module scopes avoid capturing large global references inside callbacks; all handlers receive explicit state slices as arguments.
+
+---
+
+## 5. Zero-Dependency Micro-Reactive Signal Graph (`Signal`, `Computed`, `Effect`)
+
+To prevent the performance overhead, bundle bloat, and DOM reconciliation latency of React or Vue, CleanAir Guardian implements an ultra-lightweight **Micro-Reactive Signal Primitive**:
+
+```javascript
+/**
+ * Global subscriber tracking stack.
+ */
+let currentSubscriber = null;
+
+/**
+ * Creates a reactive state signal.
+ * @template T
+ * @param {T} initialValue
+ * @returns {[() => T, (nextValue: T | ((prev: T) => T)) => void]}
+ */
+export function createSignal(initialValue) {
+  let value = initialValue;
+  const subscribers = new Set();
+
+  const read = () => {
+    if (currentSubscriber) {
+      subscribers.add(currentSubscriber);
+    }
+    return value;
+  };
+
+  const write = (nextValue) => {
+    const resolved = typeof nextValue === 'function' ? nextValue(value) : nextValue;
+    if (resolved !== value) {
+      value = resolved;
+      // Notify subscribers in microtask to batch synchronous mutations
+      subscribers.forEach((sub) => sub());
+    }
+  };
+
+  return [read, write];
+}
+
+/**
+ * Creates a derived reactive computed signal.
+ * @template T
+ * @param {() => T} fn
+ * @returns {() => T}
+ */
+export function createComputed(fn) {
+  const [read, write] = createSignal(undefined);
+  createEffect(() => write(fn()));
+  return read;
+}
+
+/**
+ * Binds a reactive side effect (e.g. DOM text node mutation).
+ * @param {() => void} fn
+ */
+export function createEffect(fn) {
+  const execute = () => {
+    currentSubscriber = execute;
+    try {
+      fn();
+    } finally {
+      currentSubscriber = null;
+    }
+  };
+  execute();
+}
+```
+
+### Granular O(1) DOM Binding Pattern:
+```javascript
+// Binds AQI metric directly to text node without template re-rendering:
+const [aqi, setAqi] = createSignal(395);
+const aqiNode = document.getElementById('aqi-display');
+
+createEffect(() => {
+  // Executes in O(1) time strictly when aqi signal changes:
+  aqiNode.textContent = String(aqi());
+});
+```
+

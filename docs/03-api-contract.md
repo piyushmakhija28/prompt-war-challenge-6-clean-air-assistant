@@ -36,6 +36,83 @@ $$\text{Minimize } \text{Latency} \quad \text{subject to: } \text{Tokens}_{\text
 - **URL Endpoint:** `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={API_KEY}`
 - **Headers:** `Content-Type: application/json`
 
+### 2.1 Complete Request Payload with Native `responseSchema`:
+```json
+{
+  "systemInstruction": {
+    "parts": [{ "text": "You are CleanAir Guardian (VayuRakshak), an elite Environmental Health Scientist powered by Google Gemini 3.8 Flash. Output strict JSON matching the schema." }]
+  },
+  "contents": [
+    {
+      "role": "user",
+      "parts": [{ "text": "### USER_CONTEXT_JSON\n{\"city\":\"Delhi-NCR\",\"aqi\":395,\"vulnBits\":3,\"cooking\":\"LPG\",\"heating\":\"space_heater\",\"commute\":\"two_wheeler\"}\n### END_USER_CONTEXT" }]
+    }
+  ],
+  "generationConfig": {
+    "temperature": 0.2,
+    "topP": 0.85,
+    "maxOutputTokens": 900,
+    "responseMimeType": "application/json",
+    "responseSchema": {
+      "type": "OBJECT",
+      "properties": {
+        "severityLevel": { "type": "STRING", "enum": ["GOOD", "MODERATE", "POOR", "VERY_POOR", "SEVERE", "HAZARDOUS"] },
+        "diurnalWindowNotice": { "type": "STRING" },
+        "hourlyRoutines": {
+          "type": "ARRAY",
+          "items": {
+            "type": "OBJECT",
+            "properties": {
+              "timeSlot": { "type": "STRING" },
+              "activity": { "type": "STRING" },
+              "recommendation": { "type": "STRING" },
+              "actionType": { "type": "STRING", "enum": ["SHIFT_INDOORS", "SAFE_VENTILATION", "SEAL_HOME", "COMMUTE_SHIELD"] }
+            },
+            "required": ["timeSlot", "activity", "recommendation", "actionType"]
+          }
+        },
+        "iaqHack": {
+          "type": "OBJECT",
+          "properties": {
+            "title": { "type": "STRING" },
+            "materials": { "type": "ARRAY", "items": { "type": "STRING" } },
+            "cadrEstimate": { "type": "STRING" },
+            "costEstimate": { "type": "STRING" },
+            "steps": { "type": "ARRAY", "items": { "type": "STRING" } }
+          },
+          "required": ["title", "materials", "cadrEstimate", "costEstimate", "steps"]
+        },
+        "sustainableAlternatives": {
+          "type": "ARRAY",
+          "items": {
+            "type": "OBJECT",
+            "properties": {
+              "category": { "type": "STRING" },
+              "currentChoice": { "type": "STRING" },
+              "cleanAlternative": { "type": "STRING" },
+              "benefit": { "type": "STRING" }
+            },
+            "required": ["category", "currentChoice", "cleanAlternative", "benefit"]
+          }
+        },
+        "quantifiedImpact": {
+          "type": "OBJECT",
+          "properties": {
+            "pm25InhalationAvoidedMicrograms": { "type": "NUMBER" },
+            "cigaretteEquivalentsAvoided": { "type": "NUMBER" },
+            "co2eSavedKg": { "type": "NUMBER" },
+            "protectionScorePercent": { "type": "INTEGER" }
+          },
+          "required": ["pm25InhalationAvoidedMicrograms", "cigaretteEquivalentsAvoided", "co2eSavedKg", "protectionScorePercent"]
+        },
+        "communityAdvisory": { "type": "STRING" }
+      },
+      "required": ["severityLevel", "diurnalWindowNotice", "hourlyRoutines", "iaqHack", "sustainableAlternatives", "quantifiedImpact", "communityAdvisory"]
+    }
+  }
+}
+```
+
 ---
 
 ## 3. RFC 4648 §5 Base64URL State Codec Specification
@@ -76,6 +153,30 @@ export function decodeBase64URL(b64url) {
   return decodeURIComponent(escape(atob(b64)));
 }
 ```
+
+### 3.3 5-Byte Packed Binary Bitstream Codec (Ultra-Compact 7-Char URL Hash)
+
+For systems-level efficiency, the application also implements a high-density binary serializer that packs all 7 household parameters into exactly **40 bits (5 bytes)**:
+
+```
+ Byte 0        Byte 1        Byte 2        Byte 3        Byte 4
+[8 bits]      [8 bits]      [8 bits]      [8 bits]      [8 bits]
++-------------------------------------------------------------+
+| Bits 0-9   (10 bits): AQI (0 - 1023)                         |
+| Bits 10-14 (5 bits) : Vulnerability Bitfield (0 - 31)       |
+| Bits 15-16 (2 bits) : Cooking Method Index (0 - 3)          |
+| Bits 17-18 (2 bits) : Heating Method Index (0 - 3)          |
+| Bits 19-20 (2 bits) : Commute Mode Index (0 - 3)            |
+| Bits 21-27 (7 bits) : Commute Distance in km (0 - 127)      |
+| Bits 28-32 (5 bits) : City Basin Preset ID (0 - 31)         |
+| Bits 33-37 (5 bits) : Simulated Hour (0 - 23)               |
+| Bits 38-39 (2 bits) : Parity Check Bits                     |
++-------------------------------------------------------------+
+```
+- **Total Payload Size:** Exactly $5\text{ bytes}$ (`Uint8Array(5)`).
+- **Base64URL Hash Size:** Exactly **7 characters** (e.g. `#b=A3fZ9qA`).
+- **Network Overhead:** $0.00\text{ KB}$ network payload; instant zero-allocation decoding via `DataView`.
+
 
 ---
 

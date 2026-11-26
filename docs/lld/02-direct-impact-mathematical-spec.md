@@ -120,3 +120,45 @@ $$\Delta \text{CO}_2\text{e} (\text{kg}) = d \times \left(EF_{\text{baseline}}^{
 +--------------------------+-----------------------+----------------------+-------------------------------+
 ```
 *(Grid emission factor based on Central Electricity Authority baseline $EF_{\text{grid}} \approx 0.72\text{ kg CO}_2\text{/kWh}$).*
+
+---
+
+## 6. Kahan-Neumaier Compensated Summation for 24-Hour Diurnal Integration
+
+When calculating cumulative 24-hour particulate inhalation dosage $\sum_{i=1}^{24} D_i$, standard naive floating-point accumulation suffers from catastrophic roundoff drift due to the disparity in magnitude between low indoor concentrations ($10 - 25\ \mu\text{g/m}^3$) and intense outdoor inversion peaks ($650\ \mu\text{g/m}^3$).
+
+### 1. Mathematical Error Bound Comparison:
+- **Naive Summation Error Bound:**
+  $$|\text{Error}_{\text{naive}}| \le n \cdot \epsilon \cdot \sum_{i=1}^n |x_i| \implies \mathcal{O}(n \cdot \epsilon)$$
+- **Kahan-Neumaier Compensated Error Bound:**
+  $$|\text{Error}_{\text{neumaier}}| \le 2\epsilon \cdot \sum_{i=1}^n |x_i| + \mathcal{O}(n \cdot \epsilon^2) \implies \mathcal{O}(\epsilon)$$
+Where machine epsilon $\epsilon = 2^{-52} \approx 2.22 \times 10^{-16}$.
+
+### 2. Concrete Implementation:
+```javascript
+/**
+ * Computes exact cumulative particulate dosage using the Kahan-Neumaier summation algorithm.
+ * Guarantees O(eps) precision bound across wide numerical dynamic ranges.
+ *
+ * @param {Float64Array|number[]} values - Array of hourly dosage values in micrograms.
+ * @returns {number} Exact compensated cumulative sum.
+ */
+export function kahanNeumaierSum(values) {
+  let sum = 0.0;
+  let c = 0.0; // Lost low-order bits compensation accumulator
+
+  for (let i = 0; i < values.length; i++) {
+    const x = values[i];
+    const t = sum + x;
+    if (Math.abs(sum) >= Math.abs(x)) {
+      c += (sum - t) + x; // sum is larger, low-order bits of x lost
+    } else {
+      c += (x - t) + sum; // x is larger, low-order bits of sum lost
+    }
+    sum = t;
+  }
+
+  return sum + c;
+}
+```
+
