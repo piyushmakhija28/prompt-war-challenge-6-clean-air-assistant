@@ -22,21 +22,23 @@ import {
   calculateRoomClearance,
   calculateParticulateAvoidance,
   kahanNeumaierSum,
+  calculate24HourCumulativeDosage,
   dosageToCigarettes,
   calculateCarbonAvoidance,
   getHousingInfiltrationCoefficient
 } from '../src/js/impact-calculator.js';
-import { NetworkTimeoutError, RateLimitExceededError } from '../src/js/errors.js';
+import { NetworkTimeoutError, RateLimitExceededError, InvalidStateHashError } from '../src/js/errors.js';
 import { EventBus } from '../src/js/event-bus.js';
 import {
   packContextTo5Bytes,
   unpackContextFrom5Bytes,
   contextToHashToken,
   hashTokenToContext,
+  hashTokenToContextStrict,
   encodeBase64URL,
   decodeBase64URL
 } from '../src/js/state-codec.js';
-import { generateOfflineCleanAirPlan } from '../src/js/offline-advisor.js';
+import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory } from '../src/js/offline-advisor.js';
 import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON } from '../src/js/gemini-service.js';
 
 let passed = 0;
@@ -238,6 +240,37 @@ assert(distDelhiLahore > 410 && distDelhiLahore < 435, 'TC-GEO-001', 'Haversine 
 // TC-GEO-002: Nearest basin resolution for coordinate vector
 const nearestBasin = findNearestBasin(28.65, 77.22, METRO_BASIN_COORDINATES);
 assert(nearestBasin.name === 'Delhi NCR' && nearestBasin.distanceKm < 15, 'TC-GEO-002', 'Nearest air basin identifies Delhi NCR for local coordinates');
+
+// TC-HACK-001: 4-Hack IAQ catalog definitions and CADR invariants
+assert(IAQ_HACKS_CATALOG.corsi_rosenthal.cadrCfm === 273 && IAQ_HACKS_CATALOG.pc_fan_stealth.cadrCfm === 85 && IAQ_HACKS_CATALOG.wet_towel_emergency.cadrCfm === 30 && IAQ_HACKS_CATALOG.kitchen_vent_scrub.cadrCfm === 180, 'TC-HACK-001', '4-Hack IAQ catalog definitions and CADR values verified');
+
+// TC-LANG-001: Bilingual community advisory (English and Hindi parity)
+const advEn = generateCommunityAdvisory({ city: 'Delhi NCR', aqi: 395 }, { severityLevel: 'SEVERE', quantifiedImpact: { pm25InhalationAvoidedMicrograms: 140 } }, 'en');
+const advHi = generateCommunityAdvisory({ city: 'Delhi NCR', aqi: 395 }, { severityLevel: 'SEVERE', quantifiedImpact: { pm25InhalationAvoidedMicrograms: 140 } }, 'hi');
+assert(advEn.includes('CleanAir Community Advisory') && advHi.includes('स्वच्छ वायु समुदाय परामर्श'), 'TC-LANG-001', 'Bilingual community advisory produces localized bulletins in English and Hindi');
+
+// TC-SUM-001: 24-hour diurnal exposure summation via Kahan-Neumaier
+const hourlyConc = new Float64Array(24).fill(120.0);
+const totalDosage = calculate24HourCumulativeDosage(hourlyConc, 0.45, 0.28);
+assert(Math.abs(totalDosage - (120.0 * 0.45 * 0.28 * 24)) < 0.05, 'TC-SUM-001', 'calculate24HourCumulativeDosage accurately sums diurnal dosage via Kahan-Neumaier');
+
+// TC-STRICT-001: Strict hash decoder throws InvalidStateHashError on corrupted bitstream
+let strictThrew = false;
+try {
+  hashTokenToContextStrict('b=corruptHashToken');
+} catch (e) {
+  if (e instanceof InvalidStateHashError) strictThrew = true;
+}
+assert(strictThrew === true, 'TC-STRICT-001', 'hashTokenToContextStrict throws InvalidStateHashError on corrupted hash bitstream');
+
+// TC-RING-001: DiurnalRingBuffer circular FIFO capacity invariant
+const diurnalRing24 = new DiurnalRingBuffer(24);
+for (let i = 0; i < 50; i++) {
+  diurnalRing24.push(i);
+}
+const snapshot = diurnalRing24.toChronologicalArray();
+assert(snapshot.length === 24 && snapshot[0] === 26 && snapshot[23] === 49, 'TC-RING-001', 'DiurnalRingBuffer maintains 24-hour circular FIFO invariant');
+
 
 
 console.log('\n------------------------------------------------------');

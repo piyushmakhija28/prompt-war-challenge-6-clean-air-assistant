@@ -7,12 +7,13 @@
  */
 
 import { VULN_FLAGS, DEFAULT_PRESET, METRO_BASIN_PRESETS, METRO_BASIN_COORDINATES } from './config.js';
-import { getDiurnalInversion } from './air-quality-engine.js';
+import { getDiurnalInversion, DiurnalRingBuffer } from './air-quality-engine.js';
 import { SecureKeyStore, GeminiPlanProvider } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
 import { globalEventBus } from './event-bus.js';
 import { calculateRoomClearance, findNearestBasin } from './cadr-calculator.js';
 import { aqiToMassConcentration } from './impact-calculator.js';
+import { IAQ_HACKS_CATALOG } from './offline-advisor.js';
 
 /**
  * Algebraic Result Monad representing either Success (Ok) or Failure (Err).
@@ -137,8 +138,15 @@ export const state = {
   commuteKm: DEFAULT_PRESET.commuteKm,
   simulatedHour: null,
   activePlan: null,
-  activeStrategy: 'INITIALIZING'
+  activeStrategy: 'INITIALIZING',
+  activeHackId: 'corsi_rosenthal',
+  advisoryLang: 'en'
 };
+
+/**
+ * 24-Hour Diurnal Telemetry Ring Buffer pre-allocated in Float64Array.
+ */
+export const diurnalHistory = new DiurnalRingBuffer(24);
 
 /**
  * Screen Reader announcement throttle timestamp.
@@ -266,6 +274,16 @@ export function renderActivePlan() {
       setSafeText('iaq-hack-cadr', `CADR: ${plan.iaqHack.cadrEstimate}`);
       setSafeText('iaq-hack-cost', `Cost: ${plan.iaqHack.costEstimate}`);
 
+      const materialsContainer = document.getElementById('iaq-hack-materials');
+      if (materialsContainer && plan.iaqHack.materials) {
+        const matItems = plan.iaqHack.materials.map((m) => {
+          const li = document.createElement('li');
+          li.textContent = m;
+          return li;
+        });
+        replaceChildrenSafe(materialsContainer, matItems);
+      }
+
       const stepsContainer = document.getElementById('iaq-hack-steps');
       if (stepsContainer && plan.iaqHack.steps) {
         const stepItems = plan.iaqHack.steps.map((step, idx) => {
@@ -329,11 +347,24 @@ export async function triggerPlanGeneration() {
   const spinner = document.getElementById('plan-spinner');
   if (spinner) spinner.classList.remove('hidden');
 
+  state.hackId = state.activeHackId;
+  state.lang = state.advisoryLang;
+
+  const currentCp = aqiToMassConcentration(state.aqi);
+  diurnalHistory.push(currentCp);
+  globalEventBus.emit('CONTEXT_CHANGED', state);
+
   try {
     const result = await planProvider.getPlan(state);
     state.activePlan = result.plan;
     state.activeStrategy = result.strategy;
+
+    if (state.activePlan && state.activePlan.bilingualAdvisory && state.activePlan.bilingualAdvisory[state.advisoryLang]) {
+      state.activePlan.communityAdvisory = state.activePlan.bilingualAdvisory[state.advisoryLang];
+    }
+
     renderActivePlan();
+    globalEventBus.emit('PLAN_GENERATED', state.activePlan);
 
     if (result.warning) {
       const banner = document.getElementById('status-banner');
@@ -345,6 +376,8 @@ export async function triggerPlanGeneration() {
       const banner = document.getElementById('status-banner');
       if (banner) banner.classList.add('hidden');
     }
+  } catch (err) {
+    globalEventBus.emit('PLAN_ERROR', err);
   } finally {
     if (spinner) spinner.classList.add('hidden');
   }
@@ -567,6 +600,55 @@ export function initApp() {
       }
     });
   }
+
+  // 6a. Language Toggle (English <-> Hindi)
+  const btnToggleLang = document.getElementById('btn-toggle-lang');
+  const labelCurrentLang = document.getElementById('label-current-lang');
+  if (btnToggleLang) {
+    btnToggleLang.addEventListener('click', () => {
+      state.advisoryLang = state.advisoryLang === 'en' ? 'hi' : 'en';
+      if (labelCurrentLang) {
+        labelCurrentLang.textContent = state.advisoryLang === 'en' ? 'English' : 'हिन्दी';
+      }
+      if (state.activePlan && state.activePlan.bilingualAdvisory) {
+        state.activePlan.communityAdvisory = state.activePlan.bilingualAdvisory[state.advisoryLang];
+      }
+      announceA11y(`Advisory language set to ${state.advisoryLang === 'en' ? 'English' : 'Hindi'}`);
+    });
+  }
+
+  // 6b. Emergency 1-Page Family Protocol Print
+  const btnPrintProtocol = document.getElementById('btn-print-protocol');
+  if (btnPrintProtocol) {
+    btnPrintProtocol.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  // 6c. Selectable 4-Hack IAQ Catalog Switcher
+  const hackTabs = document.querySelectorAll('.hack-tab-btn');
+  hackTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const hackId = tab.getAttribute('data-hack');
+      if (!hackId || !IAQ_HACKS_CATALOG[hackId]) return;
+
+      state.activeHackId = hackId;
+      hackTabs.forEach((t) => {
+        const isActive = t === tab;
+        t.classList.toggle('active', isActive);
+        t.setAttribute('aria-selected', String(isActive));
+      });
+
+      const cadrSelect = document.getElementById('select-cadr-device');
+      const hackDef = IAQ_HACKS_CATALOG[hackId];
+      if (cadrSelect && hackDef) {
+        cadrSelect.value = String(hackDef.cadrCfm);
+        updateRoomCadr();
+      }
+
+      triggerPlanGeneration();
+    });
+  });
 
   // 6b. Geolocation Nearest-Basin Detector
   const btnDetectLocation = document.getElementById('btn-detect-location');

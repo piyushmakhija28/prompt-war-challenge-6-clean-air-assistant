@@ -7,6 +7,7 @@
  */
 
 import { METRO_BASIN_PRESETS } from './config.js';
+import { InvalidStateHashError } from './errors.js';
 
 /**
  * Encodes an arbitrary UTF-8 string into URL-safe Base64URL (RFC 4648 §5) with padding stripped.
@@ -198,4 +199,48 @@ export function hashTokenToContext(hash) {
   } catch (e) {
     return unpackContextFrom5Bytes(null);
   }
+}
+
+/**
+ * Strictly decodes and validates a Base64URL hash token, validating 5-byte length and parity checksum.
+ * Throws InvalidStateHashError if corrupted, truncated, or tampered.
+ * Complexity: O(1) time, O(1) space.
+ *
+ * @param {string} hash - URL hash string.
+ * @returns {Object} Validated context object.
+ * @throws {InvalidStateHashError} If hash is malformed, length != 5 bytes, or parity checksum fails.
+ */
+export function hashTokenToContextStrict(hash) {
+  let clean = String(hash).replace(/^#/, '');
+  if (clean.startsWith('b=')) {
+    clean = clean.slice(2);
+  }
+  let b64 = clean.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4 !== 0) {
+    b64 += '=';
+  }
+
+  let binary;
+  try {
+    binary = atob(b64);
+  } catch (err) {
+    throw new InvalidStateHashError(`Base64 decode failed: ${err.message}`);
+  }
+
+  if (binary.length !== 5) {
+    throw new InvalidStateHashError(`Invalid bitstream length: expected 5 bytes, got ${binary.length}`);
+  }
+
+  const bytes = new Uint8Array(5);
+  for (let i = 0; i < 5; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  const expectedParity = (bytes[0] ^ bytes[1] ^ bytes[2] ^ bytes[3]) & 0x03;
+  const actualParity = (bytes[4] >> 6) & 0x03;
+  if (expectedParity !== actualParity) {
+    throw new InvalidStateHashError('Bitstream checksum parity mismatch');
+  }
+
+  return unpackContextFrom5Bytes(bytes);
 }

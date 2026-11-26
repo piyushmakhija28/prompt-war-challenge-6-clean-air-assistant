@@ -17,6 +17,127 @@ import {
 import { INFILTRATION_COEFFICIENTS } from './config.js';
 
 /**
+ * 4-Hack Verified Low-Cost Indoor Air Quality Catalog.
+ * @readonly
+ */
+export const IAQ_HACKS_CATALOG = Object.freeze({
+  corsi_rosenthal: {
+    id: 'corsi_rosenthal',
+    title: 'DIY Corsi-Rosenthal Box Air Purifier Cube',
+    cadrCfm: 273,
+    cadrEstimate: '273 CFM (Clean Air Delivery Rate)',
+    costEstimate: '$35 total (versus $280 commercial HEPA unit)',
+    materials: [
+      '1x 20-inch box fan ($20)',
+      '4x MERV 13 furnace filters ($25)',
+      'Cardboard bottom base ($0)',
+      '1x roll duct tape ($3)'
+    ],
+    steps: [
+      'Tape 4 MERV 13 furnace filters into a square cube with airflow arrows pointing inward.',
+      'Cut and tape a cardboard square to seal the bottom of the filter cube.',
+      'Mount the 20-inch box fan on top pointing upwards; tape cardboard shroud around corners to prevent backflow vortex.',
+      'Seal all corner edges with duct tape and place in central living space running on medium.'
+    ]
+  },
+  pc_fan_stealth: {
+    id: 'pc_fan_stealth',
+    title: 'Ultra-Quiet 12V PC-Fan Nursery Air Purifier',
+    cadrCfm: 85,
+    cadrEstimate: '85 CFM (Whisper-Quiet 24 dBA)',
+    costEstimate: '$20 total (ideal for sleeping infants & asthma)',
+    materials: [
+      '3x 120mm 12V computer fans ($12)',
+      '1x MERV 13 / HEPA replacement sheet ($6)',
+      '1x 12V DC wall adapter ($2)',
+      'Foam tape / cardboard housing ($0)'
+    ],
+    steps: [
+      'Array 3 120mm PC fans side-by-side wired in parallel to the 12V DC power plug.',
+      'Mount the fan array onto a sealed cardboard or wooden plenum box.',
+      'Seal a MERV 13 filter panel against the intake side with foam gasket tape.',
+      'Run continuously in nursery or bedroom; produces zero motor whine under 25 dBA.'
+    ]
+  },
+  wet_towel_emergency: {
+    id: 'wet_towel_emergency',
+    title: 'Emergency Passive Wet-Towel Adsorption & Window Seal',
+    cadrCfm: 30,
+    cadrEstimate: '30 CFM equivalent (Zero-Electricity Emergency)',
+    costEstimate: '$2 total (essential for winter power cuts)',
+    materials: [
+      '2x clean cotton bath towels ($0)',
+      'Water or light saline solution ($0)',
+      'Clothes drying rack / window sills ($0)',
+      'Foam weatherstripping / damp towel rolls ($2)'
+    ],
+    steps: [
+      'Soak two large cotton bath towels in water, wring out excess so they are thoroughly damp.',
+      'Hang directly across doorways or central living space on an indoor clothes rack.',
+      'Roll damp hand towels along outer door sills to seal drafty perimeter gaps.',
+      'Particulates deposit onto moist fibers via Brownian diffusion; re-dampen every 3 hours.'
+    ]
+  },
+  kitchen_vent_scrub: {
+    id: 'kitchen_vent_scrub',
+    title: 'Kitchen Exhaust Baffle & Activated Carbon Gas Scrub',
+    cadrCfm: 180,
+    cadrEstimate: '180 CFM (Traps cooking PM2.5 and NO2 gases)',
+    costEstimate: '$15 total (protects against gas & biomass fuel)',
+    materials: [
+      '1x activated carbon cooker hood sheet ($8)',
+      '1x fine aluminum mesh pre-filter ($7)',
+      'Magnetic or tape fasteners ($0)'
+    ],
+    steps: [
+      'Layer the activated carbon sheet behind the primary grease mesh of your exhaust hood.',
+      'Fasten tightly with magnetic strips so all cooking fumes pass through carbon granules.',
+      'Turn exhaust hood on 2 minutes before igniting gas/biomass burner.',
+      'Activated carbon adsorbs toxic nitrogen dioxide (NO2) and volatile organics.'
+    ]
+  }
+});
+
+/**
+ * Generates formatted community advisories in English or Hindi (हिन्दी).
+ *
+ * @param {Object} ctx - Household lifestyle context.
+ * @param {Object} plan - Partial action plan containing impact metrics.
+ * @param {'en'|'hi'} [lang='en'] - Target advisory language.
+ * @returns {string} Formatted WhatsApp/RWA broadcast bulletin.
+ */
+export function generateCommunityAdvisory(ctx, plan, lang = 'en') {
+  const city = ctx.city || 'Delhi NCR';
+  const rawAQI = Math.max(0, Math.min(999, Math.round(Number(ctx.aqi) || 0)));
+  const severity = plan.severityLevel || 'SEVERE';
+  const dosageAvoided = plan.quantifiedImpact ? plan.quantifiedImpact.pm25InhalationAvoidedMicrograms : 0;
+  const hack = plan.iaqHack || IAQ_HACKS_CATALOG.corsi_rosenthal;
+
+  if (lang === 'hi') {
+    const severityHi = {
+      GOOD: 'अच्छा (Good)',
+      MODERATE: 'मध्यम (Moderate)',
+      POOR: 'खराब (Poor)',
+      VERY_POOR: 'बहुत खराब (Very Poor)',
+      SEVERE: 'गंभीर (Severe)',
+      HAZARDOUS: 'अति-गंभीर (Hazardous)'
+    }[severity] || severity;
+
+    return `🚨 स्वच्छ वायु समुदाय परामर्श (CleanAir Advisory) - ${city} (AQI ${rawAQI} - ${severityHi}):\n` +
+      `• वायुमंडलीय व्युत्क्रमण चेतावनी: सुबह और शाम के समय प्रदूषक ज़मीन के पास फंसे रहते हैं। बच्चों, बुज़ुर्गों और सांस के मरीज़ों को घर के अंदर रखें।\n` +
+      `• सुरक्षित धूप समय (Safe Window): दोपहर 12:30 से 03:30 के बीच आवश्यक कार्य करें और 15 मिनट घर में ताज़ी हवा आने दें।\n` +
+      `• किफायती DIY हैक: ${hack.title} (अनुमानित लागत: ${hack.costEstimate}, CADR: ${hack.cadrEstimate})।\n` +
+      `• प्रत्यक्ष प्रभाव (Direct Impact): आज के इन सुरक्षित उपायों से लगभग ${dosageAvoided} µg PM2.5 फेफड़ों में जाने से रोका गया!`;
+  }
+
+  return `🚨 CleanAir Community Advisory for ${city} (AQI ${rawAQI} - ${severity}):\n` +
+    `• Inversion Trap Alert: Planetary boundary layer drops below 250m during dawn and dusk. Keep children and seniors indoors.\n` +
+    `• Safe Solar Window: 12:30 PM to 03:30 PM is optimal for essential errands and rapid home air exchange.\n` +
+    `• Community Hack: ${hack.title} (${hack.costEstimate}, ${hack.cadrEstimate}).\n` +
+    `• Direct Impact: Behavioral shifts today avoided an estimated ${dosageAvoided} µg of PM2.5 alveolar inhalation!`;
+}
+
+/**
  * CleanAir Action Plan structure definition matching the Gemini JSON schema.
  * @typedef {Object} CleanAirActionPlan
  * @property {string} severityLevel - GOOD | MODERATE | POOR | VERY_POOR | SEVERE | HAZARDOUS.
@@ -34,9 +155,10 @@ import { INFILTRATION_COEFFICIENTS } from './config.js';
  * Complexity: O(1) time, O(1) auxiliary space.
  *
  * @param {Object} ctx - Household lifestyle context.
+ * @param {Object} [options={}] - Optional overrides for selected hackId and language.
  * @returns {CleanAirActionPlan} Authoritative CleanAir action plan.
  */
-export function generateOfflineCleanAirPlan(ctx) {
+export function generateOfflineCleanAirPlan(ctx, options = {}) {
   const rawAQI = Math.max(0, Math.min(999, Math.round(Number(ctx.aqi) || 0)));
   const simHour = ctx.simulatedHour !== null && ctx.simulatedHour !== undefined
     ? Number(ctx.simulatedHour)
@@ -106,23 +228,8 @@ export function generateOfflineCleanAirPlan(ctx) {
     }
   ];
 
-  const iaqHack = {
-    title: 'DIY Corsi-Rosenthal Box Air Purifier Cube',
-    materials: [
-      '1x 20-inch box fan ($20)',
-      '4x MERV 13 furnace filters ($25)',
-      'Cardboard bottom base ($0)',
-      '1x roll duct tape ($3)'
-    ],
-    cadrEstimate: '273 CFM (Clean Air Delivery Rate)',
-    costEstimate: '$35 total (versus $280 commercial HEPA unit)',
-    steps: [
-      'Tape 4 MERV 13 furnace filters into a square cube with airflow arrows pointing inward.',
-      'Cut and tape a cardboard square to seal the bottom of the filter cube.',
-      'Mount the 20-inch box fan on top pointing upwards; tape cardboard shroud around corners to prevent backflow vortex.',
-      'Seal all corner edges with duct tape and place in central living space running on medium.'
-    ]
-  };
+  const selectedHackId = options.hackId || ctx.hackId || 'corsi_rosenthal';
+  const iaqHack = IAQ_HACKS_CATALOG[selectedHackId] || IAQ_HACKS_CATALOG.corsi_rosenthal;
 
   const sustainableAlternatives = [
     {
@@ -139,12 +246,16 @@ export function generateOfflineCleanAirPlan(ctx) {
     }
   ];
 
-  const city = ctx.city || 'Delhi NCR';
-  const communityAdvisory = `🚨 CleanAir Community Advisory for ${city} (AQI ${rawAQI} - ${severity}):\n` +
-    `• Inversion Trap Alert: Planetary boundary layer drops below 250m during dawn and dusk. Keep children and seniors indoors.\n` +
-    `• Safe Solar Window: 12:30 PM to 03:30 PM is optimal for essential errands and rapid home air exchange.\n` +
-    `• Community Hack: Build a Corsi-Rosenthal box filter for local classrooms and apartment lobbies ($35, CADR 273 CFM).\n` +
-    `• Direct Impact: Behavioral shifts today avoided an estimated ${dosageAvoided} µg of PM2.5 alveolar inhalation!`;
+  const targetLang = options.lang || ctx.lang || 'en';
+  const advisoryPlanStub = {
+    severityLevel: severity,
+    quantifiedImpact: { pm25InhalationAvoidedMicrograms: dosageAvoided },
+    iaqHack
+  };
+
+  const communityAdvisory = generateCommunityAdvisory(ctx, advisoryPlanStub, targetLang);
+  const communityAdvisoryEn = generateCommunityAdvisory(ctx, advisoryPlanStub, 'en');
+  const communityAdvisoryHi = generateCommunityAdvisory(ctx, advisoryPlanStub, 'hi');
 
   return {
     severityLevel: severity,
@@ -158,6 +269,10 @@ export function generateOfflineCleanAirPlan(ctx) {
       co2eSavedKg: carbonSaved,
       protectionScorePercent: protectionScore
     },
-    communityAdvisory
+    communityAdvisory,
+    bilingualAdvisory: {
+      en: communityAdvisoryEn,
+      hi: communityAdvisoryHi
+    }
   };
 }

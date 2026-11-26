@@ -133,6 +133,25 @@ export function kahanNeumaierSum(values) {
 }
 
 /**
+ * Integrates 24-hour diurnal exposure profile into total inhaled particulate mass using Kahan-Neumaier summation.
+ * Eliminates IEEE-754 floating-point cancellation across disparate indoor/outdoor values.
+ * Complexity: O(N) time where N = 24, O(1) auxiliary space.
+ *
+ * @param {Array<number>|Float64Array} hourlyConcentrations - 24-hour PM2.5 concentrations in ug/m3.
+ * @param {number} [ventilationRate=0.45] - Minute ventilation rate in m3/h.
+ * @param {number} [depositionFraction=0.28] - Alveolar deposition fraction.
+ * @returns {number} Cumulative 24-hour particulate inhalation in micrograms.
+ */
+export function calculate24HourCumulativeDosage(hourlyConcentrations, ventilationRate = 0.45, depositionFraction = 0.28) {
+  const count = hourlyConcentrations ? hourlyConcentrations.length : 0;
+  const dosages = new Float64Array(count);
+  for (let i = 0; i < count; i++) {
+    dosages[i] = (Number(hourlyConcentrations[i]) || 0) * ventilationRate * 1.0 * depositionFraction;
+  }
+  return kahanNeumaierSum(dosages);
+}
+
+/**
  * Converts inhaled particulate mass dosage avoided into equivalent cigarettes avoided.
  * Based on Berkeley Earth empirical conversion factor: 1 cigarette = 66.5 ug inhaled PM2.5.
  * Complexity: O(1) time, O(1) space.

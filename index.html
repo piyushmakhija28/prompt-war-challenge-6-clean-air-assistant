@@ -9,6 +9,9 @@
   <link rel="stylesheet" href="src/css/style.css">
 </head>
 <body>
+  <!-- Accessible Skip-to-Content Link (WCAG 2.1 AA) -->
+  <a href="#app" class="skip-link">Skip to main content</a>
+
   <!-- Accessible Live Announcement Region for Screen Readers (WCAG 2.1 AA) -->
   <div id="a11y-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
@@ -196,13 +199,21 @@
         </div>
       </fieldset>
 
-      <div style="margin-top:24px; display:flex; flex-direction:column; gap:12px;">
+      <div style="margin-top:24px; display:flex; flex-direction:column; gap:10px;">
         <button id="btn-generate-plan" class="btn-primary" type="button">
           <span>Recalculate Clean Air Plan</span>
         </button>
         <button id="btn-copy-advisory" class="btn-secondary" type="button">
           Share / Copy WhatsApp Advisory
         </button>
+        <div style="display:flex; gap:8px;">
+          <button id="btn-toggle-lang" class="btn-secondary" type="button" style="flex:1; min-height:40px; font-size:12px; padding:4px 8px;" title="Switch Advisory Language">
+            Language: <span id="label-current-lang" style="font-weight:700; color:#38bdf8;">English</span> (हिन्दी)
+          </button>
+          <button id="btn-print-protocol" class="btn-secondary" type="button" style="min-height:40px; padding:0 12px; font-size:12px;" title="Print 1-Page Emergency Action Protocol">
+            Print 🖨️
+          </button>
+        </div>
       </div>
 
       <!-- Ephemeral Gemini Key Drawer -->
@@ -282,13 +293,22 @@
 
       <!-- Verified DIY IAQ Hack -->
       <div class="iaq-box">
-        <div class="iaq-header">
+        <div class="hack-tab-bar" role="tablist" aria-label="Selectable DIY Air Quality Hacks">
+          <button type="button" class="hack-tab-btn active" data-hack="corsi_rosenthal" role="tab" aria-selected="true">CR Box (273 CFM)</button>
+          <button type="button" class="hack-tab-btn" data-hack="pc_fan_stealth" role="tab" aria-selected="false">PC Fan (85 CFM)</button>
+          <button type="button" class="hack-tab-btn" data-hack="wet_towel_emergency" role="tab" aria-selected="false">Wet Towel (30 CFM)</button>
+          <button type="button" class="hack-tab-btn" data-hack="kitchen_vent_scrub" role="tab" aria-selected="false">Vent Scrub (180 CFM)</button>
+        </div>
+        <div class="iaq-header" style="margin-top:12px;">
           <span id="iaq-hack-title" class="iaq-title">DIY Corsi-Rosenthal Box</span>
           <div class="iaq-badges">
             <span id="iaq-hack-cadr" class="iaq-badge">CADR: 273 CFM</span>
             <span id="iaq-hack-cost" class="iaq-badge">Cost: $35</span>
           </div>
         </div>
+        <h5 style="font-size:11px; text-transform:uppercase; color:#94a3b8; margin:8px 0 4px 0; font-weight:700;">Required Materials</h5>
+        <ul id="iaq-hack-materials" style="margin:0 0 10px 18px; padding:0; font-size:12px; color:#cbd5e1;"></ul>
+        <h5 style="font-size:11px; text-transform:uppercase; color:#94a3b8; margin:8px 0 4px 0; font-weight:700;">Assembly Steps</h5>
         <ol id="iaq-hack-steps" class="iaq-steps-list"></ol>
       </div>
 
