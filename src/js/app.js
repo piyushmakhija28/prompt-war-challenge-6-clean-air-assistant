@@ -7,13 +7,14 @@
  */
 
 import { VULN_FLAGS, DEFAULT_PRESET, METRO_BASIN_PRESETS, METRO_BASIN_COORDINATES } from './config.js';
-import { getDiurnalInversion, DiurnalRingBuffer } from './air-quality-engine.js';
+import { getDiurnalInversion, DiurnalRingBuffer, generateDiurnalCurve } from './air-quality-engine.js';
 import { SecureKeyStore, GeminiPlanProvider } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
 import { globalEventBus } from './event-bus.js';
 import { calculateRoomClearance, findNearestBasin } from './cadr-calculator.js';
 import { aqiToMassConcentration } from './impact-calculator.js';
 import { IAQ_HACKS_CATALOG } from './offline-advisor.js';
+import { createSignal, createComputed, createEffect } from './signals.js';
 
 /**
  * Algebraic Result Monad representing either Success (Ok) or Failure (Err).
@@ -147,6 +148,42 @@ export const state = {
  * 24-Hour Diurnal Telemetry Ring Buffer pre-allocated in Float64Array.
  */
 export const diurnalHistory = new DiurnalRingBuffer(24);
+
+/**
+ * Micro-reactive state signals for fine-grained dependency tracking.
+ */
+export const [aqiSignal, setAqiSignal] = createSignal(DEFAULT_PRESET.aqi);
+export const [timeSignal, setTimeSignal] = createSignal(7.5);
+export const activeInversionSignal = createComputed(() => getDiurnalInversion(timeSignal(), aqiSignal()));
+
+/**
+ * Renders the analytical continuous 24-hour diurnal spline curve.
+ */
+export function renderDiurnalSplineCurve() {
+  const curve = generateDiurnalCurve(state.aqi);
+  const pathEl = document.getElementById('svg-spline-path');
+  if (pathEl) {
+    pathEl.setAttribute('d', curve.pathD);
+  }
+  updateSplineMarker(state.simulatedHour !== null && state.simulatedHour !== undefined ? state.simulatedHour : 7.5);
+}
+
+/**
+ * Updates marker dot position on the diurnal spline curve.
+ * @param {number} hour - Hour decimal.
+ */
+export function updateSplineMarker(hour) {
+  const marker = document.getElementById('svg-spline-marker');
+  if (!marker) return;
+  const h = ((Number(hour) % 24) + 24) % 24;
+  const x = Math.round((h / 24) * 240 * 10) / 10;
+  const inv = getDiurnalInversion(h, state.aqi);
+  const normalized = (inv.multiplier - 0.85) / (2.20 - 0.85);
+  const clamped = Math.max(0, Math.min(1, normalized));
+  const y = Math.round((36 - clamped * 30) * 10) / 10;
+  marker.setAttribute('cx', String(x));
+  marker.setAttribute('cy', String(y));
+}
 
 /**
  * Screen Reader announcement throttle timestamp.
@@ -430,21 +467,38 @@ export function initApp() {
     });
   }
 
-  // 3. AQI Slider
+  // 3. AQI Controls (Slider & Direct Number Input)
   const aqiSlider = document.getElementById('input-aqi-slider');
-  const aqiLabel = document.getElementById('label-aqi-value');
+  const aqiNumberInput = document.getElementById('input-aqi-number');
   if (aqiSlider) {
     aqiSlider.value = String(state.aqi);
-    if (aqiLabel) aqiLabel.textContent = String(state.aqi);
+    if (aqiNumberInput) aqiNumberInput.value = String(state.aqi);
 
     aqiSlider.addEventListener('input', (e) => {
       const val = Number(e.target.value);
       state.aqi = val;
-      if (aqiLabel) aqiLabel.textContent = String(val);
+      setAqiSignal(val);
+      if (aqiNumberInput) aqiNumberInput.value = String(val);
       syncUrlHash();
+      renderDiurnalSplineCurve();
     });
 
     aqiSlider.addEventListener('change', () => {
+      triggerPlanGeneration();
+    });
+  }
+
+  if (aqiNumberInput) {
+    aqiNumberInput.addEventListener('input', (e) => {
+      const val = Math.max(10, Math.min(800, Number(e.target.value) || 10));
+      state.aqi = val;
+      setAqiSignal(val);
+      if (aqiSlider) aqiSlider.value = String(val);
+      syncUrlHash();
+      renderDiurnalSplineCurve();
+    });
+
+    aqiNumberInput.addEventListener('change', () => {
       triggerPlanGeneration();
     });
   }
@@ -456,6 +510,7 @@ export function initApp() {
     timeSlider.addEventListener('input', (e) => {
       const val = Number(e.target.value);
       state.simulatedHour = val;
+      setTimeSignal(val);
       const hours = Math.floor(val);
       const mins = Math.floor((val - hours) * 60);
       const timeStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
@@ -467,6 +522,7 @@ export function initApp() {
         needle.setAttribute('x1', String(x));
         needle.setAttribute('x2', String(x));
       }
+      updateSplineMarker(val);
       syncUrlHash();
     });
 
@@ -754,6 +810,9 @@ export function initApp() {
       // Gracefully silent for offline / local sandbox environments
     });
   }
+
+  // Initial render of diurnal spline curve
+  renderDiurnalSplineCurve();
 
   // Initial generation
   triggerPlanGeneration();

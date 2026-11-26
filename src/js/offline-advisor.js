@@ -199,13 +199,30 @@ export function generateOfflineCleanAirPlan(ctx, options = {}) {
 
   const protectionScore = Math.min(98, Math.round(65 + (dosageAvoided / 12) * 5));
 
+  let morningCommuteAdvice = rawAQI > 250
+    ? 'Morning temperature inversion trap active. Particulate compressed near ground. Cancel outdoor morning exercise; keep all balcony doors sealed.'
+    : 'Moderate morning haze. Use well-fitted N95 mask if commuting.';
+  if (ctx.commuteMode === 'two_wheeler') {
+    morningCommuteAdvice += ' Two-wheeler riders inhale 3.2x more ultrafine PM2.5 in heavy traffic; seal helmet visor and wear dual-strap N95.';
+  } else if (ctx.commuteMode === 'walk_cycle') {
+    morningCommuteAdvice += ' Deep inhalation while cycling/walking increases particulate deposition; reschedule transit to post-noon solar window.';
+  }
+
+  let eveningAdvice = 'Secondary evening inversion trap forming. Re-seal windows and engage Corsi-Rosenthal filter on high speed.';
+  if (ctx.cookingMethod === 'biomass') {
+    eveningAdvice += ' Biomass fuel produces toxic indoor carbon monoxide and fine soot; cook outdoors or run continuous cross-draft exhaust.';
+  } else if (ctx.cookingMethod === 'lpg' || ctx.cookingMethod === 'png') {
+    eveningAdvice += ' Gas burners generate significant NO2 spikes; turn kitchen exhaust hood on 2 minutes before lighting flame.';
+  }
+  if (ctx.heatingMethod === 'open_fire' || ctx.heatingMethod === 'space_heater') {
+    eveningAdvice += ' Avoid unvented radiant coils or open flame during sleep to prevent severe nocturnal CO buildup.';
+  }
+
   const hourlyRoutines = [
     {
       timeSlot: '06:30 AM - 09:30 AM',
       activity: 'Morning Commute & School Window',
-      recommendation: rawAQI > 250
-        ? 'Morning temperature inversion trap active. Particulate compressed near ground. Cancel outdoor morning exercise; keep all balcony doors sealed.'
-        : 'Moderate morning haze. Use well-fitted N95 mask if commuting by two-wheeler.',
+      recommendation: morningCommuteAdvice,
       actionType: 'SEAL_HOME'
     },
     {
@@ -223,7 +240,7 @@ export function generateOfflineCleanAirPlan(ctx, options = {}) {
     {
       timeSlot: '06:00 PM - 09:30 PM',
       activity: 'Evening Rush & Dinner Preparation',
-      recommendation: 'Secondary evening inversion trap forming. Keep kitchen exhaust on during cooking; re-seal windows and engage Corsi-Rosenthal filter on high speed.',
+      recommendation: eveningAdvice,
       actionType: 'COMMUTE_SHIELD'
     }
   ];

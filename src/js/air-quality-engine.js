@@ -122,6 +122,45 @@ export function getDiurnalInversion(hourDecimal, baseAQI) {
 }
 
 /**
+ * Generates continuous 24-hour Diurnal Inversion Spline coordinates and SVG path data.
+ * Samples at 15-minute intervals (N = 96 points) across the astronomical cycle.
+ * ViewBox domain: width = 240, height = 40.
+ *
+ * @param {number} [baseAQI=100] - Baseline Air Quality Index.
+ * @returns {{ points: Array<{hour: number, multiplier: number, effectiveAQI: number, x: number, y: number}>, pathD: string }}
+ */
+export function generateDiurnalCurve(baseAQI = 100) {
+  const points = [];
+  const steps = 96;
+  let pathD = '';
+
+  for (let i = 0; i < steps; i++) {
+    const hour = (i / steps) * 24;
+    const inv = getDiurnalInversion(hour, baseAQI);
+    const x = Math.round((hour / 24) * 240 * 10) / 10;
+    const normalized = (inv.multiplier - 0.85) / (2.20 - 0.85);
+    const clamped = Math.max(0, Math.min(1, normalized));
+    const y = Math.round((36 - clamped * 30) * 10) / 10;
+
+    points.push({
+      hour,
+      multiplier: inv.multiplier,
+      effectiveAQI: inv.effectiveAQI,
+      x,
+      y
+    });
+
+    if (i === 0) {
+      pathD += `M ${x} ${y}`;
+    } else {
+      pathD += ` L ${x} ${y}`;
+    }
+  }
+
+  return { points, pathD };
+}
+
+/**
  * Computes composite vulnerability scaling multiplier from the 5-bit integer bitfield.
  * Baseline susceptibility is 1.00; each biological risk adds additive physiological weighting.
  * Complexity: O(1) time, O(1) space.

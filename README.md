@@ -10,7 +10,7 @@
 [![Branch](https://img.shields.io/badge/Branch-Single_main_only-success.svg)](#)
 [![Size](https://img.shields.io/badge/Repo_Size-%3C_1_MB_Compliant-brightgreen.svg)](#)
 [![AI Engine](https://img.shields.io/badge/AI_Engine-Google_Gemini_3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-45_Passed_%7C_10k_Fuzz-success.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-52_Passed_%7C_10k_Fuzz-success.svg)](#)
 [![PWA](https://img.shields.io/badge/PWA-Offline_Ready-purple.svg)](#)
 [![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-28_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](#)
@@ -134,7 +134,10 @@ Behavior change requires concrete, transparent feedback. The assistant calculate
    - **4-Hack Selectable IAQ Catalog:** 1. DIY Corsi-Rosenthal Box (273 CFM, $35), 2. Ultra-Quiet PC-Fan Nursery Box (85 CFM, $20), 3. Emergency Passive Wet-Towel Adsorption (30 CFM, $2), and 4. Kitchen Exhaust Charcoal Scrub (180 CFM, $15).
    - **Bilingual Community Advisory:** 1-click toggle between English and Hindi (`हिन्दी`) WhatsApp community broadcast bulletins.
    - **1-Page Printable Protocol:** Clean `@media print` layout for offline refrigerator/bulletin board reference during winter power outages.
-4. **Stateless 5-Byte Binary State Codec (`#b=...`):**
+4. **Micro-Reactive Signals & Analytical 24-Hour Diurnal Spline:**
+   - Fine-grained reactive state graph (`signals.js` with `createSignal`, `createComputed`, and `createEffect`) updating dirty nodes in $O(1)$ time with zero Virtual DOM overhead.
+   - High-resolution SVG analytical spline curve continuously plotting the planetary boundary layer height ($H_{\text{PBL}}(t)$) across 96 quarter-hour astronomical intervals.
+5. **Stateless 5-Byte Binary State Codec (`#b=...`):**
    - High-density 40-bit bitstream packer generating a 7-character Base64URL deep-link hash with parity checksum validation.
 
 ---

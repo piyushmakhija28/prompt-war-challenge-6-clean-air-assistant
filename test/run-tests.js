@@ -10,8 +10,10 @@ import {
   getDiurnalInversion,
   getVulnerabilityMultiplier,
   countActiveVulnerabilities,
-  DiurnalRingBuffer
+  DiurnalRingBuffer,
+  generateDiurnalCurve
 } from '../src/js/air-quality-engine.js';
+import { createSignal, createComputed, createEffect } from '../src/js/signals.js';
 import {
   calculateRoomClearance as calculateFullCadrRoomClearance,
   haversineDistanceKm,
@@ -270,6 +272,51 @@ for (let i = 0; i < 50; i++) {
 }
 const snapshot = diurnalRing24.toChronologicalArray();
 assert(snapshot.length === 24 && snapshot[0] === 26 && snapshot[23] === 49, 'TC-RING-001', 'DiurnalRingBuffer maintains 24-hour circular FIFO invariant');
+
+// TC-SIG-001: createSignal reactive getter, setter and subscriber notification
+const [testSig, setTestSig] = createSignal(100);
+let effectRuns = 0;
+let observedVal = 0;
+createEffect(() => {
+  effectRuns++;
+  observedVal = testSig();
+});
+assert(observedVal === 100 && effectRuns === 1, 'TC-SIG-001a', 'createSignal registers and triggers initial effect');
+setTestSig(250);
+assert(observedVal === 250 && effectRuns === 2, 'TC-SIG-001b', 'createSignal synchronously propagates value update to subscriber');
+
+// TC-SIG-002: createComputed fine-grained derived signal reactivity
+const [baseVal, setBaseVal] = createSignal(50);
+const doubled = createComputed(() => baseVal() * 2);
+assert(doubled() === 100, 'TC-SIG-002a', 'createComputed computes derived value correctly');
+setBaseVal(75);
+assert(doubled() === 150, 'TC-SIG-002b', 'createComputed automatically updates when upstream signal changes');
+
+// TC-TAILOR-001: Context-tailored routine advice for cooking and transit
+const tailoredPlan = generateOfflineCleanAirPlan({
+  aqi: 350,
+  commuteMode: 'two_wheeler',
+  cookingMethod: 'biomass',
+  heatingMethod: 'space_heater'
+});
+const morningRec = tailoredPlan.hourlyRoutines[0].recommendation;
+const eveningRec = tailoredPlan.hourlyRoutines[3].recommendation;
+assert(morningRec.includes('Two-wheeler riders inhale') && eveningRec.includes('Biomass fuel produces toxic'), 'TC-TAILOR-001', 'Lifestyle routines tailor advice specifically to biomass cooking and two-wheeler transit');
+
+// TC-CURVE-001: Analytical 24-hour diurnal spline curve continuity
+const diurnalCurve = generateDiurnalCurve(250);
+assert(diurnalCurve.points.length === 96 && diurnalCurve.pathD.startsWith('M') && diurnalCurve.pathD.includes('L'), 'TC-CURVE-001', 'generateDiurnalCurve produces 96 continuous spline coordinates with valid SVG path syntax');
+
+// TC-CURVE-002: Atmospheric boundary layer diurnal extremum bounds
+let minMultiplier = Infinity;
+let maxMultiplier = -Infinity;
+for (let i = 0; i < diurnalCurve.points.length; i++) {
+  const p = diurnalCurve.points[i];
+  if (p.multiplier < minMultiplier) minMultiplier = p.multiplier;
+  if (p.multiplier > maxMultiplier) maxMultiplier = p.multiplier;
+}
+assert(minMultiplier <= 0.90 && maxMultiplier >= 2.0, 'TC-CURVE-002', 'Diurnal inversion multiplier exhibits physical atmospheric range (min ~0.85-0.90, max >= 2.0)');
+
 
 
 

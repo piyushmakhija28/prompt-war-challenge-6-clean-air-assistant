@@ -55,11 +55,14 @@
 
       <fieldset class="form-fieldset">
         <legend class="form-legend">Air Quality Index (AQI)</legend>
-        <div class="form-label">
+        <div class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
           <span>Ambient AQI</span>
-          <span id="label-aqi-value" style="font-family:monospace; font-weight:700; color:#38bdf8;">395</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <input type="number" id="input-aqi-number" class="form-input" style="width:72px; text-align:right; font-family:monospace; font-weight:700; color:#38bdf8; padding:3px 6px; min-height:30px; font-size:14px;" min="10" max="800" value="395" aria-label="Exact Ambient Air Quality Index">
+            <span style="font-size:11px; color:#94a3b8;">AQI</span>
+          </div>
         </div>
-        <input type="range" id="input-aqi-slider" class="range-slider" min="10" max="800" step="5" value="395" aria-label="Ambient Air Quality Index">
+        <input type="range" id="input-aqi-slider" class="range-slider" min="10" max="800" step="5" value="395" aria-label="Ambient Air Quality Index Slider">
       </fieldset>
 
       <fieldset class="form-fieldset">
@@ -70,8 +73,25 @@
         </div>
         <input type="range" id="input-time-slider" class="range-slider" min="0" max="23.75" step="0.25" value="7.5" aria-label="Diurnal Time Scrubber">
         
+        <!-- Continuous Analytical 24-Hour Inversion Spline Curve -->
+        <div class="diurnal-curve-wrapper" style="margin-top:8px; margin-bottom:4px; position:relative;">
+          <svg id="svg-diurnal-spline" viewBox="0 0 240 40" style="width:100%; height:40px; overflow:visible;" aria-label="24-Hour Atmospheric Boundary Layer Inversion Curve">
+            <defs>
+              <linearGradient id="curveGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#818cf8"/>
+                <stop offset="28%" stop-color="#ef4444"/>
+                <stop offset="55%" stop-color="#10b981"/>
+                <stop offset="78%" stop-color="#ef4444"/>
+                <stop offset="100%" stop-color="#818cf8"/>
+              </linearGradient>
+            </defs>
+            <path id="svg-spline-path" d="" fill="none" stroke="url(#curveGradient)" stroke-width="2.5" stroke-linecap="round"/>
+            <circle id="svg-spline-marker" cx="75" cy="20" r="4.5" fill="#ffffff" stroke="#38bdf8" stroke-width="2"/>
+          </svg>
+        </div>
+        
         <!-- Interactive SVG Diurnal Inversion Bar -->
-        <div style="margin-top:6px;">
+        <div style="margin-top:4px;">
           <svg id="svg-diurnal-bar" viewBox="0 0 240 24" style="width:100%; height:24px; border-radius:6px; overflow:hidden;" aria-label="24-Hour Diurnal Inversion Timeline">
             <rect x="0" y="0" width="60" height="24" fill="#6366f1" opacity="0.8"></rect>
             <rect x="60" y="0" width="35" height="24" fill="#b91c1c" opacity="0.9"></rect>
