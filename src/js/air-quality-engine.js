@@ -248,3 +248,59 @@ export class DiurnalRingBuffer {
     return arr;
   }
 }
+
+/**
+ * Operating mode descriptor for the TimeEngine.
+ * Conforms to LLD 01 §4.
+ * @readonly
+ * @enum {string}
+ */
+export const TimeMode = Object.freeze({
+  SYSTEM_LIVE: 'SYSTEM_LIVE',
+  SIMULATED: 'SIMULATED'
+});
+
+/**
+ * Dual-Mode Scrubber Time Engine.
+ * Allows instant toggling between real-world client clock and interactive hour scrubbing.
+ * Conforms to LLD 01 §4.
+ */
+export class TimeEngine {
+  /**
+   * Initializes the TimeEngine.
+   * @param {string} [mode=TimeMode.SYSTEM_LIVE] - Active time mode.
+   * @param {number} [simulatedHour=7.5] - Baseline simulated decimal hour.
+   */
+  constructor(mode = TimeMode.SYSTEM_LIVE, simulatedHour = 7.5) {
+    this.mode = mode;
+    this.simulatedHour = simulatedHour;
+  }
+
+  /**
+   * Resolves current hour based on active mode.
+   * @returns {number} Decimal hour in [0.0, 24.0).
+   */
+  getCurrentHour() {
+    if (this.mode === TimeMode.SIMULATED) {
+      return Math.min(Math.max(this.simulatedHour, 0.0), 23.99);
+    }
+    const now = new Date();
+    return now.getHours() + now.getMinutes() / 60;
+  }
+
+  /**
+   * Sets the simulated hour and switches to SIMULATED mode.
+   * @param {number} hourFloat - Scrubbed decimal hour.
+   */
+  setSimulatedHour(hourFloat) {
+    this.mode = TimeMode.SIMULATED;
+    this.simulatedHour = Math.min(Math.max(Number(hourFloat) || 0.0, 0.0), 23.99);
+  }
+
+  /**
+   * Resets engine to system real-time clock.
+   */
+  resetToSystemLive() {
+    this.mode = TimeMode.SYSTEM_LIVE;
+  }
+}

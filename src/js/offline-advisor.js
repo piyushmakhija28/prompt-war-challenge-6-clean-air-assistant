@@ -334,3 +334,51 @@ export function generateOfflineCleanAirPlan(ctx, options = {}) {
     }
   };
 }
+
+/**
+ * Factory creating validated, normalized CleanAirActionPlan instances.
+ * Conforms to GoF Factory Pattern and LLD 03 §3.4.
+ */
+export class PlanFactory {
+  /**
+   * Normalizes and freezes raw action plan structure.
+   * @param {Object} raw - Raw plan data.
+   * @returns {Readonly<Object>} Frozen normalized action plan.
+   */
+  static createPlan(raw) {
+    if (!raw || typeof raw !== 'object') {
+      return Object.freeze({
+        severityLevel: 'MODERATE',
+        diurnalWindowNotice: 'Standard diurnal schedule.',
+        hourlyRoutines: [],
+        iaqHack: Object.freeze({ title: 'Damp Wet-Mopping', materials: [], steps: [] }),
+        cleaningProtocol: null,
+        sustainableAlternatives: [],
+        quantifiedImpact: Object.freeze({
+          pm25InhalationAvoidedMicrograms: 0,
+          cigaretteEquivalentsAvoided: 0,
+          co2eSavedKg: 0,
+          protectionScorePercent: 0
+        }),
+        communityAdvisory: ''
+      });
+    }
+
+    return Object.freeze({
+      severityLevel: raw.severityLevel || 'MODERATE',
+      diurnalWindowNotice: raw.diurnalWindowNotice || 'Standard diurnal schedule.',
+      hourlyRoutines: Array.isArray(raw.hourlyRoutines) ? raw.hourlyRoutines.map(Object.freeze) : [],
+      iaqHack: Object.freeze(raw.iaqHack || { title: 'Damp Wet-Mopping', materials: [], steps: [] }),
+      cleaningProtocol: raw.cleaningProtocol ? Object.freeze(raw.cleaningProtocol) : null,
+      sustainableAlternatives: Array.isArray(raw.sustainableAlternatives) ? raw.sustainableAlternatives.map(Object.freeze) : [],
+      quantifiedImpact: Object.freeze({
+        pm25InhalationAvoidedMicrograms: Number(raw.quantifiedImpact?.pm25InhalationAvoidedMicrograms) || 0,
+        cigaretteEquivalentsAvoided: Number(raw.quantifiedImpact?.cigaretteEquivalentsAvoided) || 0,
+        co2eSavedKg: Number(raw.quantifiedImpact?.co2eSavedKg) || 0,
+        protectionScorePercent: Math.min(Math.max(Number(raw.quantifiedImpact?.protectionScorePercent) || 0, 0), 100)
+      }),
+      communityAdvisory: String(raw.communityAdvisory || ''),
+      bilingualAdvisory: raw.bilingualAdvisory ? Object.freeze(raw.bilingualAdvisory) : undefined
+    });
+  }
+}

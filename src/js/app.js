@@ -126,6 +126,84 @@ export const keyStore = new SecureKeyStore();
 export const planProvider = new GeminiPlanProvider(keyStore);
 
 /**
+ * Initial canonical application state (Immutable).
+ * Conforms to LLD 05 §1.
+ */
+export const INITIAL_STATE = Object.freeze({
+  city: 'Delhi NCR',
+  aqi: 395,
+  simulatedHour: null,
+  vulnerabilities: 0,
+  cookingMethod: 'lpg',
+  heatingMethod: 'space_heater',
+  commuteMode: 'two_wheeler',
+  commuteKm: 14,
+  planStatus: 'IDLE',
+  activePlan: null,
+  activeStrategy: 'OFFLINE_DETERMINISTIC',
+  lastError: null
+});
+
+/**
+ * Pure state reducer function for unidirectional data flow.
+ * Free of side effects; returns a new frozen state object.
+ * Conforms to LLD 05 §1.
+ *
+ * @param {Object} currentState - Current immutable state.
+ * @param {{type: string, payload: any}} action - Action descriptor.
+ * @returns {Readonly<Object>} New immutable state.
+ */
+export function appReducer(currentState, action) {
+  if (!action || !action.type) return currentState;
+  switch (action.type) {
+    case 'SET_AQI':
+      return Object.freeze({
+        ...currentState,
+        aqi: Math.max(0, Math.min(999, Math.round(Number(action.payload) || 0)))
+      });
+    case 'SET_SIMULATED_HOUR':
+      return Object.freeze({
+        ...currentState,
+        simulatedHour: action.payload === null ? null : Math.max(0, Math.min(23.99, Number(action.payload)))
+      });
+    case 'TOGGLE_VULNERABILITY': {
+      const flag = Number(action.payload);
+      return Object.freeze({
+        ...currentState,
+        vulnerabilities: (currentState.vulnerabilities || 0) ^ flag
+      });
+    }
+    case 'SET_LIFESTYLE_FIELD':
+      return Object.freeze({
+        ...currentState,
+        [action.payload.field]: action.payload.value
+      });
+    case 'PLAN_REQUEST_INITIATED':
+      return Object.freeze({
+        ...currentState,
+        planStatus: 'FETCHING',
+        lastError: null
+      });
+    case 'PLAN_REQUEST_SUCCEEDED':
+      return Object.freeze({
+        ...currentState,
+        planStatus: 'SUCCESS',
+        activePlan: action.payload.plan,
+        activeStrategy: action.payload.strategy,
+        lastError: null
+      });
+    case 'PLAN_REQUEST_FAILED':
+      return Object.freeze({
+        ...currentState,
+        planStatus: 'ERROR',
+        lastError: action.payload.error
+      });
+    default:
+      return currentState;
+  }
+}
+
+/**
  * Application State Container.
  */
 export const state = {

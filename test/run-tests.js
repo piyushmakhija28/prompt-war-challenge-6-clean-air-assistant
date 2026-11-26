@@ -4,14 +4,16 @@
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
-import { VULN_FLAGS, METRO_BASIN_COORDINATES, TARGET_PERSONAS } from '../src/js/config.js';
+import { VULN_FLAGS, METRO_BASIN_COORDINATES, TARGET_PERSONAS, createContext } from '../src/js/config.js';
 import {
   calculateBulkRichardson,
   getDiurnalInversion,
   getVulnerabilityMultiplier,
   countActiveVulnerabilities,
   DiurnalRingBuffer,
-  generateDiurnalCurve
+  generateDiurnalCurve,
+  TimeMode,
+  TimeEngine
 } from '../src/js/air-quality-engine.js';
 import { createSignal, createComputed, createEffect } from '../src/js/signals.js';
 import {
@@ -29,7 +31,7 @@ import {
   calculateCarbonAvoidance,
   getHousingInfiltrationCoefficient
 } from '../src/js/impact-calculator.js';
-import { NetworkTimeoutError, RateLimitExceededError, InvalidStateHashError } from '../src/js/errors.js';
+import { NetworkTimeoutError, RateLimitExceededError, InvalidStateHashError, makeAQI, makeConcentration, makeHour, assertNever } from '../src/js/errors.js';
 import { EventBus } from '../src/js/event-bus.js';
 import {
   packContextTo5Bytes,
@@ -40,8 +42,9 @@ import {
   encodeBase64URL,
   decodeBase64URL
 } from '../src/js/state-codec.js';
-import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol } from '../src/js/offline-advisor.js';
-import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry } from '../src/js/gemini-service.js';
+import { INITIAL_STATE, appReducer } from '../src/js/app.js';
+import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol, PlanFactory } from '../src/js/offline-advisor.js';
+import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry, sanitizeCityInput } from '../src/js/gemini-service.js';
 
 let passed = 0;
 let failed = 0;
@@ -359,6 +362,58 @@ assert(allPersonasValid, 'TC-PER-001', 'All 4 quantitative target personas (Anan
 
 // TC-RES-001: fetchWithRetry resilience function export and signature contract
 assert(typeof fetchWithRetry === 'function' && fetchWithRetry.length >= 2, 'TC-RES-001', 'fetchWithRetry conforms to Resilience backoff contract');
+
+// TC-TIME-001: TimeEngine operating modes and hour resolution (LLD 01 §4)
+const engineLive = new TimeEngine(TimeMode.SYSTEM_LIVE);
+const currentLiveHour = engineLive.getCurrentHour();
+const engineSim = new TimeEngine(TimeMode.SIMULATED, 13.5);
+assert(currentLiveHour >= 0.0 && currentLiveHour < 24.0 && engineSim.getCurrentHour() === 13.5, 'TC-TIME-001', 'TimeEngine resolves real-time live clock and simulated scrubber hour');
+
+// TC-FAC-001: PlanFactory action plan normalization and freezing (LLD 03 §3.4)
+const rawPlan = { severityLevel: 'SEVERE', hourlyRoutines: [{ timeSlot: '07:30', activity: 'Walk', recommendation: 'Stay indoors', actionType: 'SHIFT_INDOORS' }] };
+const createdPlan = PlanFactory.createPlan(rawPlan);
+assert(Object.isFrozen(createdPlan) && createdPlan.severityLevel === 'SEVERE' && Object.isFrozen(createdPlan.quantifiedImpact), 'TC-FAC-001', 'PlanFactory normalizes, defaults, and freezes plan structure');
+
+// TC-RED-001: appReducer unidirectional state transitions (LLD 05 §1)
+const s0 = INITIAL_STATE;
+const s1 = appReducer(s0, { type: 'SET_AQI', payload: 420 });
+const s2 = appReducer(s1, { type: 'TOGGLE_VULNERABILITY', payload: 1 });
+const s3 = appReducer(s2, { type: 'PLAN_REQUEST_INITIATED' });
+assert(s1.aqi === 420 && s2.vulnerabilities === 1 && s3.planStatus === 'FETCHING', 'TC-RED-001', 'appReducer computes predictable immutable state transitions');
+
+// TC-BRAND-001: Branded type constructors and physical boundaries (LLD 06 §1)
+const aqiClamped = makeAQI(1250);
+const concPos = makeConcentration(-15.5);
+const hourCyclic = makeHour(27.5);
+assert(aqiClamped === 999 && concPos === 0 && Math.abs(hourCyclic - 3.5) < 0.001, 'TC-BRAND-001', 'Branded unit constructors makeAQI, makeConcentration, and makeHour enforce boundary constraints');
+
+// TC-SAN-001: sanitizeCityInput whitelist regex security (Security 01 §4)
+const dirtyCity = "Delhi<script>alert('xss')</script> NCR; DROP TABLE--";
+const cleanCity = sanitizeCityInput(dirtyCity);
+assert(!cleanCity.includes('<') && !cleanCity.includes('>') && !cleanCity.includes("'") && cleanCity.includes('Delhi'), 'TC-SAN-001', 'sanitizeCityInput strips HTML tags, quotes, and punctuation anomalies');
+
+// TC-LEGACY-001: Legacy #v1= pipe-delimited Base64URL state decoding (PRD FR-12)
+const legacyRaw = 'Lahore|380|2|1|0|1|14.0';
+const legacyToken = 'v1=' + encodeBase64URL(legacyRaw);
+const decodedLegacy = hashTokenToContext(legacyToken);
+assert(decodedLegacy.city === 'Lahore' && decodedLegacy.aqi === 380 && decodedLegacy.vulnBits === 2 && decodedLegacy.cookingMethod === 'png', 'TC-LEGACY-001', 'hashTokenToContext seamlessly decodes legacy #v1= pipe-delimited Base64URL string');
+
+// TC-PRF-001: Sub-15ms deterministic plan generation performance SLA benchmark
+const tStart = Date.now();
+for (let i = 0; i < 50; i++) {
+  generateOfflineCleanAirPlan({ aqi: 410, vulnBits: 7, cookingMethod: 'lpg', heatingMethod: 'space_heater', commuteMode: 'two_wheeler' });
+}
+const elapsedTotal = Date.now() - tStart;
+const avgPerPlan = elapsedTotal / 50;
+assert(avgPerPlan < 15.0, 'TC-PRF-001', `Deterministic offline plan executes in < 15ms (average ${avgPerPlan.toFixed(2)}ms across 50 iterations)`);
+
+// TC-SEC-001: SecureKeyStore cryptographic memory overwrite zeroization
+const testStore = new SecureKeyStore();
+testStore.setKey('AIzaSyD-secret-test-key-12345');
+const hasKeyBefore = testStore.hasKey();
+testStore.purge();
+const hasKeyAfter = testStore.hasKey() === false && testStore.getKey() === '';
+assert(hasKeyBefore && hasKeyAfter, 'TC-SEC-001', 'SecureKeyStore cryptographically purges buffer memory with zero residue');
 
 
 

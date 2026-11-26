@@ -35,7 +35,7 @@ CleanAir Guardian implements the **Triad Testing Architecture** (Positive, Negat
 
 ---
 
-## 2. Exhaustive Test Catalog (58 Test Cases)
+## 2. Exhaustive Test Catalog (66 Test Cases)
 
 ### Category 1: Positive Test Cases (Nominal Execution)
 - `TC-POS-001`: Ingestion of nominal context (Delhi, AQI 395, Infant, LPG, Space heater, Two-wheeler) produces non-null plan.
@@ -97,12 +97,20 @@ CleanAir Guardian implements the **Triad Testing Architecture** (Positive, Negat
 - `TC-SCH-001`: Action plan schema conformity matching 100% of Google Gemini 3.8 Flash native `responseSchema` properties.
 - `TC-PER-001`: Resolution of all 4 quantitative target personas (Ananya, Rajesh, Vikram, Ramesh) from Problem Statement docs/00 §5.
 - `TC-RES-001`: Exponential backoff with decorrelated jitter resilience logic conforming to docs/resilience/01 §2.
+- `TC-TIME-001`: `TimeEngine` operating modes (System Live clock vs Simulated hour scrubber) conforming to LLD 01 §4.
+- `TC-FAC-001`: `PlanFactory` GoF Factory Pattern normalization and freezing conforming to LLD 03 §3.4.
+- `TC-RED-001`: `appReducer` Elm/Redux unidirectional state transitions conforming to LLD 05 §1.
+- `TC-BRAND-001`: Branded type constructors (`makeAQI`, `makeConcentration`, `makeHour`) boundary enforcement conforming to LLD 06 §1.
+- `TC-SAN-001`: `sanitizeCityInput` whitelist regex security sanitization conforming to Security 01 §4.
+- `TC-LEGACY-001`: Legacy `#v1=` pipe-delimited Base64URL state decoding backward-compatibility conforming to PRD FR-12.
+- `TC-PRF-001`: Sub-15ms deterministic plan generation performance SLA benchmark.
+- `TC-SEC-001`: `SecureKeyStore` cryptographic memory overwrite zeroization.
 
 ---
 
 ## 3. Test Runner Architecture (`test/run-tests.js`)
 
-A lightweight, zero-dependency Node.js test runner verifies all 58 test cases:
+A lightweight, zero-dependency Node.js test runner verifies all 66 test cases:
 
 ```bash
 # Verification Command (Executes in < 500ms)

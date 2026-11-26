@@ -5,7 +5,21 @@
  * @module gemini-service
  */
 
-import { generateOfflineCleanAirPlan, getCleaningProtocol } from './offline-advisor.js';
+import { generateOfflineCleanAirPlan, getCleaningProtocol, PlanFactory } from './offline-advisor.js';
+
+/**
+ * Sanitizes an arbitrary string to prevent attribute or parameter injection anomalies.
+ * Conforms to Security 01 §4 Whitelist Regex Input Sanitization Contract.
+ *
+ * @param {string} rawString - Unfiltered user input.
+ * @returns {string} Strict sanitized alphanumeric string.
+ */
+export function sanitizeCityInput(rawString) {
+  if (typeof rawString !== 'string') return 'Delhi NCR';
+  const trimmed = rawString.trim().slice(0, 50);
+  const sanitized = trimmed.replace(/[^a-zA-Z0-9\s,.-]/g, '');
+  return sanitized.length > 0 ? sanitized : 'Delhi NCR';
+}
 
 /**
  * Ephemeral In-Memory API Key Store with Cryptographic Overwrite Zeroization.
@@ -414,7 +428,7 @@ export class GeminiPlanProvider extends IPlanProvider {
       this.circuitBreaker.recordSuccess();
 
       return {
-        plan: parsedPlan,
+        plan: PlanFactory.createPlan(parsedPlan),
         strategy: 'GEMINI_3.8_FLASH'
       };
     } catch (err) {

@@ -181,6 +181,38 @@ export function contextToHashToken(ctx) {
  */
 export function hashTokenToContext(hash) {
   let clean = String(hash).replace(/^#/, '');
+
+  if (clean.startsWith('v1=')) {
+    try {
+      const rawStr = decodeBase64URL(clean.slice(3));
+      const parts = rawStr.split('|');
+      if (parts.length >= 6) {
+        const city = parts[0];
+        const aqi = Number(parts[1]) || 395;
+        const vulnBits = Number(parts[2]) || 0;
+        const cookIdx = Number(parts[3]) || 2;
+        const heatIdx = Number(parts[4]) || 1;
+        const commuteIdx = Number(parts[5]) || 1;
+        const simHour = parts[6] !== undefined && parts[6] !== '' ? Number(parts[6]) : null;
+        const cookingMethods = ['induction', 'png', 'lpg', 'biomass'];
+        const heatingMethods = ['electric_radiator', 'space_heater', 'heat_pump', 'open_fire'];
+        const commuteModes = ['walk_cycle', 'two_wheeler', 'public_transit', 'private_car'];
+        return {
+          city: city || 'Delhi NCR',
+          aqi,
+          vulnBits,
+          cookingMethod: cookingMethods[cookIdx] || 'lpg',
+          heatingMethod: heatingMethods[heatIdx] || 'space_heater',
+          commuteMode: commuteModes[commuteIdx] || 'two_wheeler',
+          commuteKm: 14,
+          simulatedHour: simHour
+        };
+      }
+    } catch (e) {
+      // Fall through to 5-byte unpacking
+    }
+  }
+
   if (clean.startsWith('b=')) {
     clean = clean.slice(2);
   }

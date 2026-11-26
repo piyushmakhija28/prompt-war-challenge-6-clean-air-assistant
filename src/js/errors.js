@@ -85,3 +85,49 @@ export class ArithmeticDomainError extends CleanAirBaseError {
     super('ERR_MATH_DOMAIN', `Parameter '${parameter}' value ${value} out of physical bounds. Clamped to valid range.`, false);
   }
 }
+
+/**
+ * Constructs a bounded AQI scalar (0 to 999).
+ * Conforms to LLD 06 §1.
+ *
+ * @param {number} val - Raw numerical value.
+ * @returns {number} Clamped AQI integer.
+ */
+export function makeAQI(val) {
+  return Math.max(0, Math.min(999, Math.round(Number(val) || 0)));
+}
+
+/**
+ * Constructs a bounded non-negative particulate mass concentration.
+ * Conforms to LLD 06 §1.
+ *
+ * @param {number} val - Raw concentration.
+ * @returns {number} Non-negative concentration float.
+ */
+export function makeConcentration(val) {
+  return Math.max(0, Number(val) || 0);
+}
+
+/**
+ * Normalizes decimal hour into cyclic 24-hour interval [0.0, 24.0).
+ * Conforms to LLD 06 §1.
+ *
+ * @param {number} val - Arbitrary hour number.
+ * @returns {number} Normalized decimal hour.
+ */
+export function makeHour(val) {
+  const num = Number(val) || 0;
+  return ((num % 24) + 24) % 24;
+}
+
+/**
+ * Exhaustiveness check helper for union types.
+ * Throws an exception if reached at runtime.
+ * Conforms to LLD 06 §4.
+ *
+ * @param {*} x - Unexpected value.
+ * @returns {never}
+ */
+export function assertNever(x) {
+  throw new Error(`Unexpected object in exhaustive check: ${JSON.stringify(x)}`);
+}
