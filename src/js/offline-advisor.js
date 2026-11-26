@@ -11,7 +11,8 @@ import {
   aqiToMassConcentration,
   calculateParticulateAvoidance,
   calculateCarbonAvoidance,
-  dosageToCigarettes
+  dosageToCigarettes,
+  getHousingInfiltrationCoefficient
 } from './impact-calculator.js';
 import { INFILTRATION_COEFFICIENTS } from './config.js';
 
@@ -53,7 +54,7 @@ export function generateOfflineCleanAirPlan(ctx) {
   else severity = 'HAZARDOUS';
 
   const cOut = aqiToMassConcentration(rawAQI);
-  const alphaInf = INFILTRATION_COEFFICIENTS.STANDARD_FLAT;
+  const alphaInf = getHousingInfiltrationCoefficient(ctx.housingType || 'standard_flat');
   const cInUnmitigated = cOut * alphaInf;
   const cInFiltered = cInUnmitigated * 0.22; // ~78% removal with Corsi-Rosenthal / HEPA
 

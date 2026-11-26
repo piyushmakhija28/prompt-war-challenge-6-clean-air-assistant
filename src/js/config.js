@@ -85,6 +85,7 @@ export const DEFAULT_PRESET = Object.freeze({
   city: 'Delhi NCR',
   aqi: 395,
   vulnBits: VULN_FLAGS.INFANT | VULN_FLAGS.ASTHMA,
+  housingType: 'standard_flat',
   cookingMethod: 'lpg',
   heatingMethod: 'space_heater',
   commuteMode: 'two_wheeler',

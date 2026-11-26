@@ -54,6 +54,108 @@
           <span id="label-time-value" style="font-family:monospace; font-weight:700; color:#38bdf8;">07:30</span>
         </div>
         <input type="range" id="input-time-slider" class="range-slider" min="0" max="23.75" step="0.25" value="7.5" aria-label="Diurnal Time Scrubber">
+        
+        <!-- Interactive SVG Diurnal Inversion Bar -->
+        <div style="margin-top:6px;">
+          <svg id="svg-diurnal-bar" viewBox="0 0 240 24" style="width:100%; height:24px; border-radius:6px; overflow:hidden;" aria-label="24-Hour Diurnal Inversion Timeline">
+            <rect x="0" y="0" width="60" height="24" fill="#6366f1" opacity="0.8"></rect>
+            <rect x="60" y="0" width="35" height="24" fill="#b91c1c" opacity="0.9"></rect>
+            <rect x="95" y="0" width="30" height="24" fill="#f59e0b" opacity="0.85"></rect>
+            <rect x="125" y="0" width="30" height="24" fill="#10b981" opacity="0.9"></rect>
+            <rect x="155" y="0" width="25" height="24" fill="#f59e0b" opacity="0.85"></rect>
+            <rect x="180" y="0" width="40" height="24" fill="#b91c1c" opacity="0.9"></rect>
+            <rect x="220" y="0" width="20" height="24" fill="#6366f1" opacity="0.8"></rect>
+            <line id="svg-time-needle" x1="75" y1="0" x2="75" y2="24" stroke="#ffffff" stroke-width="3" stroke-linecap="round"></line>
+          </svg>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; font-family:monospace; margin-top:2px;">
+            <span>00:00</span>
+            <span style="color:#f87171;">06:00 Trap</span>
+            <span style="color:#34d399;">12:30 Safe</span>
+            <span style="color:#f87171;">18:00 Trap</span>
+            <span>24:00</span>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Building Envelope & Infiltration</legend>
+        <label for="select-housing-type" class="form-label">Structure Type</label>
+        <select id="select-housing-type" class="form-select">
+          <option value="sealed_apartment">Sealed Modern Apartment (Infiltration α = 0.40)</option>
+          <option value="standard_flat" selected>Standard Residential Flat (Infiltration α = 0.65)</option>
+          <option value="drafty_home">Drafty / Unsealed Home (Infiltration α = 0.85)</option>
+        </select>
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Cooking Fuel Source</legend>
+        <div class="radio-chip-grid">
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-cooking" value="induction" class="input-radio">
+            <span>Induction</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-cooking" value="png" class="input-radio">
+            <span>PNG Gas</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-cooking" value="lpg" class="input-radio" checked>
+            <span>LPG</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-cooking" value="biomass" class="input-radio">
+            <span>Biomass</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Home Heating Source</legend>
+        <div class="radio-chip-grid">
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-heating" value="electric_radiator" class="input-radio">
+            <span>Oil Radiator</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-heating" value="space_heater" class="input-radio" checked>
+            <span>Heater</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-heating" value="heat_pump" class="input-radio">
+            <span>Heat Pump</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-heating" value="open_fire" class="input-radio">
+            <span>Open Fire</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-fieldset">
+        <legend class="form-legend">Commute Mode & Distance</legend>
+        <div class="radio-chip-grid" style="margin-bottom:8px;">
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-commute" value="walk_cycle" class="input-radio">
+            <span>Walk/Cycle</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-commute" value="two_wheeler" class="input-radio" checked>
+            <span>2-Wheeler</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-commute" value="public_transit" class="input-radio">
+            <span>Metro</span>
+          </label>
+          <label class="radio-chip-label">
+            <input type="radio" name="radio-commute" value="private_car" class="input-radio">
+            <span>Solo Car</span>
+          </label>
+        </div>
+        <div class="form-label">
+          <span>One-Way Distance</span>
+          <span id="label-commute-km" style="font-family:monospace; font-weight:700; color:#38bdf8;">14 km</span>
+        </div>
+        <input type="range" id="input-commute-km" class="range-slider" min="1" max="50" step="1" value="14" aria-label="Commute Distance in Kilometers">
       </fieldset>
 
       <fieldset class="form-fieldset">

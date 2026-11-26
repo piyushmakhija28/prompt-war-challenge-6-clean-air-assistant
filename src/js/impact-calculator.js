@@ -6,7 +6,21 @@
  * @module impact-calculator
  */
 
-import { BREAKPOINTS, WTW_EMISSION_FACTORS } from './config.js';
+import { BREAKPOINTS, WTW_EMISSION_FACTORS, INFILTRATION_COEFFICIENTS } from './config.js';
+
+/**
+ * Resolves the numeric building envelope particulate infiltration coefficient (alpha_inf)
+ * based on structural housing airtightness characteristics.
+ * Complexity: O(1) time, O(1) space.
+ *
+ * @param {string} housingType - 'sealed_apartment' | 'standard_flat' | 'drafty_home'.
+ * @returns {number} Infiltration coefficient (0.40, 0.65, or 0.85).
+ */
+export function getHousingInfiltrationCoefficient(housingType) {
+  if (housingType === 'sealed_apartment') return INFILTRATION_COEFFICIENTS.SEALED_APARTMENT;
+  if (housingType === 'drafty_home') return INFILTRATION_COEFFICIENTS.DRAFTY_HOME;
+  return INFILTRATION_COEFFICIENTS.STANDARD_FLAT;
+}
 
 /**
  * Converts ambient Air Quality Index (AQI) to PM2.5 mass concentration (ug/m3) via monotonic binary search.

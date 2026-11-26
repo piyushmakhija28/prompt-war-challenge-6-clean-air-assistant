@@ -232,5 +232,27 @@ prompt-war-challenge-6-clean-air-assistant/
 
 ---
 
+## 🔬 8. Explicit Assumptions Made (Competition Requirement 5)
+
+In compliance with official Prompt War Challenge No. 6 submission requirements, the system's behavioral models, calculations, and generative guidance operate under the following explicit, grounded scientific assumptions:
+
+### 8.1 Meteorological & Atmospheric Physics Assumptions:
+1. **Planetary Boundary Layer (PBL) Compression:** Ground-level smog concentration peaks during radiation thermal inversions when nocturnal cooling suppresses mechanical shear turbulence, governed by the Bulk Richardson Number $Ri_b \ge 0.25$. Surface mixing layer height is assumed to compress to $z_i \approx 200 - 300\text{m}$ between 06:00–09:30 AM and 18:00–22:00 PM.
+2. **Solar Convective Dispersal Window:** Solar radiative warming between 12:30–15:30 PM expands the boundary layer height to $z_i \approx 800 - 1,200\text{m}$, creating a predictable convective dilution window where ambient ground PM2.5 concentrations drop by $40\% - 55\%$.
+
+### 8.2 Building Envelope Infiltration & Indoor Clearance Assumptions:
+1. **Housing Envelope Airtightness ($\alpha_{\text{inf}}$):** Baseline indoor-to-outdoor concentration ratios without filtration assume standard closed-window residential conditions: Sealed Apartments $\alpha_{\text{inf}} = 0.40$, Standard Flats $\alpha_{\text{inf}} = 0.65$, and Drafty Homes $\alpha_{\text{inf}} = 0.85$.
+2. **First-Order Particulate Decay:** DIY Corsi-Rosenthal boxes (4x MERV 13 + 20-inch box fan) deliver a verified CADR of $273\text{ CFM}$ ($464\text{ m}^3/\text{h}$), producing first-order particulate removal rate $\lambda \approx 10.9\text{ h}^{-1}$ in a typical $54\text{ m}^3$ living room, modeled with numerically stable $\text{Math.expm1}(-\lambda t)$ decay.
+
+### 8.3 Physiological Respiratory Inhalation Assumptions:
+1. **Minute Ventilation Volume ($V_E$):** Adult resting breathing volume is modeled at $V_E = 0.45\text{ m}^3/\text{h}$ ($7.5\text{ L/min}$); child breathing rate is $0.30\text{ m}^3/\text{h}$; moderate outdoor exertion is $1.20\text{ m}^3/\text{h}$.
+2. **Alveolar Deposition Fraction ($\eta_{\text{dep}}$):** Fine particulate matter ($PM_{2.5}$) penetrating deep into the pulmonary alveolar region is assumed at $\eta_{\text{dep}} = 0.28$ (28% retention), based on standard ICRP human respiratory tract dosimetry models.
+
+### 8.4 Emissions LCA & Equivalence Conversion Baselines:
+1. **Berkeley Earth Cigarette Metric:** 1 cigarette smoked equivalent corresponds to inhaling $66.5\ \mu\text{g}$ of fine particulate mass ($PM_{2.5}$), derived from the established Berkeley Earth empirical rule ($22\ \mu\text{g/m}^3 \text{ over 24 hours} \approx 1\text{ cigarette}$).
+2. **Well-to-Wheel (WTW) Lifecycle Carbon Factors:** Modal shift emissions account for both direct combustion (TTW) and upstream electricity/refining (WTW): Solo petrol car $240\text{ g CO}_2\text{e/km}$, two-wheeler $60\text{ g CO}_2\text{e/km}$, and electrified metro rail $28\text{ g CO}_2\text{e/pass-km}$ (based on Central Electricity Authority baseline grid factor $EF_{\text{grid}} \approx 0.72\text{ kg CO}_2\text{/kWh}$).
+
+---
+
 ## 📜 License
 Distributed under the **MIT License**. Free for communities, schools, and families fighting air pollution worldwide.

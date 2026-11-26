@@ -18,8 +18,11 @@ import {
   calculateParticulateAvoidance,
   kahanNeumaierSum,
   dosageToCigarettes,
-  calculateCarbonAvoidance
+  calculateCarbonAvoidance,
+  getHousingInfiltrationCoefficient
 } from '../src/js/impact-calculator.js';
+import { NetworkTimeoutError, RateLimitExceededError } from '../src/js/errors.js';
+import { EventBus } from '../src/js/event-bus.js';
 import {
   packContextTo5Bytes,
   unpackContextFrom5Bytes,
@@ -198,6 +201,23 @@ assert(unpackedCtx.aqi === 485 && unpackedCtx.vulnBits === 19 && unpackedCtx.coo
 const testStr = 'Delhi|395|3|lpg|space_heater|two_wheeler|7.5';
 const encodedB64 = encodeBase64URL(testStr);
 assert(!encodedB64.includes('+') && !encodedB64.includes('/') && !encodedB64.includes('='), 'TC-EDG-010', 'Base64URL contains zero forbidden characters');
+
+// TC-INF-001: Dynamic housing infiltration coefficients
+const alphaSealed = getHousingInfiltrationCoefficient('sealed_apartment');
+const alphaStandard = getHousingInfiltrationCoefficient('standard_flat');
+const alphaDrafty = getHousingInfiltrationCoefficient('drafty_home');
+assert(alphaSealed === 0.40 && alphaStandard === 0.65 && alphaDrafty === 0.85, 'TC-INF-001', 'Housing infiltration coefficients resolve correctly');
+
+// TC-ERR-001: Typed domain error hierarchy
+const netErr = new NetworkTimeoutError(8000);
+assert(netErr.code === 'ERR_NET_TIMEOUT' && netErr.isTransient === true, 'TC-ERR-001', 'NetworkTimeoutError domain code and retry eligibility');
+
+// TC-BUS-001: Typed EventBus pub-sub delivery
+const testBus = new EventBus();
+let busPayload = null;
+testBus.on('TEST_TOPIC', (data) => { busPayload = data; });
+testBus.emit('TEST_TOPIC', { status: 'DELIVERED' });
+assert(busPayload && busPayload.status === 'DELIVERED', 'TC-BUS-001', 'EventBus publishes and delivers payload synchronously');
 
 console.log('\n------------------------------------------------------');
 console.log(` Test Execution Summary: ${passed} Passed, ${failed} Failed`);

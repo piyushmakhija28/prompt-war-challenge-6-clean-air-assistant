@@ -1,0 +1,22 @@
+{
+  "name": "prompt-war-challenge-6-clean-air-assistant",
+  "version": "1.0.0",
+  "description": "CleanAir Guardian (VayuRakshak) — Winter Smog & Urban Pollution Community AI Assistant",
+  "type": "module",
+  "main": "src/js/app.js",
+  "scripts": {
+    "test": "node test/run-tests.js",
+    "test:fuzz": "node test/run-fuzz-tests.js",
+    "verify": "node test/run-tests.js && node test/run-fuzz-tests.js"
+  },
+  "keywords": [
+    "clean-air",
+    "winter-smog",
+    "temperature-inversion",
+    "gemini-3.8-flash",
+    "community-health",
+    "prompt-war-6"
+  ],
+  "author": "Piyush Makhija",
+  "license": "MIT"
+}

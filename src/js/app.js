@@ -10,6 +10,7 @@ import { VULN_FLAGS, DEFAULT_PRESET, METRO_BASIN_PRESETS } from './config.js';
 import { getDiurnalInversion } from './air-quality-engine.js';
 import { SecureKeyStore, GeminiPlanProvider } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
+import { globalEventBus } from './event-bus.js';
 
 /**
  * Algebraic Result Monad representing either Success (Ok) or Failure (Err).
@@ -127,6 +128,7 @@ export const state = {
   city: DEFAULT_PRESET.city,
   aqi: DEFAULT_PRESET.aqi,
   vulnBits: DEFAULT_PRESET.vulnBits,
+  housingType: DEFAULT_PRESET.housingType || 'standard_flat',
   cookingMethod: DEFAULT_PRESET.cookingMethod,
   heatingMethod: DEFAULT_PRESET.heatingMethod,
   commuteMode: DEFAULT_PRESET.commuteMode,
@@ -406,10 +408,89 @@ export function initApp() {
       const mins = Math.floor((val - hours) * 60);
       const timeStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
       if (timeLabel) timeLabel.textContent = timeStr;
+      
+      const needle = document.getElementById('svg-time-needle');
+      if (needle) {
+        const x = (val / 24) * 240;
+        needle.setAttribute('x1', String(x));
+        needle.setAttribute('x2', String(x));
+      }
       syncUrlHash();
     });
 
     timeSlider.addEventListener('change', () => {
+      triggerPlanGeneration();
+    });
+  }
+
+  // 4b. Housing Type Dropdown
+  const housingSelect = document.getElementById('select-housing-type');
+  if (housingSelect) {
+    housingSelect.value = state.housingType;
+    housingSelect.addEventListener('change', (e) => {
+      state.housingType = e.target.value;
+      globalEventBus.emit('CONTEXT_UPDATED', state);
+      syncUrlHash();
+      triggerPlanGeneration();
+    });
+  }
+
+  // 4c. Cooking Method Radios
+  const cookingRadios = document.querySelectorAll('input[name="radio-cooking"]');
+  cookingRadios.forEach((r) => {
+    r.checked = r.value === state.cookingMethod;
+    r.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        state.cookingMethod = e.target.value;
+        globalEventBus.emit('CONTEXT_UPDATED', state);
+        syncUrlHash();
+        triggerPlanGeneration();
+      }
+    });
+  });
+
+  // 4d. Heating Method Radios
+  const heatingRadios = document.querySelectorAll('input[name="radio-heating"]');
+  heatingRadios.forEach((r) => {
+    r.checked = r.value === state.heatingMethod;
+    r.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        state.heatingMethod = e.target.value;
+        globalEventBus.emit('CONTEXT_UPDATED', state);
+        syncUrlHash();
+        triggerPlanGeneration();
+      }
+    });
+  });
+
+  // 4e. Commute Mode Radios & Distance Slider
+  const commuteRadios = document.querySelectorAll('input[name="radio-commute"]');
+  commuteRadios.forEach((r) => {
+    r.checked = r.value === state.commuteMode;
+    r.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        state.commuteMode = e.target.value;
+        globalEventBus.emit('CONTEXT_UPDATED', state);
+        syncUrlHash();
+        triggerPlanGeneration();
+      }
+    });
+  });
+
+  const commuteKmSlider = document.getElementById('input-commute-km');
+  const commuteKmLabel = document.getElementById('label-commute-km');
+  if (commuteKmSlider) {
+    commuteKmSlider.value = String(state.commuteKm);
+    if (commuteKmLabel) commuteKmLabel.textContent = `${state.commuteKm} km`;
+
+    commuteKmSlider.addEventListener('input', (e) => {
+      const val = Number(e.target.value);
+      state.commuteKm = val;
+      if (commuteKmLabel) commuteKmLabel.textContent = `${val} km`;
+      syncUrlHash();
+    });
+
+    commuteKmSlider.addEventListener('change', () => {
       triggerPlanGeneration();
     });
   }
