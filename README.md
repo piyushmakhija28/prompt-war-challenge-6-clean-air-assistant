@@ -12,7 +12,7 @@
 [![AI Engine](https://img.shields.io/badge/AI_Engine-Google_Gemini_3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
 [![Tests](https://img.shields.io/badge/Tests-66_Passed_%7C_10k_Fuzz-success.svg)](#)
 [![PWA](https://img.shields.io/badge/PWA-Offline_Ready-purple.svg)](#)
-[![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-31_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
+[![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-32_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](#)
 
 ---
@@ -31,7 +31,7 @@
 | **Single Branch Name**   | main (Single branch strictly enforced; zero auxiliary branches)              |
 | **Repository Size**      | < 2.0 MB (Strictly compliant with < 10 MB competition limit)                 |
 | **AI Architecture**      | Dual-Engine: Google Gemini 3.8 Flash + Sub-15ms Deterministic Offline Advisor|
-| **System Blueprint**     | 31 Deep Enterprise Specs (`docs/`) + 6 Canonical Mermaid UML Diagrams (`uml/`)|
+| **System Blueprint**     | 32 Deep Enterprise Specs (`docs/`) + 6 Canonical Mermaid UML Diagrams (`uml/`)|
 +--------------------------+------------------------------------------------------------------------------+
 ```
 
@@ -153,7 +153,7 @@ Behavior change requires concrete, transparent feedback. The assistant calculate
 
 ## 📚 5. Enterprise Architecture Documentation Suite Index
 
-This project adheres to **Level 2.2 Documentation Governance**, maintaining clean canonical root files while providing an exhaustive **31-document enterprise specification suite** in `docs/` and **6 Canonical Mermaid UML Diagrams** in `uml/`:
+This project adheres to **Level 2.2 Documentation Governance**, maintaining clean canonical root files while providing an exhaustive **32-document enterprise specification suite** in `docs/` and **6 Canonical Mermaid UML Diagrams** in `uml/`:
 
 ```
 prompt-war-challenge-6-clean-air-assistant/
@@ -164,7 +164,7 @@ prompt-war-challenge-6-clean-air-assistant/
 ├── VERSION                            # Version single source of truth (1.1.0)
 ├── CHANGELOG.md                       # Release notes and changelog
 ├── .gitignore                         # Exclusions guaranteeing repo size < 10 MB
-├── docs/                              # The 31 Deep Enterprise Architecture Specifications
+├── docs/                              # The 32 Deep Enterprise Architecture Specifications
 │   ├── 00-problem-statement.md        # Problem Invariants, Ground Truth & Quantitative Personas
 │   ├── 01-prd.md                      # Product Requirements Document (FR-01..12, NFR-01..10, RTM)
 │   ├── 02-gemini-prompt-engineering.md# Gemini 3.8 Flash System Prompt, Few-Shot & Guardrails Spec
@@ -201,7 +201,8 @@ prompt-war-challenge-6-clean-air-assistant/
 │   ├── resilience/                    # Fault Tolerance & High Availability
 │   │   └── 01-offline-degradation-and-fallback.md # Circuit Breaker State Machine & Jitter Math
 │   └── testing/                       # Quality Assurance & Verification
-│       └── 01-triad-test-strategy.md  # 30 Triad Invariant Test Cases (Positive, Negative, Edge)
+│       ├── 01-triad-test-strategy.md  # 66 Triad Invariant Test Cases (Positive, Negative, Edge)
+│       └── 02-property-based-fuzzing-spec.md # 11 Algebraic Closure Invariants & Xorshift128+ PRNG
 └── uml/                               # The 6 Canonical Mermaid UML Architecture Diagrams
     ├── 01-system-context.mmd          # C4 Level 1 Context Diagram
     ├── 02-container-diagram.mmd       # C4 Level 2 Container Diagram

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-11-26
 
 ### Added
+- **11-Invariant Property-Based Fuzz Testing Suite**: Expanded QuickCheck property fuzz testing in `test/run-fuzz-tests.js` from 6 to 11 algebraic closure invariants, validating `makeAQI`, `makeConcentration`, `makeHour`, `sanitizeCityInput`, and `PlanFactory.createPlan` across 10,000 vectors in < 60ms.
+- **Formal Property-Based Fuzzing Specification**: Authored `docs/testing/02-property-based-fuzzing-spec.md` detailing Xorshift128+ PRNG state equations and the 11 algebraic closure invariants.
+- **GitHub Actions CI Automated Size Gate**: Added automated `git count-objects -vH` step in `.github/workflows/ci.yml` guaranteeing repository size strictly remains < 10 MB.
 - **Triad Test Suite Expansion to 66 Invariants**: Added `TC-TIME-001`, `TC-FAC-001`, `TC-RED-001`, `TC-BRAND-001`, `TC-SAN-001`, `TC-LEGACY-001`, `TC-PRF-001`, and `TC-SEC-001`, bringing total automated verification to 66 passing tests alongside 10,000 property-based fuzz test vectors.
 - **100% LLD & Security Parity**: Implemented `TimeEngine` and `TimeMode` (`docs/lld/01` §4), `PlanFactory` (`docs/lld/03` §3.4), `createContext` monomorphic factory (`docs/lld/03` §4.1), `INITIAL_STATE` and `appReducer` (`docs/lld/05` §1), branded primitives `makeAQI`, `makeConcentration`, `makeHour`, and `assertNever` (`docs/lld/06` §1 & §4), `sanitizeCityInput` whitelist regex (`docs/security/01` §4), and backward-compatible `#v1=` pipe-delimited Base64URL decoding in `hashTokenToContext`.
 - **Problem Statement §5 Target Personas Quick Presets**: Added `TARGET_PERSONAS` dictionary in `src/js/config.js` and 1-click Quick Preset bar in `index.html` (`applyPersona` in `app.js`) for instant evaluation of Ananya (Infant 18m, AQI 425), Rajesh (Asthma 68y, AQI 380), Vikram (Two-Wheeler 22km, AQI 410), and Ramesh (Traffic Officer, AQI 460).

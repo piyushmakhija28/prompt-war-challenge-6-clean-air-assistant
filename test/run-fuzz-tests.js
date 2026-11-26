@@ -8,7 +8,10 @@
 import { aqiToMassConcentration, calculateParticulateAvoidance, calculateRoomClearance, dosageToCigarettes } from '../src/js/impact-calculator.js';
 import { getDiurnalInversion, getVulnerabilityMultiplier } from '../src/js/air-quality-engine.js';
 import { packContextTo5Bytes, unpackContextFrom5Bytes } from '../src/js/state-codec.js';
-import { METRO_BASIN_PRESETS } from '../src/js/config.js';
+import { METRO_BASIN_PRESETS, createContext } from '../src/js/config.js';
+import { makeAQI, makeConcentration, makeHour } from '../src/js/errors.js';
+import { sanitizeCityInput } from '../src/js/gemini-service.js';
+import { PlanFactory } from '../src/js/offline-advisor.js';
 
 /**
  * Seedable Xorshift128+ pseudo-random number generator.
@@ -124,6 +127,50 @@ for (let i = 0; i < ITERATIONS; i++) {
   ) {
     violations++;
     console.error(`Violation Inv6 at iter ${i}: mismatch in roundtrip!`);
+    break;
+  }
+
+  // Invariant 7: makeAQI bounds invariance [0, 999]
+  const clampedAQI = makeAQI(aqi);
+  if (!Number.isInteger(clampedAQI) || clampedAQI < 0 || clampedAQI > 999) {
+    violations++;
+    console.error(`Violation Inv7 at iter ${i}: clampedAQI=${clampedAQI}`);
+    break;
+  }
+
+  // Invariant 8: makeConcentration non-negative invariance
+  const nonNegConc = makeConcentration(conc);
+  if (!Number.isFinite(nonNegConc) || nonNegConc < 0) {
+    violations++;
+    console.error(`Violation Inv8 at iter ${i}: nonNegConc=${nonNegConc}`);
+    break;
+  }
+
+  // Invariant 9: makeHour cyclic interval [0.0, 24.0)
+  const normHour = makeHour(hour);
+  if (!Number.isFinite(normHour) || normHour < 0.0 || normHour >= 24.0) {
+    violations++;
+    console.error(`Violation Inv9 at iter ${i}: normHour=${normHour}`);
+    break;
+  }
+
+  // Invariant 10: sanitizeCityInput injection safety
+  const rawTestStr = `${city}<script>${cook}</script>'`;
+  const sanitized = sanitizeCityInput(rawTestStr);
+  if (sanitized.includes('<') || sanitized.includes('>') || sanitized.includes("'") || sanitized.length === 0) {
+    violations++;
+    console.error(`Violation Inv10 at iter ${i}: sanitized=${sanitized}`);
+    break;
+  }
+
+  // Invariant 11: PlanFactory immutability and schema normalization
+  const candidatePlan = PlanFactory.createPlan({
+    severityLevel: i % 2 === 0 ? 'SEVERE' : undefined,
+    quantifiedImpact: { pm25InhalationAvoidedMicrograms: dosage }
+  });
+  if (!Object.isFrozen(candidatePlan) || !candidatePlan.severityLevel || !candidatePlan.quantifiedImpact) {
+    violations++;
+    console.error(`Violation Inv11 at iter ${i}: PlanFactory schema failure`);
     break;
   }
 }
