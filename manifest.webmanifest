@@ -1,0 +1,24 @@
+{
+  "name": "CleanAir Guardian (VayuRakshak)",
+  "short_name": "CleanAir",
+  "description": "Autonomous Winter Smog & Planetary Boundary Layer Navigation Engine",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192' width='192' height='192'%3E%3Crect width='192' height='192' rx='36' fill='%23020617'/%3E%3Ccircle cx='96' cy='96' r='64' fill='none' stroke='%2338bdf8' stroke-width='12' stroke-dasharray='24 12'/%3E%3Cpath d='M60 110 C 70 80, 122 80, 132 110' fill='none' stroke='%2310b981' stroke-width='10' stroke-linecap='round'/%3E%3Ccircle cx='96' cy='82' r='14' fill='%23f59e0b'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E%3Crect width='512' height='512' rx='96' fill='%23020617'/%3E%3Ccircle cx='256' cy='256' r='180' fill='none' stroke='%2338bdf8' stroke-width='32' stroke-dasharray='64 32'/%3E%3Cpath d='M160 300 C 190 210, 322 210, 352 300' fill='none' stroke='%2310b981' stroke-width='28' stroke-linecap='round'/%3E%3Ccircle cx='256' cy='216' r='38' fill='%23f59e0b'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

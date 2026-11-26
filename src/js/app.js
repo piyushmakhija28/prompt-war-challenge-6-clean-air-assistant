@@ -6,11 +6,13 @@
  * @module app
  */
 
-import { VULN_FLAGS, DEFAULT_PRESET, METRO_BASIN_PRESETS } from './config.js';
+import { VULN_FLAGS, DEFAULT_PRESET, METRO_BASIN_PRESETS, METRO_BASIN_COORDINATES } from './config.js';
 import { getDiurnalInversion } from './air-quality-engine.js';
 import { SecureKeyStore, GeminiPlanProvider } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
 import { globalEventBus } from './event-bus.js';
+import { calculateRoomClearance, findNearestBasin } from './cadr-calculator.js';
+import { aqiToMassConcentration } from './impact-calculator.js';
 
 /**
  * Algebraic Result Monad representing either Success (Ok) or Failure (Err).
@@ -203,6 +205,23 @@ export function renderActivePlan() {
     setSafeText('metric-cigarettes-avoided', `${plan.quantifiedImpact.cigaretteEquivalentsAvoided} Cigs`);
     setSafeText('metric-carbon-saved', `${plan.quantifiedImpact.co2eSavedKg} kg CO₂e`);
     setSafeText('metric-protection-score', `${plan.quantifiedImpact.protectionScorePercent}%`);
+
+    // 2b. Comparative Inhaled Dose Exposure Gauge
+    const unshieldedCp = aqiToMassConcentration(state.aqi);
+    const unshieldedDose = Math.max(10, unshieldedCp * 12.0 * 1.4 * (0.85 * 0.7 + 1.0 * 0.3));
+    const avoidedUg = plan.quantifiedImpact ? plan.quantifiedImpact.pm25InhalationAvoidedMicrograms : 0;
+    const protectedDose = Math.max(5, unshieldedDose - avoidedUg);
+    const reductionPct = Math.min(99.9, Math.max(0, ((unshieldedDose - protectedDose) / unshieldedDose) * 100));
+
+    setSafeText('badge-shield-reduction', `-${reductionPct.toFixed(1)}% Inhaled Dose`);
+    setSafeText('text-unshielded-dose', `${Math.round(unshieldedDose)} µg (${(unshieldedDose / 22).toFixed(1)} Cigs)`);
+    setSafeText('text-protected-dose', `${Math.round(protectedDose)} µg (${(protectedDose / 22).toFixed(1)} Cigs)`);
+
+    const barProtected = document.getElementById('bar-protected-dose');
+    if (barProtected) {
+      const protectedWidth = Math.max(4, Math.min(100, (protectedDose / unshieldedDose) * 100));
+      barProtected.style.width = `${protectedWidth.toFixed(1)}%`;
+    }
 
     // 3. Hourly Schedule List
     const scheduleContainer = document.getElementById('hourly-schedule-container');
@@ -522,14 +541,108 @@ export function initApp() {
   if (btnCopyWhatsApp) {
     btnCopyWhatsApp.addEventListener('click', async () => {
       if (state.activePlan && state.activePlan.communityAdvisory) {
-        await navigator.clipboard.writeText(state.activePlan.communityAdvisory);
+        const advisoryText = state.activePlan.communityAdvisory;
+        const currentUrl = window.location.href;
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          try {
+            await navigator.share({
+              title: 'CleanAir Guardian (VayuRakshak) Advisory',
+              text: advisoryText,
+              url: currentUrl
+            });
+            btnCopyWhatsApp.textContent = 'Shared Successfully! ✓';
+            setTimeout(() => {
+              btnCopyWhatsApp.textContent = 'Share / Copy WhatsApp Advisory';
+            }, 2500);
+            return;
+          } catch (e) {
+            // User cancelled or share error; fall through to clipboard
+          }
+        }
+        await navigator.clipboard.writeText(`${advisoryText}\n\nLive Plan: ${currentUrl}`);
         btnCopyWhatsApp.textContent = 'Copied to Clipboard! ✓';
         setTimeout(() => {
-          btnCopyWhatsApp.textContent = 'Copy WhatsApp Advisory';
+          btnCopyWhatsApp.textContent = 'Share / Copy WhatsApp Advisory';
         }, 2000);
       }
     });
   }
+
+  // 6b. Geolocation Nearest-Basin Detector
+  const btnDetectLocation = document.getElementById('btn-detect-location');
+  if (btnDetectLocation) {
+    btnDetectLocation.addEventListener('click', () => {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        showStatusBanner('Geolocation API not supported in this browser.', true);
+        return;
+      }
+
+      btnDetectLocation.disabled = true;
+      showStatusBanner('Detecting nearest urban air basin...', false);
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          btnDetectLocation.disabled = false;
+          const userLat = pos.coords.latitude;
+          const userLon = pos.coords.longitude;
+          const nearest = findNearestBasin(userLat, userLon, METRO_BASIN_COORDINATES);
+
+          if (nearest && citySelect) {
+            citySelect.value = nearest.name;
+            state.city = nearest.name;
+            syncUrlHash();
+            triggerPlanGeneration();
+            showStatusBanner(`Auto-detected nearest basin: ${nearest.name} (${nearest.distanceKm} km away)`, false);
+            setTimeout(() => {
+              const banner = document.getElementById('status-banner');
+              if (banner) banner.classList.add('hidden');
+            }, 3500);
+          }
+        },
+        () => {
+          btnDetectLocation.disabled = false;
+          showStatusBanner('Geolocation access denied. Keeping current city preset.', true);
+          setTimeout(() => {
+            const banner = document.getElementById('status-banner');
+            if (banner) banner.classList.add('hidden');
+          }, 3500);
+        },
+        { timeout: 8000 }
+      );
+    });
+  }
+
+  // 6c. Dynamic Room CADR Calculator Controller
+  function updateRoomCadr() {
+    const lengthInput = document.getElementById('input-room-l');
+    const widthInput = document.getElementById('input-room-w');
+    const heightInput = document.getElementById('input-room-h');
+    const cadrSelect = document.getElementById('select-cadr-device');
+
+    if (!lengthInput || !widthInput || !heightInput || !cadrSelect) return;
+
+    const length = Number(lengthInput.value) || 14;
+    const width = Number(widthInput.value) || 12;
+    const height = Number(heightInput.value) || 9;
+    const cadrCfm = Number(cadrSelect.value) || 273;
+
+    const result = calculateRoomClearance({ length, width, height, unit: 'ft', cadrCfm });
+
+    setSafeText('badge-cadr-ach', `${result.achClean} ACH`);
+    setSafeText('cadr-t50', `${result.t50Min} min`);
+    setSafeText('cadr-t90', `${result.t90Min} min`);
+    setSafeText('cadr-t99', `${result.t99Min} min`);
+  }
+
+  const cadrInputs = ['input-room-l', 'input-room-w', 'input-room-h', 'select-cadr-device'];
+  cadrInputs.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', updateRoomCadr);
+      el.addEventListener('change', updateRoomCadr);
+    }
+  });
+  updateRoomCadr();
 
   // 7. API Key Drawer
   const inputKey = document.getElementById('input-gemini-key');
@@ -550,6 +663,13 @@ export function initApp() {
       keyStore.purge();
       setSafeText('key-status-text', 'No Key (Using Deterministic Offline Engine)');
       triggerPlanGeneration();
+    });
+  }
+
+  // 8. Progressive Web App Service Worker Registration
+  if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      // Gracefully silent for offline / local sandbox environments
     });
   }
 

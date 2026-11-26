@@ -77,6 +77,23 @@ export const METRO_BASIN_PRESETS = Object.freeze([
 ]);
 
 /**
+ * Geographical latitude and longitude coordinates for all supported air basins.
+ * Used for Haversine great-circle distance matching.
+ * @readonly
+ * @type {Object<string, {lat: number, lon: number}>}
+ */
+export const METRO_BASIN_COORDINATES = Object.freeze({
+  'Delhi NCR': { lat: 28.6139, lon: 77.2090 },
+  'Lahore': { lat: 31.5204, lon: 74.3587 },
+  'Kolkata': { lat: 22.5726, lon: 88.3639 },
+  'Patna': { lat: 25.5941, lon: 85.1376 },
+  'Lucknow': { lat: 26.8467, lon: 80.9462 },
+  'Beijing': { lat: 39.9042, lon: 116.4074 },
+  'Ulaanbaatar': { lat: 47.9188, lon: 106.9176 },
+  'Salt Lake City Basin': { lat: 40.7608, lon: -111.8910 }
+});
+
+/**
  * Canonical default household profile.
  * @readonly
  * @type {Readonly<{city: string, aqi: number, vulnBits: number, cookingMethod: string, heatingMethod: string, commuteMode: string, commuteKm: number}>}

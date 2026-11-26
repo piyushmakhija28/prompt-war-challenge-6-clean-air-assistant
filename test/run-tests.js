@@ -4,7 +4,7 @@
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
-import { VULN_FLAGS } from '../src/js/config.js';
+import { VULN_FLAGS, METRO_BASIN_COORDINATES } from '../src/js/config.js';
 import {
   calculateBulkRichardson,
   getDiurnalInversion,
@@ -12,6 +12,11 @@ import {
   countActiveVulnerabilities,
   DiurnalRingBuffer
 } from '../src/js/air-quality-engine.js';
+import {
+  calculateRoomClearance as calculateFullCadrRoomClearance,
+  haversineDistanceKm,
+  findNearestBasin
+} from '../src/js/cadr-calculator.js';
 import {
   aqiToMassConcentration,
   calculateRoomClearance,
@@ -218,6 +223,22 @@ let busPayload = null;
 testBus.on('TEST_TOPIC', (data) => { busPayload = data; });
 testBus.emit('TEST_TOPIC', { status: 'DELIVERED' });
 assert(busPayload && busPayload.status === 'DELIVERED', 'TC-BUS-001', 'EventBus publishes and delivers payload synchronously');
+
+// TC-CADR-001: Room dimension volume and ACH calculation
+const cadrSmallRoom = calculateFullCadrRoomClearance({ length: 10, width: 10, height: 9, unit: 'ft', cadrCfm: 273 });
+assert(cadrSmallRoom.volumeCuFt === 900 && cadrSmallRoom.achClean === 18.2, 'TC-CADR-001', 'Room volume and clean air turnover (ACH) calculate accurately');
+
+// TC-CADR-002: Monotonic clearance milestones (t50 < t90 < t99)
+assert(cadrSmallRoom.t50Min < cadrSmallRoom.t90Min && cadrSmallRoom.t90Min < cadrSmallRoom.t99Min && cadrSmallRoom.t99Min < 20, 'TC-CADR-002', 'Clearance times satisfy monotonic inequality t50 < t90 < t99');
+
+// TC-GEO-001: Haversine great-circle distance accuracy (Delhi to Lahore ~415-430 km)
+const distDelhiLahore = haversineDistanceKm(28.6139, 77.2090, 31.5204, 74.3587);
+assert(distDelhiLahore > 410 && distDelhiLahore < 435, 'TC-GEO-001', 'Haversine distance between Delhi and Lahore accurately resolves to ~420 km');
+
+// TC-GEO-002: Nearest basin resolution for coordinate vector
+const nearestBasin = findNearestBasin(28.65, 77.22, METRO_BASIN_COORDINATES);
+assert(nearestBasin.name === 'Delhi NCR' && nearestBasin.distanceKm < 15, 'TC-GEO-002', 'Nearest air basin identifies Delhi NCR for local coordinates');
+
 
 console.log('\n------------------------------------------------------');
 console.log(` Test Execution Summary: ${passed} Passed, ${failed} Failed`);

@@ -177,4 +177,53 @@ For deep algorithmic, memory, and type-system specifications, reference the comp
 - [LLD-04: Data Structures, Algorithms & Computational Complexity](file:///docs/lld/04-data-structures-and-algorithms.md) — Asymptotic Big-O complexity matrices, vulnerability bitmask algebra, and `Float64Array` ring buffers.
 - [LLD-05: State Management, Event Loop & Memory Model](file:///docs/lld/05-state-management-and-event-loop.md) — Elm/Redux unidirectional data flow, FastDOM scheduler, and V8 Scavenge GC churn mitigation.
 - [LLD-06: Error Handling, Algebraic Types & Branded Primitives](file:///docs/lld/06-error-handling-and-algebraic-types.md) — Dimensional unit safety (`AQIScalar`, `PM25Concentration`), Railway-Oriented Programming (ROP), and `Result<T, E>` monad.
+- [LLD-07: Room CADR Physics, PWA Offline Service Worker & Geolocation](file:///docs/lld/07-room-cadr-and-pwa-offline-architecture.md) — Exponential clearance decay, Cache-First service worker, and Haversine great-circle matching.
+
+---
+
+## 6. Advanced Subsystem Component Interfaces
+
+### 6.1 CADR Calculator Interface (`src/js/cadr-calculator.js`)
+```javascript
+/**
+ * Room geometry specification.
+ * @typedef {Object} RoomDimensions
+ * @property {number} length - Length in feet or meters.
+ * @property {number} width - Width in feet or meters.
+ * @property {number} height - Height in feet or meters.
+ * @property {'ft'|'m'} unit - Dimensional unit system.
+ */
+
+/**
+ * Computes room volume, ACH, and clearance time milestones.
+ * @param {RoomDimensions} dimensions
+ * @param {number} cadrCfm - Clean Air Delivery Rate in CFM.
+ * @returns {{ volumeCuFt: number, volumeCuM: number, ach: number, t50Min: number, t90Min: number, t99Min: number }}
+ */
+export function calculateRoomClearance(dimensions, cadrCfm) {}
+```
+
+### 6.2 Service Worker Registrar & PWA Lifecycle Interface
+```javascript
+/**
+ * Registers Progressive Web App service worker with offline status telemetry.
+ * @param {string} swPath - Path to service worker script ('sw.js').
+ * @returns {Promise<ServiceWorkerRegistration|null>}
+ */
+export async function registerServiceWorker(swPath = 'sw.js') {}
+```
+
+### 6.3 Haversine Geolocation Nearest-Basin Matcher Interface
+```javascript
+/**
+ * Computes Haversine great-circle distance between two coordinates in kilometers.
+ * @param {number} lat1 - Latitude 1 in degrees.
+ * @param {number} lon1 - Longitude 1 in degrees.
+ * @param {number} lat2 - Latitude 2 in degrees.
+ * @param {number} lon2 - Longitude 2 in degrees.
+ * @returns {number} Distance in kilometers.
+ */
+export function haversineDistanceKm(lat1, lon1, lat2, lon2) {}
+```
+
 

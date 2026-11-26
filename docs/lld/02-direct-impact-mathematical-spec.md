@@ -162,3 +162,34 @@ export function kahanNeumaierSum(values) {
 }
 ```
 
+---
+
+## 7. Dynamic Multi-Room CADR Clearance Differential Calculus
+
+Indoor particulate concentration in a room undergoing active air filtration is modeled by the first-order differential decay equation:
+
+$$V \frac{dC(t)}{dt} = - \lambda_{\text{total}} V C(t) \implies C(t) = C_0 \cdot \exp(-\lambda_{\text{total}} \cdot t)$$
+
+Where:
+- $V$: Effective room volume ($ft^3$ or $m^3$).
+- $\text{CADR}$: Clean Air Delivery Rate in $\text{CFM}$ (or $m^3/h$).
+- $\lambda_{\text{clean}} = \frac{\text{CADR} \times 60}{V} \quad (\text{ACH or h}^{-1})$.
+- $\lambda_{\text{total}} = \lambda_{\text{clean}} + \lambda_{\text{nat}} + k_{\text{dep}} \approx \lambda_{\text{clean}} + 0.50\text{ h}^{-1}$.
+
+### Particulate Clearance Milestones ($t$ in minutes):
+- $t_{50\%} = \frac{\ln(2)}{\lambda_{\text{total}}} \times 60 = \frac{0.693147}{\lambda_{\text{total}}} \times 60$
+- $t_{90\%} = \frac{\ln(10)}{\lambda_{\text{total}}} \times 60 = \frac{2.302585}{\lambda_{\text{total}}} \times 60$
+- $t_{99\%} = \frac{\ln(100)}{\lambda_{\text{total}}} \times 60 = \frac{4.605170}{\lambda_{\text{total}}} \times 60$
+
+---
+
+## 8. Comparative Inhaled Dose Visualization Formula
+
+To quantify and visually contrast exposure risk, the engine computes:
+$$\text{Dose Reduction \%} = \frac{D_{\text{unshielded}} - D_{\text{protected}}}{D_{\text{unshielded}}} \times 100\%$$
+
+Where:
+- $D_{\text{unshielded}}$: Unmitigated outdoor transit dosage ($\alpha_{\text{inf}} = 0.85$, zero mask filtration).
+- $D_{\text{protected}}$: CleanAir Guardian optimized diurnal schedule ($N95$ protection factor $\eta_{\text{mask}} \ge 0.95$, active CR-box indoor purification $C_{\text{indoor}} \le 15\,\mu\text{g/m}^3$).
+
+

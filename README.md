@@ -6,11 +6,13 @@
 > **Target AI Platform:** **Google Gemini 3.8 Flash** (`gemini-3.8-flash`) / Google Antigravity Ecosystem  
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/piyushmakhija28/prompt-war-challenge-6-clean-air-assistant)
+[![Build Status](https://github.com/piyushmakhija28/prompt-war-challenge-6-clean-air-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/piyushmakhija28/prompt-war-challenge-6-clean-air-assistant/actions)
 [![Branch](https://img.shields.io/badge/Branch-Single_main_only-success.svg)](#)
-[![Size](https://img.shields.io/badge/Repo_Size-%3C_2_MB_Compliant-brightgreen.svg)](#)
+[![Size](https://img.shields.io/badge/Repo_Size-%3C_1_MB_Compliant-brightgreen.svg)](#)
 [![AI Engine](https://img.shields.io/badge/AI_Engine-Google_Gemini_3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
-[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](file:///VERSION)
-[![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-27_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
+[![Tests](https://img.shields.io/badge/Tests-40_Passed_%7C_10k_Fuzz-success.svg)](#)
+[![PWA](https://img.shields.io/badge/PWA-Offline_Ready-purple.svg)](#)
+[![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-28_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](#)
 
 ---
@@ -185,7 +187,8 @@ prompt-war-challenge-6-clean-air-assistant/
 │   │   ├── 03-component-design-and-interfaces.md # JavaScript Module Interfaces & JSDoc Contracts
 │   │   ├── 04-data-structures-and-algorithms.md  # Master Big-O Matrix, Vulnerability Bitmasks & Ring Buffers
 │   │   ├── 05-state-management-and-event-loop.md # Unidirectional Data Flow, Microtasks & FastDOM Batching
-│   │   └── 06-error-handling-and-algebraic-types.md # Branded Physics Units, Result Monads & Error Taxonomy
+│   │   ├── 06-error-handling-and-algebraic-types.md # Branded Physics Units, Result Monads & Error Taxonomy
+│   │   └── 07-room-cadr-and-pwa-offline-architecture.md # CADR Differential Calculus, PWA Caching & Geolocation
 │   ├── ui-ux/                         # UI/UX Ergonomics & Accessibility Specifications
 │   │   ├── 01-design-system-and-tokens.md # Glassmorphic Tokens, Spacing, & AQI Themes
 │   │   └── 02-accessibility-and-a11y-matrix.md # WCAG 2.1 AA APCA Contrast Audit & ARIA Trees

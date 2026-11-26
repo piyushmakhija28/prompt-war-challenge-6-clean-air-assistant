@@ -238,3 +238,20 @@ export class DiurnalRingBuffer {
 2. **Ring Buffer Pointer Convergence:**  
    $$\text{head}_{t+1} = (\text{head}_t + 1) \pmod N \implies \text{head} \in [0, N-1] \quad \forall t \ge 0$$  
    *Proof:* Direct consequence of Euclidean division with divisor $N > 0$. Buffer overflow is structurally precluded.
+
+---
+
+## 6. Advanced Algorithms & Geometrical Data Structures
+
+### 6.1 Haversine Great-Circle Distance Metric
+For geolocation coordinate matching, the distance metric avoids Euclidean approximations which fail across spherical latitudes:
+$$d = 2 R \cdot \text{atan2}\left(\sqrt{a}, \sqrt{1 - a}\right)$$
+Where $a = \sin^2(\Delta \phi / 2) + \cos(\phi_1)\cos(\phi_2)\sin^2(\Delta \psi / 2)$.
+- **Time Complexity:** $O(1)$ per basin evaluation $\implies O(M)$ across $M$ preset basins ($M=9$).
+- **Space Complexity:** $O(1)$ stack allocation with zero heap allocation.
+
+### 6.2 Exponential Particulate Decay Monoid
+Room clearance behaves as a transformation monoid $(\mathcal{T}, \circ, \text{id})$:
+$$\mathcal{T}(t_1) \circ \mathcal{T}(t_2) = \mathcal{T}(t_1 + t_2) \implies \exp(-\lambda t_1) \cdot \exp(-\lambda t_2) = \exp(-\lambda(t_1 + t_2))$$
+Guarantees associativity and idempotence under composable filtration periods.
+
