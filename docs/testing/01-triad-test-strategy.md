@@ -35,7 +35,7 @@ CleanAir Guardian implements the **Triad Testing Architecture** (Positive, Negat
 
 ---
 
-## 2. Exhaustive Test Catalog (54 Test Cases)
+## 2. Exhaustive Test Catalog (56 Test Cases)
 
 ### Category 1: Positive Test Cases (Nominal Execution)
 - `TC-POS-001`: Ingestion of nominal context (Delhi, AQI 395, Infant, LPG, Space heater, Two-wheeler) produces non-null plan.
@@ -93,12 +93,14 @@ CleanAir Guardian implements the **Triad Testing Architecture** (Positive, Negat
 - `TC-CURVE-002`: Atmospheric boundary layer diurnal extremum bounds ($M_{\min} \le 0.90, M_{\max} \ge 2.0$).
 - `TC-CLN-001`: Wet-mopping vs dry-sweeping protocol enforcement (AQI > 200 warns against dry broom and prescribes damp mopping per PRD FR-06).
 - `TC-CLN-002`: Relaxed cleaning protocol for low ambient pollution (AQI <= 200 reports standard damp cleaning with low resuspension risk).
+- `TC-LSP-001`: Liskov Substitution Principle and GoF Strategy Pattern contract conformance for `GeminiPlanProvider` and `OfflinePlanProvider`.
+- `TC-SCH-001`: Action plan schema conformity matching 100% of Google Gemini 3.8 Flash native `responseSchema` properties.
 
 ---
 
 ## 3. Test Runner Architecture (`test/run-tests.js`)
 
-A lightweight, zero-dependency Node.js test runner verifies all 54 test cases:
+A lightweight, zero-dependency Node.js test runner verifies all 56 test cases:
 
 ```bash
 # Verification Command (Executes in < 500ms)

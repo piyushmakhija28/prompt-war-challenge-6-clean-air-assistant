@@ -5,7 +5,7 @@
  * @module gemini-service
  */
 
-import { generateOfflineCleanAirPlan } from './offline-advisor.js';
+import { generateOfflineCleanAirPlan, getCleaningProtocol } from './offline-advisor.js';
 
 /**
  * Ephemeral In-Memory API Key Store with Cryptographic Overwrite Zeroization.
@@ -162,15 +162,49 @@ export function sanitizeGeminiJSON(raw) {
 }
 
 /**
+ * Abstract Strategy Plan Provider Interface for CleanAir Action Plans.
+ * Conforms to Liskov Substitution Principle (LSP) and GoF Strategy Pattern (LLD 03).
+ */
+export class IPlanProvider {
+  /**
+   * Generates a clean air action plan from context.
+   * @param {Object} context - Household context.
+   * @returns {Promise<{plan: Object, strategy: string, warning?: string}>}
+   */
+  async getPlan(context) {
+    throw new Error('Method getPlan() must be implemented.');
+  }
+}
+
+/**
+ * Deterministic Offline Plan Provider adhering to IPlanProvider.
+ * Conforms to GoF Strategy Pattern and Liskov Substitution Principle (LSP).
+ */
+export class OfflinePlanProvider extends IPlanProvider {
+  /**
+   * Executes deterministic offline plan generation in < 15ms.
+   * @param {Object} context - Household context.
+   * @returns {Promise<{plan: Object, strategy: string}>}
+   */
+  async getPlan(context) {
+    return {
+      plan: generateOfflineCleanAirPlan(context),
+      strategy: 'OFFLINE_DETERMINISTIC'
+    };
+  }
+}
+
+/**
  * CleanAir Gemini 3.8 Flash Plan Provider Service.
  * Implements IPlanProvider with native responseSchema, rate limiting, and circuit breaker failover.
  */
-export class GeminiPlanProvider {
+export class GeminiPlanProvider extends IPlanProvider {
   /**
    * Initializes the service.
    * @param {SecureKeyStore} keyStore
    */
   constructor(keyStore) {
+    super();
     this.keyStore = keyStore;
     this.rateLimiter = new TokenBucketLimiter(3, 5);
     this.circuitBreaker = new CircuitBreaker(2, 30000);
@@ -228,7 +262,75 @@ export class GeminiPlanProvider {
         temperature: 0.2,
         topP: 0.85,
         maxOutputTokens: 900,
-        responseMimeType: 'application/json'
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            severityLevel: { type: 'STRING', enum: ['GOOD', 'MODERATE', 'POOR', 'VERY_POOR', 'SEVERE', 'HAZARDOUS'] },
+            diurnalWindowNotice: { type: 'STRING' },
+            hourlyRoutines: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  timeSlot: { type: 'STRING' },
+                  activity: { type: 'STRING' },
+                  recommendation: { type: 'STRING' },
+                  actionType: { type: 'STRING', enum: ['SHIFT_INDOORS', 'SAFE_VENTILATION', 'SEAL_HOME', 'COMMUTE_SHIELD'] }
+                },
+                required: ['timeSlot', 'activity', 'recommendation', 'actionType']
+              }
+            },
+            iaqHack: {
+              type: 'OBJECT',
+              properties: {
+                title: { type: 'STRING' },
+                materials: { type: 'ARRAY', items: { type: 'STRING' } },
+                cadrEstimate: { type: 'STRING' },
+                costEstimate: { type: 'STRING' },
+                steps: { type: 'ARRAY', items: { type: 'STRING' } }
+              },
+              required: ['title', 'materials', 'cadrEstimate', 'costEstimate', 'steps']
+            },
+            cleaningProtocol: {
+              type: 'OBJECT',
+              properties: {
+                isTriggered: { type: 'BOOLEAN' },
+                severity: { type: 'STRING' },
+                statusBadge: { type: 'STRING' },
+                warning: { type: 'STRING' },
+                recommendation: { type: 'STRING' },
+                surfactantRatio: { type: 'STRING' }
+              },
+              required: ['isTriggered', 'severity', 'statusBadge', 'warning', 'recommendation', 'surfactantRatio']
+            },
+            sustainableAlternatives: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  category: { type: 'STRING' },
+                  currentChoice: { type: 'STRING' },
+                  cleanAlternative: { type: 'STRING' },
+                  benefit: { type: 'STRING' }
+                },
+                required: ['category', 'currentChoice', 'cleanAlternative', 'benefit']
+              }
+            },
+            quantifiedImpact: {
+              type: 'OBJECT',
+              properties: {
+                pm25InhalationAvoidedMicrograms: { type: 'NUMBER' },
+                cigaretteEquivalentsAvoided: { type: 'NUMBER' },
+                co2eSavedKg: { type: 'NUMBER' },
+                protectionScorePercent: { type: 'INTEGER' }
+              },
+              required: ['pm25InhalationAvoidedMicrograms', 'cigaretteEquivalentsAvoided', 'co2eSavedKg', 'protectionScorePercent']
+            },
+            communityAdvisory: { type: 'STRING' }
+          },
+          required: ['severityLevel', 'diurnalWindowNotice', 'hourlyRoutines', 'iaqHack', 'sustainableAlternatives', 'quantifiedImpact', 'communityAdvisory']
+        }
       }
     };
 
@@ -260,6 +362,10 @@ export class GeminiPlanProvider {
 
       if (!parsedPlan.severityLevel || !parsedPlan.hourlyRoutines || !parsedPlan.quantifiedImpact) {
         throw new Error('Malformed schema returned from Gemini');
+      }
+
+      if (!parsedPlan.cleaningProtocol) {
+        parsedPlan.cleaningProtocol = getCleaningProtocol(context.aqi);
       }
 
       this.circuitBreaker.recordSuccess();

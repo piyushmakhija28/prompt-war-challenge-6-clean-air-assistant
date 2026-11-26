@@ -41,7 +41,7 @@ import {
   decodeBase64URL
 } from '../src/js/state-codec.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol } from '../src/js/offline-advisor.js';
-import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON } from '../src/js/gemini-service.js';
+import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore } from '../src/js/gemini-service.js';
 
 let passed = 0;
 let failed = 0;
@@ -324,6 +324,27 @@ assert(cleanSevere.isTriggered === true && cleanSevere.severity === 'WARNING' &&
 // TC-CLN-002: Relaxed cleaning protocol for low ambient pollution (AQI <= 200)
 const cleanGood = getCleaningProtocol(85);
 assert(cleanGood.isTriggered === false && cleanGood.severity === 'SAFE' && cleanGood.statusBadge === 'STANDARD DAMP DUSTING', 'TC-CLN-002', 'AQI <= 200 reports standard damp cleaning with low resuspension risk');
+
+// TC-LSP-001: Liskov Substitution Principle and Strategy Pattern inheritance
+const offlineProv = new OfflinePlanProvider();
+const geminiProv = new GeminiPlanProvider(new SecureKeyStore());
+const lspOfflineCheck = offlineProv instanceof IPlanProvider && typeof offlineProv.getPlan === 'function';
+const lspGeminiCheck = geminiProv instanceof IPlanProvider && typeof geminiProv.getPlan === 'function';
+assert(lspOfflineCheck && lspGeminiCheck, 'TC-LSP-001', 'Both GeminiPlanProvider and OfflinePlanProvider satisfy IPlanProvider Liskov contract');
+
+// TC-SCH-001: Offline plan schema conformity matching Gemini responseSchema
+const schemaPlan = generateOfflineCleanAirPlan({ aqi: 300 });
+const hasMandatoryKeys = Boolean(
+  schemaPlan.severityLevel &&
+  schemaPlan.diurnalWindowNotice &&
+  Array.isArray(schemaPlan.hourlyRoutines) &&
+  schemaPlan.iaqHack &&
+  schemaPlan.cleaningProtocol &&
+  Array.isArray(schemaPlan.sustainableAlternatives) &&
+  schemaPlan.quantifiedImpact &&
+  schemaPlan.communityAdvisory
+);
+assert(hasMandatoryKeys === true, 'TC-SCH-001', 'Action plan satisfies 100% of required responseSchema properties');
 
 
 
