@@ -1,0 +1,38 @@
+%% State Machine Diagram: Diurnal Atmospheric Inversion Cycle
+stateDiagram-v2
+    [*] --> NocturnalDormant : 22:00 (Sunset cooling)
+
+    state NocturnalDormant {
+        [*] --> InversionForming
+        InversionForming : Radiation cooling establishes ground thermal cap
+        InversionForming : PBL height collapses to ~100m
+    }
+
+    NocturnalDormant --> MorningTrap : 06:00 (Dawn & Morning Rush)
+
+    state MorningTrap {
+        [*] --> PeakHazardSpike
+        PeakHazardSpike : Vehicular emissions trapped beneath inversion cap
+        PeakHazardSpike : Ground PM2.5 spikes 200% - 250% above average
+        PeakHazardSpike : Critical protective protocol: Zero outdoor exertion
+    }
+
+    MorningTrap --> SolarDispersal : 12:30 (Solar Heating)
+
+    state SolarDispersal {
+        [*] --> ConvectiveMixing
+        ConvectiveMixing : Solar radiation breaks ground inversion lid
+        ConvectiveMixing : PBL height expands to ~750m
+        ConvectiveMixing : Only safe diurnal window: 15-min controlled aeration
+    }
+
+    SolarDispersal --> EveningTrap : 18:00 (Dusk Cooling)
+
+    state EveningTrap {
+        [*] --> ReCondensation
+        ReCondensation : Surface air re-cools rapidly
+        ReCondensation : Evening rush traffic and cooking fumes trapped
+        ReCondensation : Re-seal home; activate Corsi-Rosenthal filtration
+    }
+
+    EveningTrap --> NocturnalDormant : 22:00

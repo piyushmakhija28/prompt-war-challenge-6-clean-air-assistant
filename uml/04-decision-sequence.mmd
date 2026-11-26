@@ -1,0 +1,40 @@
+%% Sequence Diagram: User Context to Dual-Engine Clean Air Plan
+sequenceDiagram
+    autonumber
+    actor User as User / Family Member
+    participant UI as app.js (UI Controller)
+    participant Engine as air-quality-engine.js
+    participant Calc as impact-calculator.js
+    participant Router as Dual-Engine Router
+    participant Gemini as Google Gemini 3.8 Flash
+    participant Offline as offline-advisor.js
+
+    User->>UI: Input AQI 395, Infant & Asthma, LPG, Two-Wheeler
+    UI->>Engine: getDiurnalInversionState(currentHour)
+    Engine-->>UI: MORNING_TRAP (Peak Hazard, Factor 2.15x)
+    UI->>Engine: calculateVulnerabilityMultiplier(['infant', 'asthma'])
+    Engine-->>UI: K_vuln = 2.25
+
+    UI->>Router: routePlanRequest(context)
+    alt Gemini API Key Available & Online
+        Router->>Gemini: POST /v1beta/models/gemini-3.8-flash:generateContent
+        alt Response HTTP 200 OK
+            Gemini-->>Router: Validated CleanAirActionPlan JSON
+            Router-->>UI: Return Generative Plan
+        else Timeout (>8s) or HTTP 429
+            Router->>Offline: generateOfflinePlan(context)
+            Offline-->>Router: Deterministic Action Plan
+            Router-->>UI: Return Offline Fallback Plan (with ambient notice)
+        end
+    else No API Key or Offline
+        Router->>Offline: generateOfflinePlan(context)
+        Offline-->>Router: Deterministic Action Plan
+        Router-->>UI: Return Instant Deterministic Plan (<15ms)
+    end
+
+    UI->>Calc: calculateParticulateAvoidance(395, 2h, 'CHILD', true)
+    Calc-->>UI: 118.5 µg avoided (1.78 Cigarettes equivalent)
+    UI->>Calc: calculateCarbonAvoided('two_wheeler', 15km)
+    Calc-->>UI: 0.65 kg CO2e saved
+    UI->>UI: Reconcile DOM & Update Glassmorphic Cards
+    UI-->>User: Display Plan, IAQ Hack, Schedule, & WhatsApp Copy Button

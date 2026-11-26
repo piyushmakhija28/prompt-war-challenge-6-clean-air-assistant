@@ -1,0 +1,16 @@
+%% C4 Level 2: Container Diagram for CleanAir Guardian
+graph TD
+    classDef container fill:#1168BD,stroke:#0E5A9E,stroke-width:2px,color:#FFF;
+    classDef ext fill:#999999,stroke:#666666,stroke-width:2px,color:#FFF;
+
+    SPA["Single-Page Web Application<br/>[Container: HTML5, CSS3, ES6+]<br/>Renders glassmorphic UI, captures inputs, executes DOM updates"]:::container
+    MATH["Mathematical & Inversion Engine<br/>[Container: ES6 JavaScript Modules]<br/>Executes boundary layer formulas, dosage calculus, and carbon math"]:::container
+    ROUTER["Dual-Engine Router & Advisor<br/>[Container: ES6 Module]<br/>Mediates between Gemini 3.8 Flash and Deterministic Offline Engine"]:::container
+    STATE["Stateless URL Hash Storage<br/>[Container: Browser Location API]<br/>Serializes #v1=... Base64URL state without database requirements"]:::container
+    GEMINI["Google Gemini API<br/>[External Container: Cloud REST]<br/>Generates generative reasoning over HTTPS"]:::ext
+
+    SPA -->|"Delegates calculations"| MATH
+    SPA -->|"Requests action plan"| ROUTER
+    SPA -->|"Reads / writes hash state"| STATE
+    ROUTER -->|"Evaluates offline fallback rules"| MATH
+    ROUTER -->|"Calls REST API with timeout & backoff"| GEMINI

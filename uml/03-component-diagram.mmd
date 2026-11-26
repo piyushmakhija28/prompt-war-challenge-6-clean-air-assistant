@@ -1,0 +1,23 @@
+%% C4 Level 3: Component Diagram for CleanAir Guardian
+graph TD
+    classDef comp fill:#1168BD,stroke:#0E5A9E,stroke-width:2px,color:#FFF;
+    classDef data fill:#2D3E50,stroke:#1A252F,stroke-width:2px,color:#FFF;
+
+    APP["app.js<br/>[UI Controller & Event Bus]<br/>Coordinates UI events, tab navigation, and DOM reconciliation"]:::comp
+    CONFIG["config.js<br/>[Configuration & Constants]<br/>Stores AQI bands, emission factors, and default presets"]:::data
+    INVERSION["air-quality-engine.js<br/>[Diurnal Atmospheric Engine]<br/>Calculates boundary layer height, peak hazard hours, and K_vuln"]:::comp
+    CALC["impact-calculator.js<br/>[Direct Impact Engine]<br/>Calculates PM2.5 inhalation avoided, cigarettes avoided, and CO2e"]:::comp
+    OFFLINE["offline-advisor.js<br/>[Deterministic Rule Engine]<br/>Generates 100% parity plan without external network dependency"]:::comp
+    GEMINI["gemini-service.js<br/>[Google GenAI Client]<br/>Dispatches REST request, validates schema, handles retry jitter"]:::comp
+
+    APP --> CONFIG
+    APP --> INVERSION
+    APP --> CALC
+    APP --> OFFLINE
+    APP --> GEMINI
+
+    OFFLINE --> CONFIG
+    OFFLINE --> INVERSION
+    OFFLINE --> CALC
+
+    GEMINI --> CONFIG

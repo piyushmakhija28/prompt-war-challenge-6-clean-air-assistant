@@ -1,0 +1,17 @@
+%% C4 Level 1: System Context Diagram for CleanAir Guardian
+graph TD
+    classDef person fill:#08427B,stroke:#073B6F,stroke-width:2px,color:#FFF;
+    classDef system fill:#1168BD,stroke:#0E5A9E,stroke-width:2px,color:#FFF;
+    classDef ext fill:#999999,stroke:#666666,stroke-width:2px,color:#FFF;
+
+    USER["Urban Family / Community Member<br/>[Person]<br/>Navigates winter smog, manages household routine and vulnerabilities"]:::person
+    SYS["CleanAir Guardian (VayuRakshak)<br/>[Software System]<br/>GenAI-powered assistant providing low-emission routines, DIY hacks, and direct impact math"]:::system
+    GEMINI["Google Gemini 3.8 Flash API<br/>[External System]<br/>Provides LLM reasoning, empathetic advice, and structured JSON output"]:::ext
+    COMMUNITY["Community Channels<br/>[External System]<br/>WhatsApp groups, school boards, RWA notice boards"]:::ext
+
+    USER -->|"Enters location, AQI, vulnerabilities, cooking/heating/commute"| SYS
+    SYS -->|"Renders tailored routines, Corsi-Rosenthal IAQ hacks, and impact calculus"| USER
+    SYS -->|"Sends sanitized context and JSON schema (TLS 1.3)"| GEMINI
+    GEMINI -->|"Returns structured action plan payload"| SYS
+    SYS -->|"Exports copyable advisories and #v1=... URL states"| COMMUNITY
+    COMMUNITY -->|"Advises neighborhood clusters"| USER
