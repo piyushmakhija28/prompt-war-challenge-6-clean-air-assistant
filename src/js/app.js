@@ -1107,7 +1107,7 @@ export function initApp() {
     btnSaveKey.addEventListener('click', () => {
       keyStore.setKey(inputKey.value);
       inputKey.value = '';
-      setSafeText('key-status-text', 'API Key Active (In-Memory)');
+      setSafeText('key-status-text', '🔒 Active (In-Memory Only — Zero Disk Persistence)');
       triggerPlanGeneration();
     });
   }
@@ -1115,7 +1115,7 @@ export function initApp() {
   if (btnClearKey) {
     btnClearKey.addEventListener('click', () => {
       keyStore.purge();
-      setSafeText('key-status-text', 'No Key (Using Deterministic Offline Engine)');
+      setSafeText('key-status-text', 'Key Purged (Zeroed in RAM) — Operating in Offline Mode');
       triggerPlanGeneration();
     });
   }

@@ -241,6 +241,61 @@ prompt-war-challenge-6-clean-air-assistant/
 
 ---
 
+### 6.1 Enterprise Security & Ephemeral API Key Architecture (Zero-Persistence Guarantee)
+
+A common concern with client-side AI applications is API key security. Users often ask: *"Is my API key safe? Why was there a 'Save Key' button if nothing is stored on the server?"*
+
+To eliminate cognitive friction, the button is explicitly labeled **"Activate (In-Memory)"**, and CleanAir Guardian enforces an uncompromising **5-Pillar Zero-Persistence Security Architecture** conforming strictly to [ADR-009](file:///docs/06-adr/ADR-009-client-side-security-and-key-safety.md):
+
+```
+       [User Pastes Key]
+              │
+              ▼
+   ┌──────────────────────┐
+   │ HTML Password Field  │ ──► Immediately Cleared: `inputKey.value = ''`
+   └──────────────────────┘
+              │
+              ▼
+   ┌────────────────────────────────────────────────────────┐
+   │ Volatile RAM Only (`SecureKeyStore` Uint8Array Buffer) │ ──► NEVER written to:
+   │ (Zero Disk, Zero DB, Zero LocalStorage, Zero Cookies)  │     • localStorage / sessionStorage
+   └────────────────────────────────────────────────────────┘     • Cookies or IndexedDB
+              │                                                   • URL fragment (#b=...)
+              ├──────────────────────────────┐
+              ▼                              ▼
+    [Direct HTTPS Dispatch]         [On Purge or Tab Close]
+              │                              │
+    • Direct to Google TLS 1.3               ▼
+      (generativelanguage.googleapis.com)  `window.crypto.getRandomValues(buf)`
+    • Zero proxy / zero middleware         `buf.fill(0)` (RAM Zeroization)
+    • Zero analytics / zero logging
+```
+
+#### The 5 Pillars of Zero-Persistence Security:
+
+1. **🔒 Zero Persistent Storage (No Disk / No LocalStorage / No Cookies):**
+   - CleanAir Guardian **never** writes your API key to `localStorage`, `sessionStorage`, `document.cookie`, or `IndexedDB`.
+   - Your API key is also strictly excluded from the 5-byte shareable URL hash (`#b=...`). Sharing a deep-link never leaks credentials.
+
+2. **⚡ Immediate DOM Wiping:**
+   - As soon as you click **"Activate (In-Memory)"** or press Enter, `inputKey.value = ''` instantly blanks the HTML password field, preventing browser autofill sniffers or DOM inspection from extracting the key.
+
+3. **🧠 Volatile Closure Memory (`Uint8Array` Binary Buffer):**
+   - The key is held strictly as an encoded `Uint8Array` inside the private closure of `SecureKeyStore` ([src/js/gemini-service.js](file:///src/js/gemini-service.js)).
+   - Storing the key as a binary buffer minimizes plain-text string retention in the JavaScript V8 garbage collection heap.
+
+4. **🛡️ Cryptographic Memory Overwrite Zeroization:**
+   - When you click **"Purge Key"** (or refresh/close the tab), `keyStore.purge()` executes two-stage memory sanitization:
+     1. Overwrites the buffer with cryptographically secure random entropy via `window.crypto.getRandomValues()`.
+     2. Overwrites all bytes with zeroes (`buffer.fill(0)`) before releasing the reference to `null`.
+
+5. **🌐 Direct End-to-End Client $\rightarrow$ Google HTTPS Channel:**
+   - Outbound requests travel directly from your browser to Google's official Gemini API endpoint (`https://generativelanguage.googleapis.com`) over **TLS 1.3**.
+   - There is **zero intermediate proxy, zero backend server, and zero tracking telemetry**. The repository includes strict Content Security Policy (CSP) headers restricting network connections.
+   - **Privacy by Default:** If no API key is provided, CleanAir Guardian functions 100% offline using its sub-15ms deterministic physics and meteorological engine.
+
+---
+
 ## 🖥️ 7. Local Dev Server Guide ("Bina Deploy Ke Kaise Chalayein")
 
 > [!WARNING]
@@ -373,7 +428,7 @@ Use this step-by-step matrix to manually verify every user journey, visual eleme
 | **TS-05** | **4-Hack IAQ Engineering Catalog & Mopping Standard** *(Community Hacks)* | Verify hack tabs switch smoothly and dynamic wet-mopping warning triggers when AQI > 200. | 1. Scroll to **"4-Hack IAQ Engineering Catalog"**.<br>2. Click across tabs: `Corsi-Rosenthal Box` $\rightarrow$ `PC-Fan Nursery Box` $\rightarrow$ `Wet-Towel Emergency` $\rightarrow$ `Kitchen Exhaust Charcoal`.<br>3. Check the **"PRD FR-06 Wet-Mopping Standard"** banner below the catalog. | • Each tab loads specifications: CFM, estimated build cost (\$2 to \$35), noise level (dB), and step-by-step instructions.<br>• Tab buttons have minimum $44\text{px}$ touch height and smooth active indicator.<br>• When AQI > 200, the wet-mopping banner displays an active alert: *"⚠️ High PM Alert: Replace dry broom sweeping with 0.1% surfactant wet-mopping to prevent 75% particulate resuspension."* | All 4 hacks render correct build schematics; wet-mopping standard dynamically triggers based on AQI threshold. |
 | **TS-06** | **Stateless 5-Byte Deep-Link URL Serialization** *(Community Sharing)* | Verify complete application state compresses into a 5-byte Base64URL hash and re-hydrates in fresh session. | 1. Configure custom settings (e.g., City: Noida, AQI: 395, Two-Wheeler commute, Corsi-Rosenthal selected).<br>2. Click **"Share Direct Link"** (`#btn-copy-link`).<br>3. Verify clipboard contains URL with `#b=...` hash.<br>4. Open an **Incognito / Private browser window**.<br>5. Paste the copied URL and press Enter. | • Application boots instantly from the URL fragment `#b=...`.<br>• City, AQI, vulnerability tags, commute mode, and CADR parameters restore to exact previously configured values.<br>• ARIA announcement confirms: *"Direct share link copied to clipboard"*. | 100% state restoration from a compact $\le 7$-character hash with zero backend database storage. |
 | **TS-07** | **Bilingual WhatsApp Advisory & Refrigerator Protocol Printing** *(Community Outreach)* | Verify localized bilingual WhatsApp broadcast formatting and clean `@media print` layout. | 1. Scroll to the **"Community Action Plan & Advisory"** section.<br>2. Click **"Copy WhatsApp Advisory"** (`#btn-whatsapp-advisory`).<br>3. Toggle language button to **"हिन्दी"** (`#btn-toggle-language`).<br>4. Click **"Print Clean Air Protocol"** (`#btn-print-plan`) or press `Ctrl+P`. | • English advisory copies formatted WhatsApp bulleted text with warning levels, recommended dispersal window, and hack specs.<br>• Hindi toggle re-renders community advisory into pure Devanagari Hindi text (`"वायु रक्षा सलाह"`).<br>• Print dialog renders high-contrast, clean black-and-white 1-page protocol with form inputs hidden, ideal for refrigerator posting. | WhatsApp text is properly emoji-bulleted; Hindi translation is natural and accurate; print layout fits neatly without clipped content. |
-| **TS-08** | **Dual-Engine AI Reasoning: Offline Deterministic vs Live Gemini 3.8 Flash** | Verify dual-engine fallback: sub-15ms deterministic plan vs live Google Gemini 3.8 Flash. | 1. Click **"Generate Clean Air Plan"** without entering any API key.<br>2. Observe response time and generated plan content.<br>3. Open settings drawer (top-right cog), enter valid Google Gemini API Key (`AIzaSy...`), and click "Save Key".<br>4. Click **"Generate Clean Air Plan"** again. | • **Without API Key (Offline Mode):** Plan generates in $<15\text{ms}$ using `offline-advisor.js` via the GoF `PlanFactory` normalization engine with identical JSON schema shape.<br>• **With API Key (Online Mode):** Engine issues live API call to Google Gemini 3.8 Flash (`gemini-3.8-flash`), streaming contextual reasoning tailored to the user's exact profile. | Zero app failure or crash regardless of network availability or API key presence; seamless graceful degradation. |
+| **TS-08** | **Dual-Engine AI Reasoning: Offline Deterministic vs Live Gemini 3.8 Flash** | Verify dual-engine fallback: sub-15ms deterministic plan vs live Google Gemini 3.8 Flash. | 1. Click **"Generate Clean Air Plan"** without entering any API key.<br>2. Observe response time and generated plan content.<br>3. Open settings drawer (top-right cog), enter valid Google Gemini API Key (`AIzaSy...`), and click "Activate (In-Memory)".<br>4. Click **"Generate Clean Air Plan"** again. | • **Without API Key (Offline Mode):** Plan generates in $<15\text{ms}$ using `offline-advisor.js` via the GoF `PlanFactory` normalization engine with identical JSON schema shape.<br>• **With API Key (Online Mode):** Engine issues live API call to Google Gemini 3.8 Flash (`gemini-3.8-flash`), streaming contextual reasoning tailored to the user's exact profile. | Zero app failure or crash regardless of network availability or API key presence; seamless graceful degradation. |
 
 ---
 
