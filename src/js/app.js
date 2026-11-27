@@ -981,12 +981,7 @@ export function initApp() {
     });
   }
 
-  // 8. Progressive Web App Service Worker Registration
-  if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-    navigator.serviceWorker.register('sw.js').catch(() => {
-      // Gracefully silent for offline / local sandbox environments
-    });
-  }
+  registerServiceWorker('sw.js');
 
   // Initial render of diurnal spline curve
   renderDiurnalSplineCurve();
@@ -994,6 +989,69 @@ export function initApp() {
   // Initial generation
   triggerPlanGeneration();
 }
+
+/**
+ * Registers Progressive Web App service worker with offline status telemetry.
+ * Conforms to LLD 03 §6.2 and W3C Service Worker API standards.
+ *
+ * @param {string} [swPath='sw.js'] - Path to service worker script.
+ * @returns {Promise<ServiceWorkerRegistration|null>}
+ */
+export async function registerServiceWorker(swPath = 'sw.js') {
+  if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    try {
+      const reg = await navigator.serviceWorker.register(swPath);
+      return reg;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Master UI Controller coordinating EventBus, PlanProvider, and DOM reconciliation.
+ * Conforms to HLD 02 §2.4 C4 Class Model.
+ */
+export class AppController {
+  /**
+   * Initializes AppController with injected dependencies.
+   * @param {EventBus} bus - Event bus instance.
+   * @param {IPlanProvider} provider - Plan provider instance.
+   */
+  constructor(bus, provider) {
+    this.eventBus = bus;
+    this.planProvider = provider;
+    this.state = state;
+  }
+
+  /**
+   * Initializes DOM bindings, event listeners, and default state hydration.
+   */
+  init() {
+    initApp();
+  }
+
+  /**
+   * Handles user context change events.
+   * @param {Event} [e] - DOM event.
+   */
+  onContextChange(e) {
+    syncUrlHash();
+    triggerPlanGeneration();
+  }
+
+  /**
+   * Triggers active plan view reconciliation.
+   * @param {Object} [plan] - Action plan to render.
+   */
+  renderView(plan) {
+    if (plan) state.activePlan = plan;
+    renderActivePlan();
+  }
+}
+
+export const appController = new AppController(globalEventBus, planProvider);
 
 if (typeof window !== 'undefined') {
   window.addEventListener('DOMContentLoaded', () => {

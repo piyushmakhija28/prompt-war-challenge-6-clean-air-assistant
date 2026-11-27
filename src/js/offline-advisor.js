@@ -381,4 +381,25 @@ export class PlanFactory {
       bilingualAdvisory: raw.bilingualAdvisory ? Object.freeze(raw.bilingualAdvisory) : undefined
     });
   }
+
+  /**
+   * Validates whether an action plan object conforms to the mandatory CleanAirActionPlan schema.
+   * Conforms to HLD 02 §2.4 C4 Class Model and API Contract 03 §2.1.
+   *
+   * @param {Object} plan - Action plan candidate.
+   * @returns {boolean} True if plan satisfies all schema invariants.
+   */
+  static validateSchema(plan) {
+    if (!plan || typeof plan !== 'object') return false;
+    return Boolean(
+      typeof plan.severityLevel === 'string' &&
+      typeof plan.diurnalWindowNotice === 'string' &&
+      Array.isArray(plan.hourlyRoutines) &&
+      plan.iaqHack && typeof plan.iaqHack === 'object' &&
+      Array.isArray(plan.sustainableAlternatives) &&
+      plan.quantifiedImpact && typeof plan.quantifiedImpact === 'object' &&
+      typeof plan.quantifiedImpact.pm25InhalationAvoidedMicrograms === 'number' &&
+      typeof plan.communityAdvisory === 'string'
+    );
+  }
 }
