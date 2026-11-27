@@ -241,6 +241,7 @@ async function main() {
   const chromeProc = spawn(chromePath, [
     '--headless=new',
     `--remote-debugging-port=${CDP_PORT}`,
+    '--window-size=1280,1024',
     '--remote-allow-origins=*',
     '--no-sandbox',
     '--disable-gpu',
@@ -289,6 +290,12 @@ async function main() {
   await cdp.send('Page.enable');
   await cdp.send('Runtime.enable');
   await cdp.send('DOM.enable');
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    width: 1280,
+    height: 1024,
+    deviceScaleFactor: 1,
+    mobile: false
+  });
 
   const loadPromise = new Promise((resolve) => {
     cdp.on('Page.loadEventFired', resolve);
@@ -393,13 +400,22 @@ async function main() {
     const t50Text = await cdp.evaluate('document.getElementById("cadr-t50").textContent');
     const t90Text = await cdp.evaluate('document.getElementById("cadr-t90").textContent');
     const t99Text = await cdp.evaluate('document.getElementById("cadr-t99").textContent');
+    const cityWidth = await cdp.evaluate('document.getElementById("input-city").getBoundingClientRect().width');
+    const detectBtnWidth = await cdp.evaluate('document.getElementById("btn-detect-location").getBoundingClientRect().width');
+    const detectBtnHeight = await cdp.evaluate('document.getElementById("btn-detect-location").getBoundingClientRect().height');
+    const hackTabHeight = await cdp.evaluate('document.querySelector(".hack-tab-btn").getBoundingClientRect().height');
+
     assert(
       (achText === '9 ACH' || achText === '9.0 ACH') &&
       t50Text === '4.4 min' &&
       t90Text === '14.5 min' &&
-      t99Text === '29.1 min',
+      t99Text === '29.1 min' &&
+      cityWidth >= 240 &&
+      detectBtnWidth === 48 &&
+      detectBtnHeight === 48 &&
+      hackTabHeight >= 44,
       'BR-TEST-005',
-      `Custom room CADR calculator accurately computes 9 ACH and milestone decay times in live DOM (got ${achText})`
+      `Custom room CADR computes 9 ACH and UI controls strictly satisfy Fitts's Law (city width: ${Math.round(cityWidth)}px, detect btn: ${detectBtnWidth}x${detectBtnHeight}px, hack tab height: ${Math.round(hackTabHeight)}px)`
     );
 
     // BR-TEST-006: 4-Hack IAQ Catalog Tab Switching & ARIA Selection
@@ -434,7 +450,10 @@ async function main() {
     if (!fs.existsSync(screenshotDir)) {
       fs.mkdirSync(screenshotDir, { recursive: true });
     }
-    const screenshotData = await cdp.send('Page.captureScreenshot', { format: 'png' });
+    const screenshotData = await cdp.send('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: true
+    });
     const screenshotPath = path.join(screenshotDir, 'ui-ux-browser-verification.png');
     fs.writeFileSync(screenshotPath, Buffer.from(screenshotData.data, 'base64'));
     const screenshotExists = fs.existsSync(screenshotPath) && fs.statSync(screenshotPath).size > 10000;

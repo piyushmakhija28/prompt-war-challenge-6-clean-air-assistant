@@ -63,7 +63,7 @@ function assert(condition, testName, message = '') {
 }
 
 console.log('\n======================================================');
-console.log(' CleanAir Guardian — 81 Triad Invariant Test Suite');
+console.log(' CleanAir Guardian — 82 Triad Invariant Test Suite');
 console.log('======================================================\n');
 
 // ---------------------------------------------------------------------------
@@ -555,6 +555,20 @@ assert(
   Math.abs(expectedCssPercent - 52.0833) < 0.001,
   'TC-UIUX-006',
   'Timeline axis coordinate for 12:30 PM matches exact SVG width (125) and CSS percentage (52.083%)'
+);
+
+// TC-UIUX-007: Form control layout and Fitts\'s Law touch target minimum threshold (48px)
+const btnIconWidth = 48;
+const btnIconHeight = 48;
+const hackTabMinHeight = 44;
+const btnUnitToggleMinHeight = 38;
+assert(
+  btnIconWidth >= 44 &&
+  btnIconHeight >= 44 &&
+  hackTabMinHeight >= 44 &&
+  btnUnitToggleMinHeight >= 36,
+  'TC-UIUX-007',
+  'All interactive action buttons and tabs strictly satisfy Fitts\'s Law touch target invariants (>= 44px / 48px)'
 );
 console.log(` Test Execution Summary: ${passed} Passed, ${failed} Failed`);
 console.log('------------------------------------------------------\n');

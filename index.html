@@ -61,9 +61,9 @@
         <legend class="form-legend">Urban Air Basin</legend>
         <label for="input-city" class="form-label">Location</label>
         <div style="display:flex; gap:8px; align-items:center;">
-          <select id="input-city" class="form-select" style="flex:1;"></select>
-          <button id="btn-detect-location" type="button" class="btn-secondary" style="min-height:48px; padding:0 12px; display:flex; align-items:center; justify-content:center;" title="Detect Nearest Air Basin" aria-label="Detect Nearest Air Basin">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <select id="input-city" class="form-select" style="flex:1; min-width:0;"></select>
+          <button id="btn-detect-location" type="button" class="btn-icon" title="Detect Nearest Air Basin" aria-label="Detect Nearest Air Basin">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="22" y1="12" x2="18" y2="12"></line>
               <line x1="6" y1="12" x2="2" y2="12"></line>
@@ -140,9 +140,9 @@
         <legend class="form-legend">Building Envelope & Infiltration</legend>
         <label for="select-housing-type" class="form-label">Structure Type</label>
         <select id="select-housing-type" class="form-select">
-          <option value="sealed_apartment">Sealed Modern Apartment (Infiltration α = 0.40)</option>
-          <option value="standard_flat" selected>Standard Residential Flat (Infiltration α = 0.65)</option>
-          <option value="drafty_home">Drafty / Unsealed Home (Infiltration α = 0.85)</option>
+          <option value="sealed_apartment">Sealed Modern Apartment (α = 0.40)</option>
+          <option value="standard_flat" selected>Standard Residential Flat (α = 0.65)</option>
+          <option value="drafty_home">Drafty / Unsealed Home (α = 0.85)</option>
         </select>
       </fieldset>
 
@@ -250,15 +250,15 @@
         <button id="btn-copy-advisory" class="btn-secondary" type="button">
           Share / Copy WhatsApp Advisory
         </button>
-        <div style="display:flex; gap:8px;">
-          <button id="btn-toggle-lang" class="btn-secondary" type="button" style="flex:1; min-height:44px; font-size:12px; padding:4px 8px;" title="Switch Advisory Language">
-            Language: <span id="label-current-lang" style="font-weight:700; color:#38bdf8;">English</span> (हिन्दी)
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px;">
+          <button id="btn-toggle-lang" class="btn-secondary" type="button" style="min-height:44px; font-size:12px; padding:4px 8px; display:flex; align-items:center; justify-content:center; gap:4px;" title="Switch Advisory Language">
+            🌐 <span id="label-current-lang" style="font-weight:700; color:#38bdf8;">English</span> (हिन्दी)
           </button>
-          <button id="btn-copy-link" class="btn-secondary" type="button" style="min-height:44px; padding:0 10px; font-size:12px;" title="Copy 5-byte Sharable State URL (Tab 11)">
-            Link 🔗
+          <button id="btn-copy-link" class="btn-secondary" type="button" style="min-height:44px; padding:0 8px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:4px;" title="Copy 5-byte Sharable State URL (Tab 11)">
+            🔗 Link
           </button>
-          <button id="btn-print-protocol" class="btn-secondary" type="button" style="min-height:44px; padding:0 10px; font-size:12px;" title="Print 1-Page Emergency Action Protocol">
-            Print 🖨️
+          <button id="btn-print-protocol" class="btn-secondary" type="button" style="min-height:44px; padding:0 8px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:4px;" title="Print 1-Page Emergency Action Protocol">
+            🖨️ Print
           </button>
         </div>
       </div>

@@ -318,6 +318,30 @@ body {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.btn-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: var(--text-accent);
+}
+
 /* Results Content Area */
 .hero-overview {
   margin-bottom: var(--space-6);
@@ -615,10 +639,11 @@ body {
   color: var(--text-secondary);
   font-size: var(--text-xs);
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 6px 14px;
   border-radius: 4px;
   cursor: pointer;
-  min-height: 32px;
+  min-height: 38px;
+  min-width: 44px;
   transition: all 0.15s ease;
 }
 
@@ -645,7 +670,7 @@ body {
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  padding: 10px 14px 22px 14px;
 }
 
 .cadr-decay-track {
@@ -669,7 +694,13 @@ body {
 
 .cadr-decay-marker-50 { left: 15.051%; background: #38bdf8; }
 .cadr-decay-marker-90 { left: 50.000%; background: #f59e0b; }
-.cadr-decay-marker-99 { left: 100.000%; background: #10b981; }
+.cadr-decay-marker-99 { left: calc(100% - 2px); background: #10b981; }
+
+.cadr-decay-marker-99 .cadr-decay-label {
+  left: auto;
+  right: 0;
+  transform: none;
+}
 
 .cadr-decay-fill {
   height: 100%;
@@ -757,11 +788,15 @@ body {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 6px 10px;
+  min-height: 44px;
+  padding: 8px 14px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.15s ease;
 }
 

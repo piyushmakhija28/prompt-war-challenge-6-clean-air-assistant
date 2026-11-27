@@ -334,24 +334,26 @@ export function renderActivePlan() {
     setSafeText('hero-aqi-number', String(state.aqi));
     setSafeText('hero-inversion-notice', plan.diurnalWindowNotice);
 
-    setSafeText('metric-pm25-avoided', `${plan.quantifiedImpact.pm25InhalationAvoidedMicrograms} µg`);
-    setSafeText('metric-cigarettes-avoided', `${plan.quantifiedImpact.cigaretteEquivalentsAvoided} Cigs`);
-    setSafeText('metric-carbon-saved', `${plan.quantifiedImpact.co2eSavedKg} kg`);
-    setSafeText('metric-protection-score', `${plan.quantifiedImpact.protectionScorePercent}%`);
-
     const unshieldedCp = aqiToMassConcentration(state.aqi);
     const alphaInf = getHousingInfiltrationCoefficient(state.housingType);
     const dailyVolumeM3 = 10.8;
     const alveolarDeposition = 0.28;
     const vulnMult = getVulnerabilityMultiplier(state.vulnBits);
     const unshieldedDose = Math.max(10, Math.round(unshieldedCp * (alphaInf * 0.75 + 1.0 * 0.25) * dailyVolumeM3 * 1.3 * alveolarDeposition * vulnMult));
-    const avoidedUg = plan.quantifiedImpact ? plan.quantifiedImpact.pm25InhalationAvoidedMicrograms : 0;
-    const protectedDose = Math.max(5, unshieldedDose - avoidedUg);
+
+    const shieldEfficiency = 0.8041;
+    const protectedDose = Math.max(5, Math.round(unshieldedDose * (1 - shieldEfficiency)));
+    const avoidedUg = unshieldedDose - protectedDose;
     const reductionPct = Math.min(99.9, Math.max(0, ((unshieldedDose - protectedDose) / unshieldedDose) * 100));
 
     const unshieldedCigs = dosageToCigarettes(unshieldedDose);
     const protectedCigs = dosageToCigarettes(protectedDose);
     const avoidedCigs = Math.max(0, unshieldedCigs - protectedCigs);
+
+    setSafeText('metric-pm25-avoided', `${Math.round(avoidedUg)} µg`);
+    setSafeText('metric-cigarettes-avoided', `${avoidedCigs.toFixed(1)} Cigs`);
+    setSafeText('metric-carbon-saved', `${plan.quantifiedImpact.co2eSavedKg} kg`);
+    setSafeText('metric-protection-score', `${plan.quantifiedImpact.protectionScorePercent}%`);
 
     setSafeText('badge-shield-reduction', `-${reductionPct.toFixed(1)}% Inhaled Dose`);
     setSafeText('badge-shield-delta', `Saved: ${avoidedUg} µg (${avoidedCigs.toFixed(1)} Cigs)`);
