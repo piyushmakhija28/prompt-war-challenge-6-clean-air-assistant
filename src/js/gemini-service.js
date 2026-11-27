@@ -264,9 +264,9 @@ export class OfflinePlanProvider extends IPlanProvider {
  * Prioritizes high-throughput minimal-latency flash-lite models before frontier reasoning models.
  */
 export const GEMINI_MODELS_CASCADE = [
+  'gemini-3.5-flash-lite',
+  'gemini-flash-lite-latest',
   'gemini-3.1-flash-lite',
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
   'gemini-3.8-flash',
   'gemini-flash-latest'
 ];
@@ -417,9 +417,7 @@ export class GeminiPlanProvider extends IPlanProvider {
 
       const modelPayload = JSON.parse(JSON.stringify(payload));
       if (modelName.startsWith('gemini-3')) {
-        modelPayload.generationConfig.thinkingConfig = { thinkingLevel: 'MINIMAL' };
-      } else if (modelName.startsWith('gemini-2.5')) {
-        modelPayload.generationConfig.thinkingConfig = { thinkingBudget: 0 };
+        modelPayload.generationConfig.thinkingConfig = { thinkingLevel: 'LOW' };
       }
 
       try {
@@ -462,9 +460,10 @@ export class GeminiPlanProvider extends IPlanProvider {
 
         this.circuitBreaker.recordSuccess();
 
+        const strategyCode = modelName.replace(/^gemini-/, '').toUpperCase().replace(/[^A-Z0-9]/g, '_');
         return {
           plan: PlanFactory.createPlan(parsedPlan),
-          strategy: modelName === 'gemini-3.8-flash' ? 'GEMINI_3.8_FLASH' : `GEMINI_FALLBACK_${modelName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`
+          strategy: `GEMINI_${strategyCode}`
         };
       } catch (err) {
         lastError = err;

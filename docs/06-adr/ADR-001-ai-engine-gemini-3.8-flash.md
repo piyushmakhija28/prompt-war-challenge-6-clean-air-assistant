@@ -8,9 +8,9 @@ Prompt War Challenge No. 6 requires an intelligent, dynamic assistant capable of
 
 ## Decision
 We select **Google Gemini 3.8 Flash** (`gemini-3.8-flash`) as the primary generative AI engine, backed by an operational 5-model high-availability cascade prioritizing minimal-latency models:
-1. `gemini-3.1-flash-lite` (Ultra-low latency, thinkingLevel: MINIMAL)
-2. `gemini-2.5-flash-lite` (Sub-second response, thinkingBudget: 0)
-3. `gemini-2.5-flash` (Reliable high-throughput flash tier)
+1. `gemini-3.5-flash-lite` (Ultra-low latency, ~1.7s, thinkingLevel: LOW)
+2. `gemini-flash-lite-latest` (Sub-2.5s response, GA Flash-Lite tier)
+3. `gemini-3.1-flash-lite` (Reliable alternative, thinkingLevel: LOW)
 4. `gemini-3.8-flash` (Primary frontier flagship reasoning)
 5. `gemini-flash-latest` (Stable fallback alias)
 
