@@ -1121,6 +1121,9 @@ export async function registerServiceWorker(swPath = 'sw.js') {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
     try {
       const reg = await navigator.serviceWorker.register(swPath);
+      if (reg && typeof reg.update === 'function') {
+        reg.update();
+      }
       return reg;
     } catch {
       return null;

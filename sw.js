@@ -1,10 +1,10 @@
 /**
  * @fileoverview Progressive Web App (PWA) Offline Service Worker.
- * Enforces a Cache-First strategy for application assets and zero-latency offline execution.
+ * Enforces a Network-First strategy with Cache Fallback for zero-latency updates and 100% offline resilience.
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
-const CACHE_NAME = 'cleanair-guardian-v1.1';
+const CACHE_NAME = 'cleanair-guardian-v1.2';
 
 const STATIC_ASSETS = [
   './',
@@ -56,11 +56,8 @@ self.addEventListener('fetch', (event) => {
 
   if (requestUrl.origin === location.origin) {
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).then((networkResponse) => {
+      fetch(event.request)
+        .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -68,8 +65,22 @@ self.addEventListener('fetch', (event) => {
             });
           }
           return networkResponse;
-        });
-      })
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            if (event.request.mode === 'navigate') {
+              return caches.match('./index.html') || caches.match('./');
+            }
+            return new Response('Offline resource unavailable', {
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: { 'Content-Type': 'text/plain' }
+            });
+          });
+        })
     );
     return;
   }

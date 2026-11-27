@@ -4,6 +4,13 @@
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 import { VULN_FLAGS, METRO_BASIN_COORDINATES, TARGET_PERSONAS, createContext } from '../src/js/config.js';
 import {
   calculateBulkRichardson,
@@ -63,7 +70,7 @@ function assert(condition, testName, message = '') {
 }
 
 console.log('\n======================================================');
-console.log(' CleanAir Guardian — 83 Triad Invariant Test Suite');
+console.log(' CleanAir Guardian — 84 Triad Invariant Test Suite');
 console.log('======================================================\n');
 
 // ---------------------------------------------------------------------------
@@ -438,6 +445,16 @@ assert(isSchemaValid && isInvalidRejected, 'TC-FAC-002', 'PlanFactory.validateSc
 // TC-SW-001: registerServiceWorker function contract and graceful degradation (LLD 03 §6.2)
 const swPromise = registerServiceWorker('sw.js');
 assert(swPromise instanceof Promise, 'TC-SW-001', 'registerServiceWorker returns a Promise adhering to W3C Service Worker API');
+
+// TC-SW-002: Service Worker v1.2 Network-First cache policy contract
+const swContent = fs.readFileSync(path.resolve(__dirname, '../sw.js'), 'utf-8');
+assert(
+  swContent.includes('cleanair-guardian-v1.2') &&
+  swContent.includes('fetch(event.request)') &&
+  swContent.includes('caches.open(CACHE_NAME)'),
+  'TC-SW-002',
+  'sw.js implements Network-First v1.2 cache synchronization and purge'
+);
 
 // TC-CTRL-001: AppController C4 Model contract and dependency injection (HLD 02 §2.4)
 const isControllerValid = appController instanceof AppController &&

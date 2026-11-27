@@ -10,7 +10,7 @@
 [![Branch](https://img.shields.io/badge/Branch-Single_main_only-success.svg)](#)
 [![Size](https://img.shields.io/badge/Repo_Size-%3C_1_MB_Compliant-brightgreen.svg)](#)
 [![AI Engine](https://img.shields.io/badge/AI_Engine-Google_Gemini_3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-83_Passed_%7C_10k_Fuzz_%7C_8_CDP-success.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-84_Passed_%7C_10k_Fuzz_%7C_8_CDP-success.svg)](#)
 [![PWA](https://img.shields.io/badge/PWA-Offline_Ready-purple.svg)](#)
 [![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-32_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](#)
@@ -234,7 +234,7 @@ prompt-war-challenge-6-clean-air-assistant/
 | **Code Quality & Architecture** | **High** | **15/15** | Strict Level 2.2 Documentation Governance; modular ES6+ architecture; complete JSDoc typed contracts; zero dead code. |
 | **Security & Privacy** | **High** | **15/15** | STRIDE threat model; OWASP LLM Top 10 mitigations; ephemeral in-memory API key lifecycle; zero PII retention; CSP headers. |
 | **Efficiency & Token Economy** | **Medium** | **15/15** | Token-budgeted prompts (<1500 tokens); sub-15ms offline advisor; total repository size < 1.0 MB (614 KiB / 0.60 MB; strictly < 10 MB limit). |
-| **Testing & Invariant Rigor** | **Medium** | **15/15** | 83 Triad invariant test cases (Positive, Negative, Edge-Case) + 11-Invariant Property-Based Fuzz Suite (10,000 vectors) + 8 CDP Headless Browser E2E Suites; zero-dependency Node.js test runners (`test/run-tests.js`, `test/run-fuzz-tests.js`, `test/run-browser-tests.js`). |
+| **Testing & Invariant Rigor** | **Medium** | **15/15** | 84 Triad invariant test cases (Positive, Negative, Edge-Case) + 11-Invariant Property-Based Fuzz Suite (10,000 vectors) + 8 CDP Headless Browser E2E Suites; zero-dependency Node.js test runners (`test/run-tests.js`, `test/run-fuzz-tests.js`, `test/run-browser-tests.js`). |
 | **Accessibility (a11y)** | **Low/Polish**| **10/10** | WCAG 2.1 Level AA conformance; APCA contrast ratios $\ge 4.5:1$; ARIA live announcements; 100% keyboard navigable. |
 | **Visual Polish & Usability** | **Low/Polish**| **10/10** | Modern dark glassmorphism; responsive grid; high-contrast dynamic AQI status indicators; one-click WhatsApp sharing. |
 | **TOTAL** | | **100/100** | **Complete High-Depth Enterprise Submission Package** |
@@ -318,14 +318,14 @@ php -S localhost:8080
 
 ## 🧪 8. Complete Testing Guide & QA Scenarios Matrix ("Testing Kaise Kare")
 
-CleanAir Guardian implements an enterprise **Level 2.2 Quality Assurance Architecture** comprising **83 Triad Invariant Tests**, **10,000 Property-Based Fuzzing Iterations**, **8 Chrome DevTools Protocol (CDP) Headless Browser E2E Suites**, and a complete **8-Scenario Human/Manual QA Matrix**.
+CleanAir Guardian implements an enterprise **Level 2.2 Quality Assurance Architecture** comprising **84 Triad Invariant Tests**, **10,000 Property-Based Fuzzing Iterations**, **8 Chrome DevTools Protocol (CDP) Headless Browser E2E Suites**, and a complete **8-Scenario Human/Manual QA Matrix**.
 
 ### 8.1 Automated Test Execution Suite
 
 All test runners in this repository are zero-dependency, running directly on vanilla Node.js:
 
 ```bash
-# 1. Run the 83-Test Triad Invariant Suite (Positive, Negative, Edge-Case)
+# 1. Run the 84-Test Triad Invariant Suite (Positive, Negative, Edge-Case)
 npm test
 # (Equivalent to: node test/run-tests.js)
 
@@ -345,7 +345,7 @@ git count-objects -vH
 ```
 
 #### What Each Automated Suite Validates:
-1. **`npm test` ([test/run-tests.js](file:///test/run-tests.js) — 83 Triad Tests):**
+1. **`npm test` ([test/run-tests.js](file:///test/run-tests.js) — 84 Triad Tests):**
    - **Physics & Dosage Calculus:** Alveolar particulate deposition ($\eta_{\text{dep}} = 0.28$), minute ventilation rates ($V_E$), Berkeley Earth cigarette equivalents ($66.5\ \mu\text{g} \approx 1\text{ cig}$).
    - **Atmospheric Boundary Layer:** Diurnal thermal inversion phases (`DAWN_TRAP`, `SOLAR_DISPERSAL`, `EVENING_PEAK`, `NIGHT_SETTLING`), Richardson number ($Ri_b \ge 0.25$), solar convective mixing height $H_{\text{PBL}}$.
    - **CADR & Room Clearance:** Single-compartment differential mass balance ($\frac{dC}{dt} = -\lambda C$), first-order decay ($\text{Math.expm1}(-\lambda t)$), $50\%$, $90\%$, and $99\%$ clearance milestones.
@@ -394,7 +394,7 @@ Since your repository is hosted on GitHub, GitHub Pages provides free, instantan
    `https://piyushmakhija28.github.io/prompt-war-challenge-6-clean-air-assistant/`
 
 #### Method B: GitHub Actions Automated CI/CD
-This repository is pre-configured with a native GitHub Actions workflow. Simply push to `main` and the workflow validates all 83 Triad tests before deploying automatically:
+This repository is pre-configured with a native GitHub Actions workflow. Simply push to `main` and the workflow validates all 84 Triad tests before deploying automatically:
 ```yaml
 # .github/workflows/deploy.yml
 name: Deploy CleanAir Guardian to GitHub Pages
