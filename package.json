@@ -5,6 +5,7 @@
   "type": "module",
   "main": "src/js/app.js",
   "scripts": {
+    "start": "node server.js",
     "test": "node test/run-tests.js",
     "test:fuzz": "node test/run-fuzz-tests.js",
     "test:browser": "node test/run-browser-tests.js",
