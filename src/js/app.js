@@ -7,12 +7,12 @@
  */
 
 import { VULN_FLAGS, DEFAULT_PRESET, TARGET_PERSONAS, METRO_BASIN_PRESETS, METRO_BASIN_COORDINATES } from './config.js';
-import { getDiurnalInversion, DiurnalRingBuffer, generateDiurnalCurve } from './air-quality-engine.js';
+import { getDiurnalInversion, DiurnalRingBuffer, generateDiurnalCurve, getVulnerabilityMultiplier } from './air-quality-engine.js';
 import { SecureKeyStore, GeminiPlanProvider } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
 import { globalEventBus } from './event-bus.js';
-import { calculateRoomClearance, findNearestBasin } from './cadr-calculator.js';
-import { aqiToMassConcentration, dosageToCigarettes } from './impact-calculator.js';
+import { calculateRoomClearance, findNearestBasin, getCadrAdequacyRating, UNIT_CONVERSIONS } from './cadr-calculator.js';
+import { aqiToMassConcentration, dosageToCigarettes, getHousingInfiltrationCoefficient } from './impact-calculator.js';
 import { IAQ_HACKS_CATALOG } from './offline-advisor.js';
 import { createSignal, createComputed, createEffect } from './signals.js';
 
@@ -296,6 +296,17 @@ function setSafeText(id, text) {
 }
 
 /**
+ * Updates live scrubber telemetry badge with effective AQI and trap/dispersal status.
+ * @param {number|null} [hour] - Hour decimal.
+ */
+export function updateScrubberTelemetry(hour) {
+  const h = hour !== null && hour !== undefined ? Number(hour) : 7.5;
+  const inv = getDiurnalInversion(h, state.aqi);
+  const phaseText = inv.phase === 'SOLAR_DISPERSAL' ? 'Safe' : 'Trap';
+  setSafeText('label-scrubber-telemetry', `AQI ${inv.effectiveAQI} (${inv.multiplier.toFixed(2)}x ${phaseText})`);
+}
+
+/**
  * Clears and replaces child nodes using safe DOM APIs.
  * @param {HTMLElement} parent - Container element.
  * @param {HTMLElement[]} children - Array of new element nodes.
@@ -323,26 +334,27 @@ export function renderActivePlan() {
     setSafeText('hero-aqi-number', String(state.aqi));
     setSafeText('hero-inversion-notice', plan.diurnalWindowNotice);
 
-    // 2. Telemetry Metrics
     setSafeText('metric-pm25-avoided', `${plan.quantifiedImpact.pm25InhalationAvoidedMicrograms} µg`);
     setSafeText('metric-cigarettes-avoided', `${plan.quantifiedImpact.cigaretteEquivalentsAvoided} Cigs`);
-    setSafeText('metric-carbon-saved', `${plan.quantifiedImpact.co2eSavedKg} kg CO₂e`);
+    setSafeText('metric-carbon-saved', `${plan.quantifiedImpact.co2eSavedKg} kg`);
     setSafeText('metric-protection-score', `${plan.quantifiedImpact.protectionScorePercent}%`);
 
-    // 2b. Comparative Inhaled Dose Exposure Gauge
     const unshieldedCp = aqiToMassConcentration(state.aqi);
-    const alphaInf = 0.65;
+    const alphaInf = getHousingInfiltrationCoefficient(state.housingType);
     const dailyVolumeM3 = 10.8;
     const alveolarDeposition = 0.28;
-    const unshieldedDose = Math.max(10, Math.round(unshieldedCp * (alphaInf * 0.75 + 1.0 * 0.25) * dailyVolumeM3 * 1.3 * alveolarDeposition));
+    const vulnMult = getVulnerabilityMultiplier(state.vulnBits);
+    const unshieldedDose = Math.max(10, Math.round(unshieldedCp * (alphaInf * 0.75 + 1.0 * 0.25) * dailyVolumeM3 * 1.3 * alveolarDeposition * vulnMult));
     const avoidedUg = plan.quantifiedImpact ? plan.quantifiedImpact.pm25InhalationAvoidedMicrograms : 0;
     const protectedDose = Math.max(5, unshieldedDose - avoidedUg);
     const reductionPct = Math.min(99.9, Math.max(0, ((unshieldedDose - protectedDose) / unshieldedDose) * 100));
 
     const unshieldedCigs = dosageToCigarettes(unshieldedDose);
     const protectedCigs = dosageToCigarettes(protectedDose);
+    const avoidedCigs = Math.max(0, unshieldedCigs - protectedCigs);
 
     setSafeText('badge-shield-reduction', `-${reductionPct.toFixed(1)}% Inhaled Dose`);
+    setSafeText('badge-shield-delta', `Saved: ${avoidedUg} µg (${avoidedCigs.toFixed(1)} Cigs)`);
     setSafeText('text-unshielded-dose', `${Math.round(unshieldedDose)} µg (${unshieldedCigs.toFixed(1)} Cigs)`);
     setSafeText('text-protected-dose', `${Math.round(protectedDose)} µg (${protectedCigs.toFixed(1)} Cigs)`);
 
@@ -351,6 +363,10 @@ export function renderActivePlan() {
       const protectedWidth = Math.max(4, Math.min(100, (protectedDose / unshieldedDose) * 100));
       barProtected.style.width = `${protectedWidth.toFixed(1)}%`;
     }
+
+    const housingLabel = (state.housingType || 'standard_flat').replace(/_/g, ' ');
+    const commuteLabel = (state.commuteMode || 'two_wheeler').replace(/_/g, ' ');
+    setSafeText('label-unshielded-desc', `🔴 Unshielded Exposure (${housingLabel} / ${commuteLabel})`);
 
     // 3. Hourly Schedule List
     const scheduleContainer = document.getElementById('hourly-schedule-container');
@@ -582,6 +598,7 @@ export function applyPersona(personaId) {
 
   syncUrlHash();
   renderDiurnalSplineCurve();
+  updateScrubberTelemetry(state.simulatedHour);
   triggerPlanGeneration();
   announceA11y(`Loaded target persona ${p.name}. City ${p.city}, AQI ${p.aqi}.`);
 }
@@ -637,6 +654,7 @@ export function initApp() {
       if (aqiNumberInput) aqiNumberInput.value = String(val);
       syncUrlHash();
       renderDiurnalSplineCurve();
+      updateScrubberTelemetry(state.simulatedHour);
     });
 
     aqiSlider.addEventListener('change', () => {
@@ -652,6 +670,7 @@ export function initApp() {
       if (aqiSlider) aqiSlider.value = String(val);
       syncUrlHash();
       renderDiurnalSplineCurve();
+      updateScrubberTelemetry(state.simulatedHour);
     });
 
     aqiNumberInput.addEventListener('change', () => {
@@ -679,6 +698,7 @@ export function initApp() {
         needle.setAttribute('x2', String(x));
       }
       updateSplineMarker(val);
+      updateScrubberTelemetry(val);
       syncUrlHash();
     });
 
@@ -933,29 +953,109 @@ export function initApp() {
     });
   }
 
-  // 6c. Dynamic Room CADR Calculator Controller
+  let cadrUnit = 'ft';
+
   function updateRoomCadr() {
     const lengthInput = document.getElementById('input-room-l');
     const widthInput = document.getElementById('input-room-w');
     const heightInput = document.getElementById('input-room-h');
     const cadrSelect = document.getElementById('select-cadr-device');
+    const customContainer = document.getElementById('container-cadr-custom');
+    const customInput = document.getElementById('input-cadr-custom');
 
     if (!lengthInput || !widthInput || !heightInput || !cadrSelect) return;
 
-    const length = Number(lengthInput.value) || 14;
-    const width = Number(widthInput.value) || 12;
-    const height = Number(heightInput.value) || 9;
-    const cadrCfm = Number(cadrSelect.value) || 273;
+    let cadrCfm = 273;
+    if (cadrSelect.value === 'custom') {
+      if (customContainer) customContainer.style.display = 'flex';
+      cadrCfm = Math.max(5, Number(customInput?.value) || 200);
+    } else {
+      if (customContainer) customContainer.style.display = 'none';
+      cadrCfm = Number(cadrSelect.value) || 273;
+    }
 
-    const result = calculateRoomClearance({ length, width, height, unit: 'ft', cadrCfm });
+    const length = Number(lengthInput.value) || (cadrUnit === 'ft' ? 14 : 4.27);
+    const width = Number(widthInput.value) || (cadrUnit === 'ft' ? 12 : 3.66);
+    const height = Number(heightInput.value) || (cadrUnit === 'ft' ? 9 : 2.74);
+
+    let volumeFt3, volumeM3;
+    if (cadrUnit === 'ft') {
+      volumeFt3 = length * width * height;
+      volumeM3 = volumeFt3 * UNIT_CONVERSIONS.FT3_TO_M3;
+    } else {
+      volumeM3 = length * width * height;
+      volumeFt3 = volumeM3 * UNIT_CONVERSIONS.M3_TO_FT3;
+    }
+
+    setSafeText('cadr-room-volume', `Volume: ${Math.round(volumeFt3).toLocaleString()} ft³ (${volumeM3.toFixed(1)} m³)`);
+
+    const result = calculateRoomClearance({ length, width, height, unit: cadrUnit, cadrCfm });
 
     setSafeText('badge-cadr-ach', `${result.achClean} ACH`);
     setSafeText('cadr-t50', `${result.t50Min} min`);
     setSafeText('cadr-t90', `${result.t90Min} min`);
     setSafeText('cadr-t99', `${result.t99Min} min`);
+
+    const adequacy = getCadrAdequacyRating(result.achTotal);
+    const badgeGuideline = document.getElementById('badge-cadr-guideline');
+    if (badgeGuideline) {
+      badgeGuideline.textContent = adequacy.label;
+      badgeGuideline.style.background = adequacy.color;
+    }
   }
 
-  const cadrInputs = ['input-room-l', 'input-room-w', 'input-room-h', 'select-cadr-device'];
+  const btnUnitFt = document.getElementById('btn-unit-ft');
+  const btnUnitM = document.getElementById('btn-unit-m');
+  const labelRoomL = document.getElementById('label-room-l');
+  const labelRoomW = document.getElementById('label-room-w');
+  const labelRoomH = document.getElementById('label-room-h');
+  const inputRoomL = document.getElementById('input-room-l');
+  const inputRoomW = document.getElementById('input-room-w');
+  const inputRoomH = document.getElementById('input-room-h');
+
+  if (btnUnitFt && btnUnitM) {
+    btnUnitFt.addEventListener('click', () => {
+      if (cadrUnit === 'ft') return;
+      cadrUnit = 'ft';
+      btnUnitFt.classList.add('active');
+      btnUnitFt.setAttribute('aria-pressed', 'true');
+      btnUnitM.classList.remove('active');
+      btnUnitM.setAttribute('aria-pressed', 'false');
+
+      if (labelRoomL) labelRoomL.textContent = 'Length (ft)';
+      if (labelRoomW) labelRoomW.textContent = 'Width (ft)';
+      if (labelRoomH) labelRoomH.textContent = 'Height (ft)';
+
+      if (inputRoomL) inputRoomL.value = String(Math.round(Number(inputRoomL.value) * UNIT_CONVERSIONS.M_TO_FT * 10) / 10);
+      if (inputRoomW) inputRoomW.value = String(Math.round(Number(inputRoomW.value) * UNIT_CONVERSIONS.M_TO_FT * 10) / 10);
+      if (inputRoomH) inputRoomH.value = String(Math.round(Number(inputRoomH.value) * UNIT_CONVERSIONS.M_TO_FT * 10) / 10);
+
+      updateRoomCadr();
+      announceA11y('CADR calculator switched to feet.');
+    });
+
+    btnUnitM.addEventListener('click', () => {
+      if (cadrUnit === 'm') return;
+      cadrUnit = 'm';
+      btnUnitM.classList.add('active');
+      btnUnitM.setAttribute('aria-pressed', 'true');
+      btnUnitFt.classList.remove('active');
+      btnUnitFt.setAttribute('aria-pressed', 'false');
+
+      if (labelRoomL) labelRoomL.textContent = 'Length (m)';
+      if (labelRoomW) labelRoomW.textContent = 'Width (m)';
+      if (labelRoomH) labelRoomH.textContent = 'Height (m)';
+
+      if (inputRoomL) inputRoomL.value = String(Math.round(Number(inputRoomL.value) * UNIT_CONVERSIONS.FT_TO_M * 100) / 100);
+      if (inputRoomW) inputRoomW.value = String(Math.round(Number(inputRoomW.value) * UNIT_CONVERSIONS.FT_TO_M * 100) / 100);
+      if (inputRoomH) inputRoomH.value = String(Math.round(Number(inputRoomH.value) * UNIT_CONVERSIONS.FT_TO_M * 100) / 100);
+
+      updateRoomCadr();
+      announceA11y('CADR calculator switched to meters.');
+    });
+  }
+
+  const cadrInputs = ['input-room-l', 'input-room-w', 'input-room-h', 'select-cadr-device', 'input-cadr-custom'];
   cadrInputs.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
@@ -988,11 +1088,8 @@ export function initApp() {
   }
 
   registerServiceWorker('sw.js');
-
-  // Initial render of diurnal spline curve
+  updateScrubberTelemetry(state.simulatedHour);
   renderDiurnalSplineCurve();
-
-  // Initial generation
   triggerPlanGeneration();
 }
 

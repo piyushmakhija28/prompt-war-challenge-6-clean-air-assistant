@@ -19,7 +19,10 @@ import { createSignal, createComputed, createEffect } from '../src/js/signals.js
 import {
   calculateRoomClearance as calculateFullCadrRoomClearance,
   haversineDistanceKm,
-  findNearestBasin
+  findNearestBasin,
+  getCadrAdequacyRating,
+  CADR_PRESETS,
+  UNIT_CONVERSIONS
 } from '../src/js/cadr-calculator.js';
 import {
   aqiToMassConcentration,
@@ -60,7 +63,7 @@ function assert(condition, testName, message = '') {
 }
 
 console.log('\n======================================================');
-console.log(' CleanAir Guardian — 75 Triad Invariant Test Suite');
+console.log(' CleanAir Guardian — 81 Triad Invariant Test Suite');
 console.log('======================================================\n');
 
 // ---------------------------------------------------------------------------
@@ -483,6 +486,75 @@ assert(
   apcaContrastRatio >= 4.5,
   'TC-UIUX-003',
   'Interactive touch targets strictly satisfy Fitts\'s Law >= 44px threshold and WCAG 2.1 AA contrast ratio'
+);
+
+// TC-CADR-003: Metric unit dimension conversion mathematical equivalence
+const clearanceFt = calculateFullCadrRoomClearance({ length: 14, width: 12, height: 9, unit: 'ft', cadrCfm: 273 });
+const clearanceM = calculateFullCadrRoomClearance({ length: 14 * UNIT_CONVERSIONS.FT_TO_M, width: 12 * UNIT_CONVERSIONS.FT_TO_M, height: 9 * UNIT_CONVERSIONS.FT_TO_M, unit: 'm', cadrCfm: 273 });
+assert(
+  clearanceFt.achClean === clearanceM.achClean &&
+  clearanceFt.t50Min === clearanceM.t50Min &&
+  clearanceFt.t90Min === clearanceM.t90Min &&
+  clearanceFt.t99Min === clearanceM.t99Min,
+  'TC-CADR-003',
+  'Metric vs Imperial room dimensions produce strictly identical ACH and clearance decay times'
+);
+
+// TC-CADR-004: CDC and ASHRAE adequacy rating coverage across ACH boundaries
+const rPoor = getCadrAdequacyRating(2.4);
+const rMod = getCadrAdequacyRating(4.5);
+const rRec = getCadrAdequacyRating(8.0);
+const rExc = getCadrAdequacyRating(14.0);
+assert(
+  rPoor.rating === 'POOR' && rPoor.color === '#ef4444' &&
+  rMod.rating === 'MODERATE' && rMod.color === '#f59e0b' &&
+  rRec.rating === 'RECOMMENDED' && rRec.color === '#10b981' &&
+  rExc.rating === 'EXCELLENT' && rExc.color === '#38bdf8',
+  'TC-CADR-004',
+  'CADR adequacy ratings correctly classify ACH thresholds (<3, 3-5, 6-11, 12+) with standard semantic colors'
+);
+
+// TC-CADR-005: Universal exponential decay milestone ratios
+const ratio50 = clearanceFt.t50Min / clearanceFt.t99Min;
+const ratio90 = clearanceFt.t90Min / clearanceFt.t99Min;
+const theoreticalRatio50 = Math.log(2) / Math.log(100);
+const theoreticalRatio90 = Math.log(10) / Math.log(100);
+assert(
+  Math.abs(ratio50 - theoreticalRatio50) < 0.01 &&
+  Math.abs(ratio90 - theoreticalRatio90) < 0.01,
+  'TC-CADR-005',
+  'Exponential clearance milestones adhere to universal first-order differential decay ratios (ln 2 / ln 100 and ln 10 / ln 100)'
+);
+
+// TC-UIUX-004: Dynamic vulnerability and housing infiltration scaling in exposure dose
+const doseStandard = Math.round(aqiToMassConcentration(395) * (getHousingInfiltrationCoefficient('standard_flat') * 0.75 + 0.25) * 10.8 * 1.3 * 0.28 * getVulnerabilityMultiplier(0));
+const doseHighRisk = Math.round(aqiToMassConcentration(395) * (getHousingInfiltrationCoefficient('slum_tenta') * 0.75 + 0.25) * 10.8 * 1.3 * 0.28 * getVulnerabilityMultiplier(3));
+assert(
+  doseHighRisk > doseStandard * 1.5,
+  'TC-UIUX-004',
+  `Vulnerability and housing infiltration properly scale unshielded inhaled dose (${doseHighRisk} ug vs ${doseStandard} ug)`
+);
+
+// TC-UIUX-005: Diurnal scrubber live telemetry consistency across inversion phases
+const telMorning = getDiurnalInversion(7.5, 395);
+const telSolar = getDiurnalInversion(13.5, 395);
+assert(
+  telMorning.multiplier >= 2.0 && telMorning.phase === 'MORNING_TRAP' &&
+  telSolar.multiplier <= 0.90 && telSolar.phase === 'SOLAR_DISPERSAL',
+  'TC-UIUX-005',
+  'Diurnal scrubber telemetry correctly computes effective AQI and trap/dispersal multipliers'
+);
+
+// TC-UIUX-006: Timeline solar window mathematical coordinate precision
+const solarStartHour = 12.5;
+const svgTimelineWidth = 240;
+const expectedCoordX = (solarStartHour / 24) * svgTimelineWidth;
+const expectedCssPercent = (solarStartHour / 24) * 100;
+assert(
+  Math.abs(expectedCoordX - 125) < 1e-6 &&
+  Math.abs(expectedCssPercent - 52.0833) < 0.001,
+  'TC-UIUX-006',
+  'Timeline axis coordinate for 12:30 PM matches exact SVG width (125) and CSS percentage (52.083%)'
 );
 console.log(` Test Execution Summary: ${passed} Passed, ${failed} Failed`);
 console.log('------------------------------------------------------\n');

@@ -90,7 +90,10 @@
         <legend class="form-legend">Diurnal Inversion Scrubber</legend>
         <div class="form-label">
           <span>Simulated Time of Day</span>
-          <span id="label-time-value" style="font-family:monospace; font-weight:700; color:#38bdf8;">07:30</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="label-time-value" style="font-family:monospace; font-weight:700; color:#38bdf8;">07:30</span>
+            <span id="label-scrubber-telemetry" class="scrubber-telemetry-badge">AQI 849 (2.15x Trap)</span>
+          </div>
         </div>
         <input type="range" id="input-time-slider" class="range-slider" min="0" max="23.75" step="0.25" value="7.5" aria-label="Diurnal Time Scrubber">
         
@@ -123,12 +126,12 @@
             <rect x="220" y="0" width="20" height="24" fill="#6366f1" opacity="0.8"></rect>
             <line id="svg-time-needle" x1="75" y1="0" x2="75" y2="24" stroke="#ffffff" stroke-width="3" stroke-linecap="round"></line>
           </svg>
-          <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; font-family:monospace; margin-top:2px;">
-            <span>00:00</span>
-            <span style="color:#f87171;">06:00 Trap</span>
-            <span style="color:#34d399;">12:30 Safe</span>
-            <span style="color:#f87171;">18:00 Trap</span>
-            <span>24:00</span>
+          <div class="timeline-axis-labels">
+            <span class="timeline-axis-label timeline-label-0">00:00</span>
+            <span class="timeline-axis-label timeline-label-6">06:00 Trap</span>
+            <span class="timeline-axis-label timeline-label-12">12:30 Safe</span>
+            <span class="timeline-axis-label timeline-label-18">18:00 Trap</span>
+            <span class="timeline-axis-label timeline-label-24">24:00</span>
           </div>
         </div>
       </fieldset>
@@ -305,14 +308,17 @@
 
       <!-- Comparative Inhaled Dose Exposure Gauge -->
       <div class="exposure-comparison-card" aria-label="Comparative Exposure Reduction">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
           <h4 style="font-size:0.875rem; font-weight:700; color:#e2e8f0; text-transform:uppercase; letter-spacing:0.05em; margin:0;">Inhaled Particulate Shield Comparison</h4>
-          <span id="badge-shield-reduction" class="badge-engine" style="color:#10b981; border-color:#10b981; font-weight:700;">-86.8% Inhaled Dose</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span id="badge-shield-delta" class="badge-shield-delta">Saved: 583 µg (8.8 Cigs)</span>
+            <span id="badge-shield-reduction" class="badge-engine" style="color:#10b981; border-color:#10b981; font-weight:700;">-80.4% Inhaled Dose</span>
+          </div>
         </div>
         <!-- Unshielded Bar -->
         <div style="margin-bottom:12px;">
           <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#cbd5e1;">
-            <span>🔴 Unshielded Exposure (Rush-Hour / No Mask / Drafty)</span>
+            <span id="label-unshielded-desc">🔴 Unshielded Exposure (Standard Flat / Two-Wheeler)</span>
             <span id="text-unshielded-dose" style="font-family:monospace; font-weight:700; color:#f87171;">725 µg (10.9 Cigs)</span>
           </div>
           <div class="gauge-bar-bg">
@@ -322,11 +328,11 @@
         <!-- Protected Bar -->
         <div>
           <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#cbd5e1;">
-            <span>🟢 CleanAir Guardian Shield (Diurnal Shift / N95 / CR-Box)</span>
+            <span id="label-protected-desc">🟢 CleanAir Guardian Shield (Diurnal Shift / N95 / CR-Box)</span>
             <span id="text-protected-dose" style="font-family:monospace; font-weight:700; color:#34d399;">142 µg (2.1 Cigs)</span>
           </div>
           <div class="gauge-bar-bg">
-            <div id="bar-protected-dose" class="gauge-bar-fill fill-green" style="width:13.2%;"></div>
+            <div id="bar-protected-dose" class="gauge-bar-fill fill-green" style="width:19.6%;"></div>
           </div>
         </div>
       </div>
@@ -373,34 +379,56 @@
 
       <!-- Dynamic Custom Room CADR Clearance Calculator -->
       <div class="cadr-calculator-card" aria-labelledby="heading-cadr-calc">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h4 id="heading-cadr-calc" style="font-size:0.95rem; font-weight:700; color:#38bdf8; margin:0;">Custom Room CADR Clearance Estimator</h4>
-          <span id="badge-cadr-ach" class="iaq-badge" style="background:#0284c7; color:#ffffff;">10.8 ACH</span>
+        <div class="cadr-header-row">
+          <div>
+            <h4 id="heading-cadr-calc" style="font-size:0.95rem; font-weight:700; color:#38bdf8; margin:0 0 2px 0;">Custom Room CADR Clearance Estimator</h4>
+            <div id="cadr-room-volume" class="cadr-volume-badge">Volume: 1,512 ft³ (42.8 m³)</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="unit-toggle-group" role="group" aria-label="Room Dimension Units">
+              <button type="button" id="btn-unit-ft" class="btn-unit-toggle active" aria-pressed="true">ft</button>
+              <button type="button" id="btn-unit-m" class="btn-unit-toggle" aria-pressed="false">m</button>
+            </div>
+            <span id="badge-cadr-ach" class="iaq-badge" style="background:#0284c7; color:#ffffff;">10.8 ACH</span>
+            <span id="badge-cadr-guideline" class="iaq-badge" style="background:#059669; color:#ffffff;">CDC Target</span>
+          </div>
         </div>
+
         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:10px;">
           <div>
-            <label for="input-room-l" class="form-label" style="font-size:11px; margin-bottom:4px;">Length (ft)</label>
-            <input type="number" id="input-room-l" class="form-input" style="padding:6px 8px; font-size:13px; min-height:38px;" value="14" min="4" max="60">
+            <label for="input-room-l" id="label-room-l" class="form-label" style="font-size:11px; margin-bottom:4px;">Length (ft)</label>
+            <input type="number" id="input-room-l" class="form-input" style="padding:6px 8px; font-size:13px; min-height:48px;" value="14" min="1" max="100" step="0.1">
           </div>
           <div>
-            <label for="input-room-w" class="form-label" style="font-size:11px; margin-bottom:4px;">Width (ft)</label>
-            <input type="number" id="input-room-w" class="form-input" style="padding:6px 8px; font-size:13px; min-height:38px;" value="12" min="4" max="60">
+            <label for="input-room-w" id="label-room-w" class="form-label" style="font-size:11px; margin-bottom:4px;">Width (ft)</label>
+            <input type="number" id="input-room-w" class="form-input" style="padding:6px 8px; font-size:13px; min-height:48px;" value="12" min="1" max="100" step="0.1">
           </div>
           <div>
-            <label for="input-room-h" class="form-label" style="font-size:11px; margin-bottom:4px;">Height (ft)</label>
-            <input type="number" id="input-room-h" class="form-input" style="padding:6px 8px; font-size:13px; min-height:38px;" value="9" min="6" max="25">
+            <label for="input-room-h" id="label-room-h" class="form-label" style="font-size:11px; margin-bottom:4px;">Height (ft)</label>
+            <input type="number" id="input-room-h" class="form-input" style="padding:6px 8px; font-size:13px; min-height:48px;" value="9" min="1" max="50" step="0.1">
           </div>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
-          <label for="select-cadr-device" class="form-label" style="font-size:11px; margin:0; white-space:nowrap;">Air Cleaner:</label>
-          <select id="select-cadr-device" class="form-select" style="padding:4px 8px; font-size:12px; height:auto; min-height:38px;">
-            <option value="273" selected>DIY Corsi-Rosenthal Box (273 CFM)</option>
-            <option value="120">Standard Bedroom HEPA (120 CFM)</option>
-            <option value="85">12V PC-Fan Mini Box (85 CFM)</option>
-            <option value="450">Commercial Large Air Purifier (450 CFM)</option>
-          </select>
+
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <label for="select-cadr-device" class="form-label" style="font-size:11px; margin:0; white-space:nowrap;">Air Cleaner Device:</label>
+            <select id="select-cadr-device" class="form-select" style="padding:4px 8px; font-size:12px; height:auto; min-height:48px; flex:1;">
+              <option value="273" selected>DIY Corsi-Rosenthal Box (273 CFM)</option>
+              <option value="120">Standard Bedroom HEPA (120 CFM)</option>
+              <option value="85">12V PC-Fan Mini Box (85 CFM)</option>
+              <option value="450">Commercial Large Air Purifier (450 CFM)</option>
+              <option value="180">Kitchen Exhaust Scrubber (180 CFM)</option>
+              <option value="30">Emergency Wet-Towel Fan (30 CFM)</option>
+              <option value="custom">Custom Clean Air Delivery Rate (CFM)...</option>
+            </select>
+          </div>
+          <div id="container-cadr-custom" style="display:none; align-items:center; gap:8px;">
+            <label for="input-cadr-custom" class="form-label" style="font-size:11px; margin:0; white-space:nowrap;">Custom CFM:</label>
+            <input type="number" id="input-cadr-custom" class="form-input" style="padding:6px 8px; font-size:13px; min-height:48px; width:120px;" placeholder="e.g. 200" min="5" max="2000" step="1">
+          </div>
         </div>
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; text-align:center;">
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; text-align:center; margin-bottom:12px;">
           <div style="background:rgba(255,255,255,0.05); padding:8px 4px; border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
             <div id="cadr-t50" style="font-family:monospace; font-weight:700; color:#38bdf8; font-size:14px;">3.7 min</div>
             <div style="font-size:10px; color:#94a3b8; margin-top:2px;">50% Clearance</div>
@@ -412,6 +440,25 @@
           <div style="background:rgba(255,255,255,0.05); padding:8px 4px; border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
             <div id="cadr-t99" style="font-family:monospace; font-weight:700; color:#10b981; font-size:14px;">24.4 min</div>
             <div style="font-size:10px; color:#94a3b8; margin-top:2px;">99% Clearance</div>
+          </div>
+        </div>
+
+        <!-- Exponential Decay Clearance Timeline Bar -->
+        <div class="cadr-decay-bar-container">
+          <div class="cadr-decay-track">
+            <div class="cadr-decay-fill"></div>
+            <div class="cadr-decay-marker cadr-decay-marker-50" title="50% Decay (ln 2 / ln 100)">
+              <div class="cadr-decay-pin" style="background:#38bdf8;"></div>
+              <div class="cadr-decay-label">50%</div>
+            </div>
+            <div class="cadr-decay-marker cadr-decay-marker-90" title="90% Decay (ln 10 / ln 100)">
+              <div class="cadr-decay-pin" style="background:#f59e0b;"></div>
+              <div class="cadr-decay-label">90%</div>
+            </div>
+            <div class="cadr-decay-marker cadr-decay-marker-99" title="99% Clearance">
+              <div class="cadr-decay-pin" style="background:#10b981;"></div>
+              <div class="cadr-decay-label">99%</div>
+            </div>
           </div>
         </div>
       </div>

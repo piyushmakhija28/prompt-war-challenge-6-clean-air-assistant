@@ -12,10 +12,12 @@
  * @enum {number}
  */
 export const CADR_PRESETS = Object.freeze({
-  CORSI_ROSENTHAL_BOX: 273, // 4-filter MERV 13 box fan cube (ASHRAE standard)
-  HEPA_PURIFIER_STANDARD: 120, // Standard residential bedroom HEPA cleaner
-  PC_FAN_MINI_BOX: 85, // Ultra-quiet 12V 120mm computer fan DIY array
-  COMMERCIAL_LARGE_HEPA: 450 // Heavy-duty dual-turbine commercial unit
+  CORSI_ROSENTHAL_BOX: 273,
+  HEPA_PURIFIER_STANDARD: 120,
+  PC_FAN_MINI_BOX: 85,
+  COMMERCIAL_LARGE_HEPA: 450,
+  WET_TOWEL_EMERGENCY: 30,
+  KITCHEN_VENT_SCRUB: 180
 });
 
 /**
@@ -25,10 +27,54 @@ export const CADR_PRESETS = Object.freeze({
 export const UNIT_CONVERSIONS = Object.freeze({
   METERS_TO_FEET: 3.28084,
   FEET_TO_METERS: 0.3048,
+  M_TO_FT: 3.28084,
+  FT_TO_M: 0.3048,
   CU_METERS_TO_CU_FEET: 35.3147,
   CU_FEET_TO_CU_METERS: 0.0283168,
+  M3_TO_FT3: 35.3147,
+  FT3_TO_M3: 0.0283168,
   CFM_TO_CU_METERS_PER_HR: 1.69901
 });
+
+/**
+ * Evaluates air changes per hour (ACH) against CDC and ASHRAE respiratory infection and air turnover standards.
+ *
+ * @param {number} achTotal - Total combined air changes per hour (mechanical CADR + ambient deposition).
+ * @returns {{ rating: 'POOR'|'MODERATE'|'RECOMMENDED'|'EXCELLENT', label: string, color: string, benchmark: string }}
+ */
+export function getCadrAdequacyRating(achTotal) {
+  const ach = Math.max(0, Number(achTotal) || 0);
+  if (ach < 3.0) {
+    return {
+      rating: 'POOR',
+      label: 'Inadequate (<3 ACH)',
+      color: '#ef4444',
+      benchmark: 'Below baseline: particulates remain suspended for hours'
+    };
+  }
+  if (ach < 6.0) {
+    return {
+      rating: 'MODERATE',
+      label: 'Basic Residential (3-5 ACH)',
+      color: '#f59e0b',
+      benchmark: 'Acceptable baseline for low-risk living spaces'
+    };
+  }
+  if (ach < 12.0) {
+    return {
+      rating: 'RECOMMENDED',
+      label: 'CDC Target (6-11 ACH)',
+      color: '#10b981',
+      benchmark: 'Meets CDC/ASHRAE guideline for high-efficiency infection control'
+    };
+  }
+  return {
+    rating: 'EXCELLENT',
+    label: 'Clinic Grade (12+ ACH)',
+    color: '#38bdf8',
+    benchmark: 'Hospital isolation / surgical grade clearance turnover'
+  };
+}
 
 /**
  * Calculates room volume, Air Changes per Hour (ACH), and particulate clearance milestone times.

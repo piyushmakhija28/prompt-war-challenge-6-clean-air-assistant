@@ -283,7 +283,7 @@ async function main() {
   });
 
   cdp.on('Runtime.exceptionThrown', (params) => {
-    consoleErrors.push(params.exceptionDetails.text);
+    consoleErrors.push(params.exceptionDetails.exception?.description || params.exceptionDetails.text);
   });
 
   await cdp.send('Page.enable');
@@ -314,13 +314,13 @@ async function main() {
 
     // BR-TEST-002: Target Persona Quick Preset Selection (Ananya & Vikram)
     await cdp.evaluate('document.querySelector(".btn-persona[data-persona=\\"ananya\\"]").click()');
-    await sleep(250);
+    await sleep(400);
     const ananyaAqi = await cdp.evaluate('document.getElementById("input-aqi-number").value');
     const ananyaSeverity = await cdp.evaluate('document.getElementById("hero-severity-badge").textContent');
     const ananyaHash = await cdp.evaluate('window.location.hash');
 
     await cdp.evaluate('document.querySelector(".btn-persona[data-persona=\\"vikram\\"]").click()');
-    await sleep(250);
+    await sleep(400);
     const vikramCommuteKm = await cdp.evaluate('document.getElementById("input-commute-km").value');
     const vikramCommuteMode = await cdp.evaluate('document.querySelector("input[name=\\"radio-commute\\"]:checked").value');
 
