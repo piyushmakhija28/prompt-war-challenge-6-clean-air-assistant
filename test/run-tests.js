@@ -238,11 +238,11 @@ assert(netErr.code === 'ERR_NET_TIMEOUT' && netErr.isTransient === true, 'TC-ERR
 assert(
   Array.isArray(GEMINI_MODELS_CASCADE) &&
   GEMINI_MODELS_CASCADE.length >= 3 &&
-  GEMINI_MODELS_CASCADE[0] === 'gemini-3.8-flash' &&
-  GEMINI_MODELS_CASCADE.includes('gemini-2.5-flash') &&
-  GEMINI_MODELS_CASCADE.includes('gemini-2.0-flash'),
+  GEMINI_MODELS_CASCADE[0] === 'gemini-3-flash-preview' &&
+  GEMINI_MODELS_CASCADE.includes('gemini-3.1-flash-lite') &&
+  GEMINI_MODELS_CASCADE.includes('gemini-3.8-flash'),
   'TC-ERR-002',
-  'Multi-model fallback cascade is prioritized from 3.8 to 2.5/2.0 on 503/404'
+  'Multi-model fallback cascade prioritizes live operational gemini-3-flash endpoints'
 );
 
 // TC-BUS-001: Typed EventBus pub-sub delivery

@@ -262,10 +262,10 @@ export class OfflinePlanProvider extends IPlanProvider {
  * Attempts modern Gemini models, seamlessly failing over on 503 or 404 status.
  */
 export const GEMINI_MODELS_CASCADE = [
+  'gemini-3-flash-preview',
+  'gemini-3.1-flash-lite',
   'gemini-3.8-flash',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash'
+  'gemini-flash-latest'
 ];
 
 /**
@@ -420,7 +420,16 @@ export class GeminiPlanProvider extends IPlanProvider {
         }, 0, this.timeoutMs);
 
         if (!res.ok) {
-          lastError = new Error(`HTTP ${res.status} on ${modelName}`);
+          let errMsg = `HTTP ${res.status}`;
+          try {
+            const errJson = await res.json();
+            if (errJson?.error?.message) {
+              errMsg = `${res.status} (${errJson.error.message})`;
+            }
+          } catch {
+            // Non-JSON error body fallback
+          }
+          lastError = new Error(`${errMsg} on ${modelName}`);
           if (res.status === 503 || res.status === 404 || res.status === 400) {
             continue;
           }
