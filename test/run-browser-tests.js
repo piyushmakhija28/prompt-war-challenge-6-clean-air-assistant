@@ -445,7 +445,20 @@ async function main() {
       'Language toggle successfully switches UI state to Hindi and updates assistive live region'
     );
 
-    // BR-TEST-008: Visual Snapshot Capture via CDP Page.captureScreenshot
+    // BR-TEST-008: Geolocation Nearest-Basin Detector & Status Banner Activation
+    const consoleErrorsBeforeGeo = consoleErrors.length;
+    await cdp.evaluate('document.getElementById("btn-detect-location").click()');
+    await sleep(300);
+    const bannerVisible = await cdp.evaluate('!document.getElementById("status-banner").classList.contains("hidden")');
+    const bannerText = await cdp.evaluate('document.getElementById("status-banner").textContent');
+    const noNewConsoleErrors = consoleErrors.length === consoleErrorsBeforeGeo;
+    assert(
+      bannerVisible && bannerText.length > 0 && noNewConsoleErrors,
+      'BR-TEST-008',
+      `Geolocation detector click activates status banner with zero uncaught reference errors (Banner text: "${bannerText}")`
+    );
+
+    // BR-TEST-009: Visual Snapshot Capture via CDP Page.captureScreenshot
     const screenshotDir = path.join(ROOT_DIR, 'test', 'screenshots');
     if (!fs.existsSync(screenshotDir)) {
       fs.mkdirSync(screenshotDir, { recursive: true });
@@ -459,7 +472,7 @@ async function main() {
     const screenshotExists = fs.existsSync(screenshotPath) && fs.statSync(screenshotPath).size > 10000;
     assert(
       screenshotExists,
-      'BR-TEST-008',
+      'BR-TEST-009',
       `Full-page browser visual snapshot successfully captured (${Math.round(fs.statSync(screenshotPath).size / 1024)} KB)`
     );
 

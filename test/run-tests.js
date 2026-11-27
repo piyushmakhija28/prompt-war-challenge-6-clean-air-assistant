@@ -52,7 +52,7 @@ import {
   encodeBase64URL,
   decodeBase64URL
 } from '../src/js/state-codec.js';
-import { INITIAL_STATE, appReducer, registerServiceWorker, AppController, appController } from '../src/js/app.js';
+import { INITIAL_STATE, appReducer, registerServiceWorker, AppController, appController, showStatusBanner, hideStatusBanner } from '../src/js/app.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol, PlanFactory } from '../src/js/offline-advisor.js';
 import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, repairTruncatedJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry, sanitizeCityInput, GEMINI_MODELS_CASCADE, GEMINI_MODEL_TIMEOUTS } from '../src/js/gemini-service.js';
 
@@ -638,6 +638,67 @@ assert(
   'TC-UIUX-007',
   'All interactive action buttons and tabs strictly satisfy Fitts\'s Law touch target invariants (>= 44px / 48px)'
 );
+
+// TC-BANNER-001: showStatusBanner safely executes in non-DOM/SSR environments without throwing
+let ssrError = null;
+try {
+  showStatusBanner('Test non-DOM message', false, 1000);
+  hideStatusBanner();
+} catch (err) {
+  ssrError = err;
+}
+assert(
+  ssrError === null,
+  'TC-BANNER-001',
+  'showStatusBanner and hideStatusBanner execute safely in non-DOM SSR environments'
+);
+
+// TC-BANNER-002: showStatusBanner DOM manipulation, class toggling, and timer cancellation
+const mockBanner = {
+  textContent: '',
+  classList: {
+    classes: new Set(['hidden']),
+    add(c) { this.classes.add(c); },
+    remove(c) { this.classes.delete(c); },
+    contains(c) { return this.classes.has(c); }
+  }
+};
+globalThis.document = {
+  getElementById(id) {
+    if (id === 'status-banner') return mockBanner;
+    return null;
+  }
+};
+globalThis.window = globalThis;
+
+showStatusBanner('Warning: High Inversion Detected', true, 0);
+const shownError = !mockBanner.classList.contains('hidden') && mockBanner.classList.contains('status-banner-error') && mockBanner.textContent === 'Warning: High Inversion Detected';
+
+showStatusBanner('Basin Auto-Detected: Delhi-NCR', false, 0);
+const shownInfo = !mockBanner.classList.contains('hidden') && !mockBanner.classList.contains('status-banner-error') && mockBanner.textContent === 'Basin Auto-Detected: Delhi-NCR';
+
+hideStatusBanner();
+const hiddenState = mockBanner.classList.contains('hidden') && !mockBanner.classList.contains('status-banner-error');
+
+assert(
+  shownError && shownInfo && hiddenState,
+  'TC-BANNER-002',
+  'showStatusBanner toggles error class, updates text, and hideStatusBanner resets state cleanly'
+);
+
+// TC-BANNER-003: showStatusBanner auto-dismiss timeout management and timer clearing
+showStatusBanner('Ephemeral alert', false, 30);
+const timerActive = window._bannerTimer !== null;
+await new Promise((r) => setTimeout(r, 60));
+const autoDismissed = mockBanner.classList.contains('hidden') && window._bannerTimer === null;
+
+assert(
+  timerActive && autoDismissed,
+  'TC-BANNER-003',
+  'showStatusBanner auto-dismiss timer automatically hides banner and clears timer reference'
+);
+
+delete globalThis.document;
 console.log(` Test Execution Summary: ${passed} Passed, ${failed} Failed`);
 console.log('------------------------------------------------------\n');
 

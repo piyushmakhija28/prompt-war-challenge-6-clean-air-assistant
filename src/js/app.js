@@ -296,6 +296,56 @@ function setSafeText(id, text) {
 }
 
 /**
+ * Displays an ephemeral status or alert banner above the main application grid.
+ * Configures text content, ARIA alert role visibility, error styling, and handles auto-dismiss timers.
+ * @param {string} message - Feedback message text to render.
+ * @param {boolean} [isError=false] - Whether the notification signifies an error or degradation alert.
+ * @param {number} [timeoutMs=0] - Milliseconds before auto-dismissal; 0 persists until dismissed.
+ */
+export function showStatusBanner(message, isError = false, timeoutMs = 0) {
+  if (typeof document === 'undefined') return;
+  const banner = document.getElementById('status-banner');
+  if (!banner) return;
+
+  banner.textContent = String(message);
+  banner.classList.remove('hidden');
+
+  if (isError) {
+    banner.classList.add('status-banner-error');
+  } else {
+    banner.classList.remove('status-banner-error');
+  }
+
+  if (typeof window !== 'undefined') {
+    if (window._bannerTimer) {
+      clearTimeout(window._bannerTimer);
+      window._bannerTimer = null;
+    }
+    if (timeoutMs > 0) {
+      window._bannerTimer = setTimeout(() => {
+        hideStatusBanner();
+      }, timeoutMs);
+    }
+  }
+}
+
+/**
+ * Hides the active status banner immediately and cancels any pending auto-dismiss timer.
+ */
+export function hideStatusBanner() {
+  if (typeof document === 'undefined') return;
+  const banner = document.getElementById('status-banner');
+  if (banner) {
+    banner.classList.add('hidden');
+    banner.classList.remove('status-banner-error');
+  }
+  if (typeof window !== 'undefined' && window._bannerTimer) {
+    clearTimeout(window._bannerTimer);
+    window._bannerTimer = null;
+  }
+}
+
+/**
  * Updates live scrubber telemetry badge with effective AQI and trap/dispersal status.
  * @param {number|null} [hour] - Hour decimal.
  */
@@ -534,21 +584,9 @@ export async function triggerPlanGeneration() {
     globalEventBus.emit('PLAN_GENERATED', state.activePlan);
 
     if (result.warning) {
-      const banner = document.getElementById('status-banner');
-      if (banner) {
-        banner.textContent = result.warning;
-        banner.classList.remove('hidden');
-        if (typeof window !== 'undefined') {
-          if (window._bannerTimer) clearTimeout(window._bannerTimer);
-          window._bannerTimer = setTimeout(() => {
-            const b = document.getElementById('status-banner');
-            if (b) b.classList.add('hidden');
-          }, 6000);
-        }
-      }
+      showStatusBanner(result.warning, true, 6000);
     } else {
-      const banner = document.getElementById('status-banner');
-      if (banner) banner.classList.add('hidden');
+      hideStatusBanner();
     }
   } catch (err) {
     globalEventBus.emit('PLAN_ERROR', err);
@@ -939,12 +977,12 @@ export function initApp() {
   if (btnDetectLocation) {
     btnDetectLocation.addEventListener('click', () => {
       if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        showStatusBanner('Geolocation API not supported in this browser.', true);
+        showStatusBanner('Geolocation API not supported in this browser.', true, 4000);
         return;
       }
 
       btnDetectLocation.disabled = true;
-      showStatusBanner('Detecting nearest urban air basin...', false);
+      showStatusBanner('Detecting nearest urban air basin...', false, 0);
 
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -958,20 +996,12 @@ export function initApp() {
             state.city = nearest.name;
             syncUrlHash();
             triggerPlanGeneration();
-            showStatusBanner(`Auto-detected nearest basin: ${nearest.name} (${nearest.distanceKm} km away)`, false);
-            setTimeout(() => {
-              const banner = document.getElementById('status-banner');
-              if (banner) banner.classList.add('hidden');
-            }, 3500);
+            showStatusBanner(`Auto-detected nearest basin: ${nearest.name} (${nearest.distanceKm} km away)`, false, 3500);
           }
         },
         () => {
           btnDetectLocation.disabled = false;
-          showStatusBanner('Geolocation access denied. Keeping current city preset.', true);
-          setTimeout(() => {
-            const banner = document.getElementById('status-banner');
-            if (banner) banner.classList.add('hidden');
-          }, 3500);
+          showStatusBanner('Geolocation access denied. Keeping current city preset.', true, 3500);
         },
         { timeout: 8000 }
       );

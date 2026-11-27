@@ -134,6 +134,14 @@ body {
   border-radius: var(--radius-md);
   color: #fde68a;
   font-size: var(--text-sm);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.status-banner.error,
+.status-banner-error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.50);
+  color: #fca5a5;
 }
 
 .hidden {
