@@ -265,6 +265,9 @@ node test/run-tests.js
 # Execute the 11-Invariant Property-Based Fuzz Suite (10,000 vectors in < 60ms)
 node test/run-fuzz-tests.js
 
+# Execute the Chrome DevTools Protocol (CDP) End-to-End Headless Browser Suite (8 Tests)
+node test/run-browser-tests.js
+
 # Verify strict compliance with the < 10 MB repository size budget
 git count-objects -vH
 ```

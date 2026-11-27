@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node test/run-tests.js",
     "test:fuzz": "node test/run-fuzz-tests.js",
-    "verify": "node test/run-tests.js && node test/run-fuzz-tests.js"
+    "test:browser": "node test/run-browser-tests.js",
+    "verify": "node test/run-tests.js && node test/run-fuzz-tests.js && node test/run-browser-tests.js"
   },
   "keywords": [
     "clean-air",
