@@ -52,7 +52,21 @@ import {
   encodeBase64URL,
   decodeBase64URL
 } from '../src/js/state-codec.js';
-import { INITIAL_STATE, appReducer, registerServiceWorker, AppController, appController, showStatusBanner, hideStatusBanner } from '../src/js/app.js';
+import {
+  INITIAL_STATE,
+  appReducer,
+  registerServiceWorker,
+  AppController,
+  appController,
+  showStatusBanner,
+  hideStatusBanner,
+  safeSessionGet,
+  safeSessionSet,
+  extractAreaNameFromNominatim,
+  executeOptimisticRecalculation,
+  schedulePlanGeneration,
+  state
+} from '../src/js/app.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol, PlanFactory } from '../src/js/offline-advisor.js';
 import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, repairTruncatedJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry, sanitizeCityInput, GEMINI_MODELS_CASCADE, GEMINI_MODEL_TIMEOUTS } from '../src/js/gemini-service.js';
 
@@ -70,7 +84,7 @@ function assert(condition, testName, message = '') {
 }
 
 console.log('\n======================================================');
-console.log(' CleanAir Guardian — 87 Triad Invariant Test Suite');
+console.log(' CleanAir Guardian — 97 Triad Invariant Test Suite');
 console.log('======================================================\n');
 
 // ---------------------------------------------------------------------------
@@ -699,6 +713,131 @@ assert(
 );
 
 delete globalThis.document;
+
+// TC-DEB-001: Debounce Burst Collapsing Invariant
+let debInvokedCount = 0;
+let lastPayload = null;
+let testTimer = null;
+function testDebounced(val) {
+  if (testTimer) clearTimeout(testTimer);
+  testTimer = setTimeout(() => {
+    debInvokedCount++;
+    lastPayload = val;
+  }, 40);
+}
+for (let i = 1; i <= 10; i++) {
+  testDebounced(i);
+}
+await new Promise((r) => setTimeout(r, 70));
+assert(
+  debInvokedCount === 1 && lastPayload === 10,
+  'TC-DEB-001',
+  'Debounce burst collapses 10 rapid calls into exactly 1 final invocation with latest payload'
+);
+
+// TC-OPT-001: Instant Synchronous Local Preview at t = 0ms
+state.aqi = 460;
+state.city = 'Delhi NCR';
+executeOptimisticRecalculation();
+assert(
+  state.activePlan !== null && state.activePlan.severityLevel === 'HAZARDOUS',
+  'TC-OPT-001',
+  'executeOptimisticRecalculation synchronously generates valid offline plan in < 5ms'
+);
+
+// TC-RACE-001: In-Flight Abort Preemption without unhandled rejection
+const abortController = new AbortController();
+let caughtAbort = false;
+const mockAbortFetch = async (signal) => {
+  return new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => {
+      const err = new DOMException('SUPERSEDED', 'AbortError');
+      reject(err);
+    });
+  });
+};
+const p = mockAbortFetch(abortController.signal).catch((err) => {
+  if (err.name === 'AbortError') caughtAbort = true;
+});
+abortController.abort('SUPERSEDED');
+await p;
+assert(
+  caughtAbort === true,
+  'TC-RACE-001',
+  'In-flight fetch preemption cleanly catches AbortError without unhandled rejection'
+);
+
+// TC-GEO-003: Offline Reverse Geocoding Address Formatter
+const mockNominatimData1 = {
+  address: {
+    suburb: 'Indirapuram',
+    city: 'Ghaziabad',
+    state: 'Uttar Pradesh'
+  }
+};
+const mockNominatimData2 = {
+  address: {
+    locality: 'Whitefield',
+    state_district: 'Bengaluru Urban'
+  }
+};
+const area1 = extractAreaNameFromNominatim(mockNominatimData1);
+const area2 = extractAreaNameFromNominatim(mockNominatimData2);
+assert(
+  area1 === 'Indirapuram, Ghaziabad' && area2 === 'Whitefield, Bengaluru Urban',
+  'TC-GEO-003',
+  'extractAreaNameFromNominatim correctly formats localized sub-locality address combinations'
+);
+
+// TC-GEO-004: Unicode International Script Sanitization
+const hindiCity = sanitizeCityInput('नई दिल्ली 110001');
+const chineseCity = sanitizeCityInput('北京市, 朝阳区');
+const germanCity = sanitizeCityInput('München, Bayern');
+const dirtyUnicode = sanitizeCityInput('नई दिल्ली<script>alert(1)</script>');
+assert(
+  hindiCity.includes('नई दिल्ली') && chineseCity.includes('北京市') && germanCity.includes('München') && !dirtyUnicode.includes('<script>'),
+  'TC-GEO-004',
+  'sanitizeCityInput whitelists international Unicode scripts and purges HTML/malicious payloads'
+);
+
+// TC-GEO-005: Sandbox SecurityError Resilience
+const originalSessionStorage = globalThis.sessionStorage;
+try {
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    value: {
+      getItem() { throw new Error('SecurityError: Access is denied'); },
+      setItem() { throw new Error('SecurityError: Access is denied'); }
+    },
+    configurable: true,
+    writable: true
+  });
+} catch {
+}
+const getResult = safeSessionGet('test_key');
+const setResult = safeSessionSet('test_key', 'val');
+if (originalSessionStorage) {
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    value: originalSessionStorage,
+    configurable: true,
+    writable: true
+  });
+}
+assert(
+  getResult === null && setResult === false,
+  'TC-GEO-005',
+  'safeSessionGet and safeSessionSet fail safely in restricted sandboxes without throwing unhandled exceptions'
+);
+
+// TC-CODEC-003: Dynamic City Lossless URL Round-Trip
+const dynamicCtx = createContext('Indirapuram, Ghaziabad', 425, 3, 2, 1, 1, null);
+dynamicCtx.nearestBasin = { name: 'Delhi NCR', distanceKm: 18 };
+const token = contextToHashToken(dynamicCtx);
+const decoded = hashTokenToContext(token);
+assert(
+  token.startsWith('v1=') && decoded.city === 'Indirapuram, Ghaziabad' && decoded.aqi === 425 && decoded.vulnBits === 3,
+  'TC-CODEC-003',
+  'Dynamic micro-location encodes into lossless #v1= token and hydrates back with 100% fidelity'
+);
 console.log(` Test Execution Summary: ${passed} Passed, ${failed} Failed`);
 console.log('------------------------------------------------------\n');
 

@@ -12,7 +12,8 @@
 [![AI Engine](https://img.shields.io/badge/AI_Engine-Google_Gemini_3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
 [![Tests](https://img.shields.io/badge/Tests-84_Passed_%7C_10k_Fuzz_%7C_8_CDP-success.svg)](#)
 [![PWA](https://img.shields.io/badge/PWA-Offline_Ready-purple.svg)](#)
-[![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-32_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
+[![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-33_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
+[![ADR-011](https://img.shields.io/badge/ADR--011-Dual--Phase_Reactive_Sync-blue.svg)](file:///docs/06-adr/ADR-011-dual-phase-micro-reactive-pipeline-and-dynamic-geolocation.md)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](#)
 
 ---
@@ -31,7 +32,8 @@
 | **Single Branch Name**   | main (Single branch strictly enforced; zero auxiliary branches)              |
 | **Repository Size**      | < 1.0 MB (Currently 614 KiB / 0.60 MB; strictly compliant with < 10 MB limit)|
 | **AI Architecture**      | Dual-Engine: Google Gemini 3.8 Flash + Sub-15ms Deterministic Offline Advisor|
-| **System Blueprint**     | 32 Deep Enterprise Specs (`docs/`) + 6 Canonical Mermaid UML Diagrams (`uml/`)|
+| **Reactive Sync**        | Dual-Phase Pipeline: <5ms synchronous local + 250ms debounced Gemini AI sync |
+| **System Blueprint**     | 33 Deep Enterprise Specs (`docs/`) + 6 Canonical Mermaid UML Diagrams (`uml/`)|
 +--------------------------+------------------------------------------------------------------------------+
 ```
 

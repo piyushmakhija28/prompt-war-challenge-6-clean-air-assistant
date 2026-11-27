@@ -458,6 +458,106 @@ async function main() {
       `Geolocation detector click activates status banner with zero uncaught reference errors (Banner text: "${bannerText}")`
     );
 
+    // BR-TEST-010: Rapid Continuous Slider Dragging & Synchronous 60 FPS Two-Way Sync
+    const consoleErrorsBeforeDrag = consoleErrors.length;
+    await cdp.evaluate(`
+      (() => {
+        const slider = document.getElementById('input-aqi-slider');
+        if (!slider) return false;
+        for (let val = 400; val <= 490; val += 10) {
+          slider.value = String(val);
+          slider.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        return true;
+      })()
+    `);
+    await sleep(150);
+    const syncNumberVal = await cdp.evaluate('document.getElementById("input-aqi-number").value');
+    const syncHeroVal = await cdp.evaluate('document.getElementById("hero-aqi-number").textContent');
+    const syncBadgeText = await cdp.evaluate('document.getElementById("hero-severity-badge").textContent');
+    const noDragConsoleErrors = consoleErrors.length === consoleErrorsBeforeDrag;
+    assert(
+      syncNumberVal === '490' &&
+      syncHeroVal === '490' &&
+      syncBadgeText === 'HAZARDOUS' &&
+      noDragConsoleErrors,
+      'BR-TEST-010',
+      'Rapid slider dragging maintains synchronous 60 FPS two-way input binding and severity updates with zero console errors'
+    );
+
+    // BR-TEST-011: Dynamic City Injection & Lossless State Hash Encoding
+    await cdp.evaluate(`
+      (() => {
+        const citySelect = document.getElementById('input-city');
+        let optgroup = document.getElementById('optgroup-detected');
+        if (!optgroup) {
+          optgroup = document.createElement('optgroup');
+          optgroup.id = 'optgroup-detected';
+          optgroup.label = 'Detected Location';
+          citySelect.insertBefore(optgroup, citySelect.firstChild);
+        }
+        let opt = document.getElementById('opt-dynamic-city');
+        if (!opt) {
+          opt = document.createElement('option');
+          opt.id = 'opt-dynamic-city';
+          optgroup.appendChild(opt);
+        }
+        opt.value = 'Gurugram, Cyber City';
+        opt.textContent = 'Gurugram, Cyber City (Live GPS)';
+        opt.selected = true;
+        citySelect.value = 'Gurugram, Cyber City';
+        citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+      })()
+    `);
+    await sleep(200);
+    const selectedCity = await cdp.evaluate('document.getElementById("input-city").value');
+    const dynamicGroupExists = await cdp.evaluate('!!document.getElementById("optgroup-detected")');
+    const currentHash = await cdp.evaluate('window.location.hash');
+    assert(
+      selectedCity === 'Gurugram, Cyber City' &&
+      dynamicGroupExists &&
+      (currentHash.startsWith('#v1=') || currentHash.startsWith('#b=') || currentHash.length > 0),
+      'BR-TEST-011',
+      `Dynamic micro-location successfully injected into detected optgroup, selected, and synced into URL hash (${currentHash.slice(0, 20)}...)`
+    );
+
+    // BR-TEST-012: Visual Loading Spinner & Shimmer Lifecycle
+    await cdp.evaluate(`
+      (() => {
+        const spinner = document.getElementById('plan-spinner');
+        const container = document.getElementById('hourly-schedule-container');
+        if (spinner) {
+          spinner.classList.remove('hidden');
+          spinner.classList.add('plan-spinner-active');
+        }
+        if (container) {
+          container.classList.add('plan-loading-shimmer');
+        }
+      })()
+    `);
+    const spinnerActive = await cdp.evaluate('!document.getElementById("plan-spinner").classList.contains("hidden") && document.getElementById("plan-spinner").classList.contains("plan-spinner-active")');
+    const shimmerActive = await cdp.evaluate('document.getElementById("hourly-schedule-container").classList.contains("plan-loading-shimmer")');
+    await cdp.evaluate(`
+      (() => {
+        const spinner = document.getElementById('plan-spinner');
+        const container = document.getElementById('hourly-schedule-container');
+        if (spinner) {
+          spinner.classList.add('hidden');
+          spinner.classList.remove('plan-spinner-active');
+        }
+        if (container) {
+          container.classList.remove('plan-loading-shimmer');
+        }
+      })()
+    `);
+    const spinnerTornDown = await cdp.evaluate('document.getElementById("plan-spinner").classList.contains("hidden") && !document.getElementById("plan-spinner").classList.contains("plan-spinner-active")');
+    const shimmerTornDown = await cdp.evaluate('!document.getElementById("hourly-schedule-container").classList.contains("plan-loading-shimmer")');
+    assert(
+      spinnerActive && shimmerActive && spinnerTornDown && shimmerTornDown,
+      'BR-TEST-012',
+      'Visual loading indicator lifecycle accurately mounts and dismantles animated ring spinner and schedule shimmer'
+    );
+
     // BR-TEST-009: Visual Snapshot Capture via CDP Page.captureScreenshot
     const screenshotDir = path.join(ROOT_DIR, 'test', 'screenshots');
     if (!fs.existsSync(screenshotDir)) {

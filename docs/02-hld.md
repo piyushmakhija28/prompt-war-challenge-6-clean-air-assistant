@@ -16,36 +16,43 @@ The system features a **Dual-Engine Execution Pipeline**:
 2. **Deterministic Offline Advisor Engine:** A high-speed mathematical rule engine executing inside the client browser in under $15\text{ms}$. This guarantees $100\%$ availability, zero broken evaluation states, and identical mathematical results even when judges test without an API key or when offline.
 
 ```
-+----------------------------------------------------------------------------------------------------+
-|                                  HIGH-LEVEL SYSTEM TOPOLOGY                                        |
-+----------------------------------------------------------------------------------------------------+
-|                                                                                                    |
-|    +--------------------+       +------------------------------------+                             |
-|    |  User Web Browser  | <---> | GitHub Pages Static Edge Host      |                             |
-|    |  (Desktop/Mobile)  |       | (Zero Build Step, HTML/CSS/ES6+)   |                             |
-|    +--------------------+       +------------------------------------+                             |
-|              |                                                                                     |
-|              v                                                                                     |
-|    +----------------------------------------------------------------+                              |
-|    |                  CLIENT-SIDE RUNTIME ENGINE                    |                              |
-|    |                                                                |                              |
-|    |   +-------------------+      +-----------------------------+   |       +-------------------+  |
-|    |   | Context Ingestion | ---> | Atmospheric Inversion Triage|   | ----> | Google Gemini API |  |
-|    |   +-------------------+      +-----------------------------+   |  Live | (gemini-3.8-flash)|  |
-|    |             |                                |                 |       +-------------------+  |
-|    |             v                                v                 |                              |
-|    |   +-------------------+      +-----------------------------+   |                              |
-|    |   | Direct Impact     | <--- | Dual-Engine Router          |   |                              |
-|    |   | Calculator Math   |      | - Gemini 3.8 Flash (Live)   |   |                              |
-|    |   +-------------------+      | - Deterministic Rule Engine |   |                              |
-|    |             |                +-----------------------------+   |                              |
-|    |             v                                                  |                              |
-|    |   +--------------------------------------------------------+   |                              |
-|    |   | DOM Reconciliation Engine & Glassmorphic UI Controller |   |                              |
-|    |   +--------------------------------------------------------+   |                              |
-|    +----------------------------------------------------------------+                              |
-|                                                                                                    |
-+----------------------------------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------------------------------------+
+|                                  HIGH-LEVEL SYSTEM TOPOLOGY (DUAL-PHASE & GEOLOCATION)                                |
++-----------------------------------------------------------------------------------------------------------------------+
+|                                                                                                                       |
+|    +--------------------+       +------------------------------------+                                                |
+|    |  User Web Browser  | <---> | GitHub Pages Static Edge Host      |                                                |
+|    |  (Desktop/Mobile)  |       | (Zero Build Step, HTML/CSS/ES6+)   |                                                |
+|    +--------------------+       +------------------------------------+                                                |
+|              |                                                                                                        |
+|              v                                                                                                        |
+|    +-------------------------------------------------------------------------------------------------------------+    |
+|    |                                        CLIENT-SIDE RUNTIME ENGINE                                           |    |
+|    |                                                                                                             |    |
+|    |   +----------------------------+      +-------------------------------+      +--------------------------+   |    |
+|    |   | Dynamic Geolocation Engine | ---> | Dual-Tier Location Store      | ---> | OpenStreetMap Nominatim  |   |    |
+|    |   | - W3C Permissions Query    |      | - Micro: Localized Area Name  |      |   / BigDataCloud Fallback|   |    |
+|    |   | - Lat/Lon 3-Decimal Trim   |      | - Macro: Haversine Air Basin  |      | - 2000ms AbortController |   |    |
+|    |   +----------------------------+      +-------------------------------+      +--------------------------+   |    |
+|    |                                                       |                                                     |    |
+|    |                                                       v                                                     |    |
+|    |   +----------------------------+      +-------------------------------+      +--------------------------+   |    |
+|    |   | Continuous User Events     | ---> | Dual-Phase Reactive Pipeline  |      | Google Gemini REST API   |   |    |
+|    |   | - Slider 'input'           |      | - Phase 1: Instant Local <5ms | ---> | - Gemini 3.8 Flash       |   |    |
+|    |   | - Dropdown/Radio 'change'  |      | - Phase 2: 250ms Debounced AI | Live | - Gemini 3.5 Flash-Lite  |   |    |
+|    |   +----------------------------+      +-------------------------------+      +--------------------------+   |    |
+|    |                                                       |                                                     |    |
+|    |                                                       v                                                     |    |
+|    |   +----------------------------+      +-------------------------------+                                     |    |
+|    |   | Concurrency Controller     | <--- | FastDOM & Shimmer Renderer    |                                     |    |
+|    |   | - AbortController Signal   |      | - Frame Coalescing (rAF)      |                                     |    |
+|    |   | - Trailing Re-run Queue    |      | - Animated Ring Spinner       |                                     |    |
+|    |   | - Monotonic Sequence IDs   |      | - Glassmorphic Shimmer (CLS=0)|                                     |    |
+|    |   | - Safe Storage / URL Codec |      | - WCAG reduced-motion Safe    |                                     |    |
+|    |   +----------------------------+      +-------------------------------+                                     |    |
+|    +-------------------------------------------------------------------------------------------------------------+    |
+|                                                                                                                       |
++-----------------------------------------------------------------------------------------------------------------------+
 ```
 
 ---
@@ -223,4 +230,37 @@ For comprehensive mathematical, algorithmic, memory, and type-system specificati
 4. **[LLD-04: Data Structures & Algorithms](file:///docs/lld/04-data-structures-and-algorithms.md)** — Big-O master matrix, 5-bit vulnerability bitmasks, binary search breakpoint mapping, and `Float64Array` circular ring buffers.
 5. **[LLD-05: State Management & Event Loop](file:///docs/lld/05-state-management-and-event-loop.md)** — Elm/Redux unidirectional data flow, microtask/macrotask scheduling, and FastDOM zero layout thrashing.
 6. **[LLD-06: Error Handling & Algebraic Types](file:///docs/lld/06-error-handling-and-algebraic-types.md)** — Nominal/branded dimensional units (`AQIScalar`, `PM25Concentration`), `Result<T, E>` monad, and Railway-Oriented Programming (ROP).
+
+---
+
+## 6. Dynamic Geolocation & Dual-Phase Micro-Reactive Architecture
+
+### 6.1 Geolocation Dual-Tier Storage Model
+To deliver hyper-local personal context without breaking meteorological diurnal physics:
+1. **Micro-Location Tier (`state.city`):** High-resolution human-readable area name (e.g., "Indirapuram, Ghaziabad" or "Whitefield, Bengaluru"). Acquired via non-gated W3C Geolocation coordinate truncation (3 decimal places, $\approx 110\text{m}$) and cascaded reverse geocoding (OpenStreetMap Nominatim $\to$ BigDataCloud client API).
+2. **Macro-Basin Airshed Tier (`state.nearestBasin`):** Meteorological reference basin determined via spherical Haversine formula against canonical `METRO_BASIN_COORDINATES`. Provides the atmospheric boundary layer physics, elevation baseline, and planetary diurnal inversion curve.
+
+### 6.2 Dual-Phase Micro-Reactive Pipeline Execution
+```
++----------------------------------------------------------------------------------------------------+
+|                               DUAL-PHASE MICRO-REACTIVE PIPELINE                                   |
++----------------------------------------------------------------------------------------------------+
+|                                                                                                    |
+|    [ User Input Event ] (Slider 'input', Dropdown 'change', Radios, CADR)                          |
+|             |                                                                                      |
+|             +------------------------------------------------------+                               |
+|             |                                                      |                               |
+|             v (Synchronous < 5ms)                                  v (Asynchronous Debounce 250ms) |
+|   +------------------------------------+                 +------------------------------------+    |
+|   | PHASE 1: Deterministic Engine      |                 | PHASE 2: Gemini AI Refinement      |    |
+|   | - Diurnal Inversion Math (< 1ms)   |                 | - Check KeyStore & CircuitBreaker  |    |
+|   | - PM2.5 Inhaled Dosage Math (< 2ms)|                 | - Abort Prior Fetch (SUPERSEDED)   |    |
+|   | - Frame-Coalesced rAF Paint        |                 | - Show Spinner & Shimmer           |    |
+|   | - 60 FPS Responsive UI             |                 | - LLM JSON Cascade Refinement      |    |
+|   +------------------------------------+                 +------------------------------------+    |
+|                                                                                                    |
++----------------------------------------------------------------------------------------------------+
+```
+- **Concurrency Contract:** In-flight network requests are preempted via `AbortController`. The cascade loop in `gemini-service.js` catches `AbortError` and immediately rethrows, ensuring zero false-positive circuit breaker trips. Stale out-of-order network responses are rejected by comparing against monotonic `generationSequenceId`.
+
 

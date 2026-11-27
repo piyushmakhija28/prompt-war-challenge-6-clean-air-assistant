@@ -13,7 +13,7 @@ import { contextToHashToken, hashTokenToContext } from './state-codec.js';
 import { globalEventBus } from './event-bus.js';
 import { calculateRoomClearance, findNearestBasin, getCadrAdequacyRating, UNIT_CONVERSIONS } from './cadr-calculator.js';
 import { aqiToMassConcentration, dosageToCigarettes, getHousingInfiltrationCoefficient } from './impact-calculator.js';
-import { IAQ_HACKS_CATALOG } from './offline-advisor.js';
+import { IAQ_HACKS_CATALOG, generateOfflineCleanAirPlan } from './offline-advisor.js';
 import { createSignal, createComputed, createEffect } from './signals.js';
 
 /**
@@ -103,7 +103,7 @@ export class FastDOMScheduler {
     if (this.scheduled) return;
     this.scheduled = true;
 
-    requestAnimationFrame(() => {
+    const flush = () => {
       const currentReads = this.reads.slice();
       this.reads.length = 0;
       for (let i = 0; i < currentReads.length; i++) {
@@ -117,7 +117,13 @@ export class FastDOMScheduler {
       }
 
       this.scheduled = false;
-    });
+    };
+
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(flush);
+    } else {
+      setTimeout(flush, 0);
+    }
   }
 }
 
@@ -375,6 +381,7 @@ function replaceChildrenSafe(parent, children) {
  * Conforms to Zero-XSS policy using textContent and createElement exclusively.
  */
 export function renderActivePlan() {
+  if (typeof document === 'undefined') return;
   const plan = state.activePlan;
   if (!plan) return;
 
@@ -546,33 +553,356 @@ export function renderActivePlan() {
   });
 }
 
-let isGeneratingPlan = false;
+let debounceTimer = null;
+let activeAbortController = null;
+let pendingGenerationContext = null;
+let generationSequenceId = 0;
+let optimisticRafId = null;
 
 /**
- * Dispatches plan generation and triggers UI reconciliation.
+ * Safely retrieves an item from sessionStorage with fallback for restricted environments.
+ * @param {string} key - Cache storage key.
+ * @returns {string|null}
  */
-export async function triggerPlanGeneration() {
-  if (isGeneratingPlan) return;
-  isGeneratingPlan = true;
+export function safeSessionGet(key) {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      return window.sessionStorage.getItem(key);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
-  const btnGenerate = document.getElementById('btn-generate-plan');
-  if (btnGenerate) {
-    btnGenerate.disabled = true;
-    btnGenerate.textContent = 'Generating AI Plan... ✨';
+/**
+ * Safely writes an item to sessionStorage with fallback for quota or security exceptions.
+ * @param {string} key - Cache storage key.
+ * @param {string} value - String value to persist.
+ * @returns {boolean}
+ */
+export function safeSessionSet(key, value) {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.setItem(key, value);
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+/**
+ * Checks W3C Geolocation permission state without prompting the user.
+ * @returns {Promise<'granted'|'prompt'|'denied'|'unsupported'>}
+ */
+export async function checkGeolocationPermission() {
+  if (typeof navigator === 'undefined' || !navigator.permissions || !navigator.permissions.query) {
+    return 'unsupported';
+  }
+  try {
+    const status = await navigator.permissions.query({ name: 'geolocation' });
+    return status.state;
+  } catch {
+    return 'unsupported';
+  }
+}
+
+/**
+ * Formats OpenStreetMap Nominatim reverse geocode payload into a clean micro-location string.
+ * @param {Object} data - Nominatim reverse geocode response object.
+ * @returns {string|null}
+ */
+export function extractAreaNameFromNominatim(data) {
+  if (!data || !data.address) return null;
+  const addr = data.address;
+  const primary = addr.suburb || addr.neighbourhood || addr.city_district || addr.subdistrict || addr.residential || addr.locality || addr.village || addr.town || addr.city;
+  const secondary = addr.city || addr.town || addr.state_district || addr.county || addr.state;
+  if (primary && secondary && primary !== secondary) {
+    return `${primary}, ${secondary}`;
+  }
+  return primary || secondary || (data.display_name ? data.display_name.split(',')[0] : null);
+}
+
+/**
+ * Reverse geocodes geographic coordinates with dual-provider cascade and strict timeout.
+ * @param {number} lat - Latitude in decimal degrees.
+ * @param {number} lon - Longitude in decimal degrees.
+ * @param {number} [timeoutMs=2000] - Network timeout limit in milliseconds.
+ * @returns {Promise<string|null>}
+ */
+export async function reverseGeocodeNominatim(lat, lon, timeoutMs = 2000) {
+  const safeLat = Math.round(lat * 1000) / 1000;
+  const safeLon = Math.round(lon * 1000) / 1000;
+  const cacheKey = `geo_${safeLat}_${safeLon}`;
+  const cached = safeSessionGet(cacheKey);
+  if (cached) return cached;
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  try {
+    const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${safeLat}&longitude=${safeLon}&localityLanguage=en`;
+    const resp = await fetch(bdcUrl, {
+      signal: controller ? controller.signal : undefined,
+      headers: { 'Accept': 'application/json' }
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const area = data.locality || data.city || data.principalSubdivision;
+      const sub = data.principalSubdivision;
+      let formatted = null;
+      if (area && sub && area !== sub) {
+        formatted = `${area}, ${sub}`;
+      } else {
+        formatted = area || sub || null;
+      }
+      if (formatted) {
+        safeSessionSet(cacheKey, formatted);
+        if (timer) clearTimeout(timer);
+        return formatted;
+      }
+    }
+  } catch {
   }
 
-  const spinner = document.getElementById('plan-spinner');
-  if (spinner) spinner.classList.remove('hidden');
+  try {
+    const osmUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${safeLat}&lon=${safeLon}&zoom=14&addressdetails=1`;
+    const resp = await fetch(osmUrl, {
+      signal: controller ? controller.signal : undefined,
+      headers: { 'Accept': 'application/json' }
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const extracted = extractAreaNameFromNominatim(data);
+      if (extracted) {
+        safeSessionSet(cacheKey, extracted);
+        if (timer) clearTimeout(timer);
+        return extracted;
+      }
+    }
+  } catch {
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 
+  return null;
+}
+
+/**
+ * Injects or updates dynamic location option in city select dropdown and commits to state.
+ * @param {string} areaName - Formatted localized area name.
+ * @param {number} lat - Latitude in decimal degrees.
+ * @param {number} lon - Longitude in decimal degrees.
+ * @param {Object} nearestBasin - Meteorological air basin reference.
+ */
+export function setDynamicLocation(areaName, lat, lon, nearestBasin) {
+  state.city = areaName;
+  state.nearestBasin = nearestBasin;
+  state.userCoordinates = { latitude: lat, longitude: lon };
+
+  if (typeof document === 'undefined') return;
+  const citySelect = document.getElementById('input-city');
+  if (!citySelect) return;
+
+  let optgroup = document.getElementById('optgroup-detected');
+  if (!optgroup) {
+    optgroup = document.createElement('optgroup');
+    optgroup.id = 'optgroup-detected';
+    optgroup.label = 'Detected Location';
+    citySelect.insertBefore(optgroup, citySelect.firstChild);
+  }
+
+  let opt = document.getElementById('opt-dynamic-city');
+  if (!opt) {
+    opt = document.createElement('option');
+    opt.id = 'opt-dynamic-city';
+    optgroup.appendChild(opt);
+  }
+
+  opt.value = areaName;
+  opt.textContent = `${areaName} (Live GPS)`;
+  opt.selected = true;
+  citySelect.value = areaName;
+
+  syncUrlHash();
+  schedulePlanGeneration(0);
+}
+
+/**
+ * Detects user coordinates, executes reverse geocoding, and updates application location state.
+ * @param {{isSilent?: boolean, timeoutMs?: number, reverseGeocodeTimeoutMs?: number}} [options]
+ * @returns {Promise<boolean>}
+ */
+export async function detectUserLocation(options = {}) {
+  const isSilent = options.isSilent || false;
+  const timeoutMs = options.timeoutMs || 8000;
+  const reverseGeocodeTimeoutMs = options.reverseGeocodeTimeoutMs || 2000;
+
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    if (!isSilent) showStatusBanner('Geolocation API is not supported in this browser.', true, 4000);
+    return false;
+  }
+
+  const btnDetect = typeof document !== 'undefined' ? document.getElementById('btn-detect-location') : null;
+  if (btnDetect) btnDetect.disabled = true;
+  if (!isSilent) showStatusBanner('Acquiring high-precision GPS coordinates...', false, 0);
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        if (btnDetect) btnDetect.disabled = false;
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const nearest = findNearestBasin(lat, lon, METRO_BASIN_COORDINATES);
+
+        let areaName = null;
+        try {
+          areaName = await reverseGeocodeNominatim(lat, lon, reverseGeocodeTimeoutMs);
+        } catch {
+          areaName = null;
+        }
+
+        const resolvedName = areaName || (nearest ? nearest.name : 'Custom Location');
+        setDynamicLocation(resolvedName, lat, lon, nearest);
+
+        if (!isSilent) {
+          const distanceStr = nearest ? ` (Airshed: ${nearest.name}, ${nearest.distanceKm} km)` : '';
+          showStatusBanner(`Auto-detected: ${resolvedName}${distanceStr}`, false, 3500);
+        }
+        resolve(true);
+      },
+      () => {
+        if (btnDetect) btnDetect.disabled = false;
+        if (!isSilent) {
+          showStatusBanner('Location access denied or timed out. Keeping preset.', true, 3500);
+        }
+        resolve(false);
+      },
+      { timeout: timeoutMs, enableHighAccuracy: true, maximumAge: 60000 }
+    );
+  });
+}
+
+/**
+ * Coalesces synchronous local preview calculations using requestAnimationFrame.
+ */
+export function scheduleOptimisticPlanRender() {
+  if (typeof window === 'undefined') {
+    executeOptimisticRecalculation();
+    return;
+  }
+  if (optimisticRafId) {
+    cancelAnimationFrame(optimisticRafId);
+  }
+  optimisticRafId = requestAnimationFrame(() => {
+    optimisticRafId = null;
+    executeOptimisticRecalculation();
+  });
+}
+
+/**
+ * Executes immediate deterministic mathematical recalculation and updates active plan.
+ */
+export function executeOptimisticRecalculation() {
   state.hackId = state.activeHackId;
   state.lang = state.advisoryLang;
 
   const currentCp = aqiToMassConcentration(state.aqi);
   diurnalHistory.push(currentCp);
-  globalEventBus.emit('CONTEXT_CHANGED', state);
+
+  const localPlan = generateOfflineCleanAirPlan(state);
+  if (state.activeStrategy !== 'GEMINI_2_5_FLASH_LIVE') {
+    state.activePlan = localPlan;
+    state.activeStrategy = 'OFFLINE_DETERMINISTIC';
+  } else if (!state.activePlan) {
+    state.activePlan = localPlan;
+  }
+
+  renderActivePlan();
+}
+
+/**
+ * Schedules debounced plan generation with immediate local recalculation.
+ * @param {number} [delayMs=250] - Debounce interval in milliseconds.
+ */
+export function schedulePlanGeneration(delayMs = 250) {
+  scheduleOptimisticPlanRender();
+
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+
+  if (delayMs <= 0) {
+    triggerPlanGeneration();
+    return;
+  }
+
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null;
+    triggerPlanGeneration();
+  }, delayMs);
+}
+
+/**
+ * Dispatches plan generation and triggers UI reconciliation with concurrency preemption.
+ * @param {Object} [overrideContext=null] - Optional context override.
+ * @returns {Promise<void>}
+ */
+export async function triggerPlanGeneration(overrideContext = null) {
+  const currentSeq = ++generationSequenceId;
+  const ctx = overrideContext ? { ...overrideContext } : { ...state };
+  ctx.hackId = state.activeHackId;
+  ctx.lang = state.advisoryLang;
+
+  if (activeAbortController) {
+    activeAbortController.abort('SUPERSEDED');
+    activeAbortController = null;
+  }
+
+  const hasApiKey = keyStore.hasKey();
+  if (!hasApiKey) {
+    executeOptimisticRecalculation();
+    globalEventBus.emit('CONTEXT_CHANGED', state);
+    globalEventBus.emit('PLAN_GENERATED', state.activePlan);
+    return;
+  }
+
+  if (planProvider.circuitBreaker && planProvider.circuitBreaker.getState() === 'OPEN') {
+    executeOptimisticRecalculation();
+    showStatusBanner('Gemini API rate limit paused. Serving deterministic offline plan.', true, 4000);
+    return;
+  }
+
+  const controller = new AbortController();
+  activeAbortController = controller;
+
+  const btnGenerate = typeof document !== 'undefined' ? document.getElementById('btn-generate-plan') : null;
+  const spinner = typeof document !== 'undefined' ? document.getElementById('plan-spinner') : null;
+  const scheduleContainer = typeof document !== 'undefined' ? document.getElementById('hourly-schedule-container') : null;
+
+  if (btnGenerate) {
+    btnGenerate.disabled = true;
+    btnGenerate.textContent = 'Refining AI Plan... ✨';
+  }
+  if (spinner) {
+    spinner.classList.remove('hidden');
+    spinner.classList.add('plan-spinner-active');
+  }
+  if (scheduleContainer) {
+    scheduleContainer.classList.add('plan-loading-shimmer');
+  }
+
+  const currentCp = aqiToMassConcentration(ctx.aqi);
+  diurnalHistory.push(currentCp);
+  globalEventBus.emit('CONTEXT_CHANGED', ctx);
 
   try {
-    const result = await planProvider.getPlan(state);
+    const result = await planProvider.getPlan(ctx, { signal: controller.signal });
+    if (currentSeq !== generationSequenceId) return;
+
     state.activePlan = result.plan;
     state.activeStrategy = result.strategy;
 
@@ -589,13 +919,32 @@ export async function triggerPlanGeneration() {
       hideStatusBanner();
     }
   } catch (err) {
+    if (err && (err.name === 'AbortError' || err.message === 'SUPERSEDED' || controller.signal.aborted)) {
+      return;
+    }
+    executeOptimisticRecalculation();
     globalEventBus.emit('PLAN_ERROR', err);
   } finally {
-    isGeneratingPlan = false;
-    if (spinner) spinner.classList.add('hidden');
-    if (btnGenerate) {
-      btnGenerate.disabled = false;
-      btnGenerate.textContent = 'Generate Clean Air Plan';
+    if (currentSeq === generationSequenceId) {
+      if (activeAbortController === controller) {
+        activeAbortController = null;
+      }
+      if (spinner) {
+        spinner.classList.add('hidden');
+        spinner.classList.remove('plan-spinner-active');
+      }
+      if (scheduleContainer) {
+        scheduleContainer.classList.remove('plan-loading-shimmer');
+      }
+      if (btnGenerate) {
+        btnGenerate.disabled = false;
+        btnGenerate.textContent = 'Generate Clean Air Plan';
+      }
+      if (pendingGenerationContext) {
+        const nextCtx = pendingGenerationContext;
+        pendingGenerationContext = null;
+        triggerPlanGeneration(nextCtx);
+      }
     }
   }
 }
@@ -662,7 +1011,7 @@ export function applyPersona(personaId) {
   syncUrlHash();
   renderDiurnalSplineCurve();
   updateScrubberTelemetry(state.simulatedHour);
-  triggerPlanGeneration();
+  schedulePlanGeneration(0);
   announceA11y(`Loaded target persona ${p.name}. City ${p.city}, AQI ${p.aqi}.`);
 }
 
@@ -670,7 +1019,6 @@ export function applyPersona(personaId) {
  * Initializes DOM listeners and hydrates state from initial URL hash.
  */
 export function initApp() {
-  // 1. Hydrate from URL hash if present
   if (window.location.hash && window.location.hash.length > 3) {
     const hydrated = hashTokenToContext(window.location.hash);
     state.city = hydrated.city;
@@ -683,27 +1031,45 @@ export function initApp() {
     state.simulatedHour = hydrated.simulatedHour;
   }
 
-  // 2. Populate Basin Presets in Dropdown
   const citySelect = document.getElementById('input-city');
   if (citySelect) {
     while (citySelect.firstChild) {
       citySelect.removeChild(citySelect.firstChild);
     }
+
+    if (state.city && !METRO_BASIN_PRESETS.includes(state.city)) {
+      const optgroupDetected = document.createElement('optgroup');
+      optgroupDetected.id = 'optgroup-detected';
+      optgroupDetected.label = 'Detected Location';
+      const optDynamic = document.createElement('option');
+      optDynamic.id = 'opt-dynamic-city';
+      optDynamic.value = state.city;
+      optDynamic.textContent = `${state.city} (Live GPS)`;
+      optDynamic.selected = true;
+      optgroupDetected.appendChild(optDynamic);
+      citySelect.appendChild(optgroupDetected);
+    }
+
+    const optgroupPresets = document.createElement('optgroup');
+    optgroupPresets.id = 'optgroup-presets';
+    optgroupPresets.label = 'Metro Basin Presets';
+
     for (let i = 0; i < METRO_BASIN_PRESETS.length; i++) {
       const opt = document.createElement('option');
       opt.value = METRO_BASIN_PRESETS[i];
       opt.textContent = METRO_BASIN_PRESETS[i];
       if (METRO_BASIN_PRESETS[i] === state.city) opt.selected = true;
-      citySelect.appendChild(opt);
+      optgroupPresets.appendChild(opt);
     }
+    citySelect.appendChild(optgroupPresets);
+
     citySelect.addEventListener('change', (e) => {
       state.city = e.target.value;
       syncUrlHash();
-      triggerPlanGeneration();
+      schedulePlanGeneration(0);
     });
   }
 
-  // 3. AQI Controls (Slider & Direct Number Input)
   const aqiSlider = document.getElementById('input-aqi-slider');
   const aqiNumberInput = document.getElementById('input-aqi-number');
   if (aqiSlider) {
@@ -718,10 +1084,11 @@ export function initApp() {
       syncUrlHash();
       renderDiurnalSplineCurve();
       updateScrubberTelemetry(state.simulatedHour);
+      schedulePlanGeneration(250);
     });
 
     aqiSlider.addEventListener('change', () => {
-      triggerPlanGeneration();
+      announceA11y(`AQI adjusted to ${state.aqi}`);
     });
   }
 
@@ -734,14 +1101,14 @@ export function initApp() {
       syncUrlHash();
       renderDiurnalSplineCurve();
       updateScrubberTelemetry(state.simulatedHour);
+      schedulePlanGeneration(250);
     });
 
     aqiNumberInput.addEventListener('change', () => {
-      triggerPlanGeneration();
+      announceA11y(`AQI adjusted to ${state.aqi}`);
     });
   }
 
-  // 4. Time Scrubber Slider
   const timeSlider = document.getElementById('input-time-slider');
   const timeLabel = document.getElementById('label-time-value');
   if (timeSlider) {
@@ -763,14 +1130,14 @@ export function initApp() {
       updateSplineMarker(val);
       updateScrubberTelemetry(val);
       syncUrlHash();
+      schedulePlanGeneration(250);
     });
 
     timeSlider.addEventListener('change', () => {
-      triggerPlanGeneration();
+      announceA11y(`Simulated time set to ${timeLabel?.textContent || ''}`);
     });
   }
 
-  // 4b. Housing Type Dropdown
   const housingSelect = document.getElementById('select-housing-type');
   if (housingSelect) {
     housingSelect.value = state.housingType;
@@ -778,11 +1145,10 @@ export function initApp() {
       state.housingType = e.target.value;
       globalEventBus.emit('CONTEXT_UPDATED', state);
       syncUrlHash();
-      triggerPlanGeneration();
+      schedulePlanGeneration(250);
     });
   }
 
-  // 4c. Cooking Method Radios
   const cookingRadios = document.querySelectorAll('input[name="radio-cooking"]');
   cookingRadios.forEach((r) => {
     r.checked = r.value === state.cookingMethod;
@@ -791,12 +1157,11 @@ export function initApp() {
         state.cookingMethod = e.target.value;
         globalEventBus.emit('CONTEXT_UPDATED', state);
         syncUrlHash();
-        triggerPlanGeneration();
+        schedulePlanGeneration(250);
       }
     });
   });
 
-  // 4d. Heating Method Radios
   const heatingRadios = document.querySelectorAll('input[name="radio-heating"]');
   heatingRadios.forEach((r) => {
     r.checked = r.value === state.heatingMethod;
@@ -805,12 +1170,11 @@ export function initApp() {
         state.heatingMethod = e.target.value;
         globalEventBus.emit('CONTEXT_UPDATED', state);
         syncUrlHash();
-        triggerPlanGeneration();
+        schedulePlanGeneration(250);
       }
     });
   });
 
-  // 4e. Commute Mode Radios & Distance Slider
   const commuteRadios = document.querySelectorAll('input[name="radio-commute"]');
   commuteRadios.forEach((r) => {
     r.checked = r.value === state.commuteMode;
@@ -819,7 +1183,7 @@ export function initApp() {
         state.commuteMode = e.target.value;
         globalEventBus.emit('CONTEXT_UPDATED', state);
         syncUrlHash();
-        triggerPlanGeneration();
+        schedulePlanGeneration(250);
       }
     });
   });
@@ -835,14 +1199,14 @@ export function initApp() {
       state.commuteKm = val;
       if (commuteKmLabel) commuteKmLabel.textContent = `${val} km`;
       syncUrlHash();
+      schedulePlanGeneration(250);
     });
 
     commuteKmSlider.addEventListener('change', () => {
-      triggerPlanGeneration();
+      announceA11y(`Commute distance set to ${state.commuteKm} km`);
     });
   }
 
-  // 5. Vulnerability Checkboxes
   const vulnCheckboxes = document.querySelectorAll('.input-vuln-checkbox');
   vulnCheckboxes.forEach((cb) => {
     const bit = Number(cb.getAttribute('data-bit'));
@@ -855,14 +1219,13 @@ export function initApp() {
         state.vulnBits &= ~bit;
       }
       syncUrlHash();
-      triggerPlanGeneration();
+      schedulePlanGeneration(250);
     });
   });
 
-  // 6. Primary Action Buttons
   const btnGenerate = document.getElementById('btn-generate-plan');
   if (btnGenerate) {
-    btnGenerate.addEventListener('click', () => triggerPlanGeneration());
+    btnGenerate.addEventListener('click', () => schedulePlanGeneration(0));
   }
 
   const btnCopyWhatsApp = document.getElementById('btn-copy-advisory');
@@ -884,7 +1247,6 @@ export function initApp() {
             }, 2500);
             return;
           } catch (e) {
-            // User cancelled or share error; fall through to clipboard
           }
         }
         await navigator.clipboard.writeText(`${advisoryText}\n\nLive Plan: ${currentUrl}`);
@@ -896,7 +1258,6 @@ export function initApp() {
     });
   }
 
-  // 6a. Language Toggle (English <-> Hindi)
   const btnToggleLang = document.getElementById('btn-toggle-lang');
   const labelCurrentLang = document.getElementById('label-current-lang');
   if (btnToggleLang) {
@@ -912,7 +1273,6 @@ export function initApp() {
     });
   }
 
-  // 6b. Emergency 1-Page Family Protocol Print
   const btnPrintProtocol = document.getElementById('btn-print-protocol');
   if (btnPrintProtocol) {
     btnPrintProtocol.addEventListener('click', () => {
@@ -920,7 +1280,6 @@ export function initApp() {
     });
   }
 
-  // 6c. Copy Link Button (Tab 11)
   const btnCopyLink = document.getElementById('btn-copy-link');
   if (btnCopyLink) {
     btnCopyLink.addEventListener('click', async () => {
@@ -933,12 +1292,10 @@ export function initApp() {
         }, 2000);
         announceA11y('Shareable clean air link copied to clipboard.');
       } catch (e) {
-        // Fallback
       }
     });
   }
 
-  // 6d. Target Persona Quick Presets (Docs 00 §5)
   const personaButtons = document.querySelectorAll('.btn-persona');
   personaButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -947,7 +1304,6 @@ export function initApp() {
     });
   });
 
-  // 6c. Selectable 4-Hack IAQ Catalog Switcher
   const hackTabs = document.querySelectorAll('.hack-tab-btn');
   hackTabs.forEach((tab) => {
     tab.addEventListener('click', () => {
@@ -968,43 +1324,14 @@ export function initApp() {
         updateRoomCadr();
       }
 
-      triggerPlanGeneration();
+      schedulePlanGeneration(250);
     });
   });
 
-  // 6b. Geolocation Nearest-Basin Detector
   const btnDetectLocation = document.getElementById('btn-detect-location');
   if (btnDetectLocation) {
     btnDetectLocation.addEventListener('click', () => {
-      if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        showStatusBanner('Geolocation API not supported in this browser.', true, 4000);
-        return;
-      }
-
-      btnDetectLocation.disabled = true;
-      showStatusBanner('Detecting nearest urban air basin...', false, 0);
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          btnDetectLocation.disabled = false;
-          const userLat = pos.coords.latitude;
-          const userLon = pos.coords.longitude;
-          const nearest = findNearestBasin(userLat, userLon, METRO_BASIN_COORDINATES);
-
-          if (nearest && citySelect) {
-            citySelect.value = nearest.name;
-            state.city = nearest.name;
-            syncUrlHash();
-            triggerPlanGeneration();
-            showStatusBanner(`Auto-detected nearest basin: ${nearest.name} (${nearest.distanceKm} km away)`, false, 3500);
-          }
-        },
-        () => {
-          btnDetectLocation.disabled = false;
-          showStatusBanner('Geolocation access denied. Keeping current city preset.', true, 3500);
-        },
-        { timeout: 8000 }
-      );
+      detectUserLocation({ isSilent: false });
     });
   }
 
@@ -1086,6 +1413,7 @@ export function initApp() {
       if (inputRoomH) inputRoomH.value = String(Math.round(Number(inputRoomH.value) * UNIT_CONVERSIONS.M_TO_FT * 10) / 10);
 
       updateRoomCadr();
+      schedulePlanGeneration(250);
       announceA11y('CADR calculator switched to feet.');
     });
 
@@ -1106,6 +1434,7 @@ export function initApp() {
       if (inputRoomH) inputRoomH.value = String(Math.round(Number(inputRoomH.value) * UNIT_CONVERSIONS.FT_TO_M * 100) / 100);
 
       updateRoomCadr();
+      schedulePlanGeneration(250);
       announceA11y('CADR calculator switched to meters.');
     });
   }
@@ -1114,13 +1443,18 @@ export function initApp() {
   cadrInputs.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      el.addEventListener('input', updateRoomCadr);
-      el.addEventListener('change', updateRoomCadr);
+      el.addEventListener('input', () => {
+        updateRoomCadr();
+        schedulePlanGeneration(250);
+      });
+      el.addEventListener('change', () => {
+        updateRoomCadr();
+        schedulePlanGeneration(250);
+      });
     }
   });
   updateRoomCadr();
 
-  // 7. API Key Drawer
   const inputKey = document.getElementById('input-gemini-key');
   const btnSaveKey = document.getElementById('btn-save-key');
   const btnClearKey = document.getElementById('btn-clear-key');
@@ -1135,27 +1469,31 @@ export function initApp() {
 
   if (btnSaveKey && inputKey) {
     btnSaveKey.addEventListener('click', () => {
-      console.info('%c[CleanAir:KeyStore]%c Ephemeral key activated in memory buffer. Triggering live generation...', 'color:#10b981;font-weight:bold;', 'color:inherit;');
       keyStore.setKey(inputKey.value);
       inputKey.value = '';
       setSafeText('key-status-text', '🔒 Active (In-Memory Only — Zero Disk Persistence)');
-      triggerPlanGeneration();
+      schedulePlanGeneration(0);
     });
   }
 
   if (btnClearKey) {
     btnClearKey.addEventListener('click', () => {
-      console.info('%c[CleanAir:KeyStore]%c Key zeroed and purged from RAM.', 'color:#64748b;font-weight:bold;', 'color:inherit;');
       keyStore.purge();
       setSafeText('key-status-text', 'Key Purged (Zeroed in RAM) — Operating in Offline Mode');
-      triggerPlanGeneration();
+      schedulePlanGeneration(0);
     });
   }
 
   registerServiceWorker('sw.js');
   updateScrubberTelemetry(state.simulatedHour);
   renderDiurnalSplineCurve();
-  triggerPlanGeneration();
+  schedulePlanGeneration(0);
+
+  checkGeolocationPermission().then((status) => {
+    if (status === 'granted') {
+      detectUserLocation({ isSilent: true });
+    }
+  });
 }
 
 /**

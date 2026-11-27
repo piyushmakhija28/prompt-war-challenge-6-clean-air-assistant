@@ -315,3 +315,98 @@ createEffect(() => {
 });
 ```
 
+---
+
+## 6. Concurrency Control, Frame-Coalescing & Debounce Architecture
+
+### 6.1 Concurrency State Machine
+The Dual-Phase engine orchestrates local deterministic recalculations and external LLM inferences via a deterministic finite state machine:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: Page Hydrated
+
+    state Idle {
+        [*] --> Synced
+        Synced --> ImmediateUpdate: User Input Event (input/change)
+    }
+
+    state ImmediateUpdate {
+        [*] --> MutateLocalState: Canonical State & Signals Updated
+        MutateLocalState --> EvalDeterministicMath: generateOfflineCleanAirPlan (<2ms)
+        EvalDeterministicMath --> FrameCoalescedDOM: requestAnimationFrame -> renderActivePlan
+        FrameCoalescedDOM --> SyncUrlState: 5-Byte Presets or Lossless v1= Hash
+    }
+
+    ImmediateUpdate --> CheckAPIKey: Immediate Phase 1 Done (<5ms)
+
+    state CheckAPIKey <<choice>>
+    CheckAPIKey --> Idle: KeyStore Empty (Offline Deterministic Mode)
+    CheckAPIKey --> ArmDebounce: KeyStore Active (Live Gemini Mode)
+
+    state ArmDebounce {
+        [*] --> CancelPendingTimer: clearTimeout(planDebounceTimer)
+        CancelPendingTimer --> Set250msTimer: setTimeout(triggerPlanGeneration, 250)
+    }
+
+    ArmDebounce --> InFlightGeneration: 250ms Inactivity Elapses
+    ArmDebounce --> ImmediateUpdate: New User Input Before 250ms
+
+    state InFlightGeneration {
+        [*] --> InspectActiveController: Check activeAbortController
+        InspectActiveController --> AbortPriorFetch: activeAbortController.abort('SUPERSEDED')
+        InspectActiveController --> NewController: Create new AbortController + SeqID++
+        AbortPriorFetch --> NewController
+        NewController --> SetLoadingIndicators: #plan-spinner active + .plan-loading-shimmer
+        SetLoadingIndicators --> NetworkRESTCascade: Gemini 3.8 / 3.5 Flash-Lite Fetch
+        NetworkRESTCascade --> CommitPlan: 200 OK + Schema Validated
+        NetworkRESTCascade --> CatchAbort: AbortError (Break Loop & Suppress Cleanly)
+        NetworkRESTCascade --> FallbackDeterministic: 429 RateLimit / CircuitBreaker
+        CommitPlan --> TeardownIndicators: Remove Shimmer + Reset Spinner
+        CatchAbort --> TeardownIndicators
+        FallbackDeterministic --> TeardownIndicators
+    }
+
+    state CheckTrailingQueue <<choice>>
+    InFlightGeneration --> CheckTrailingQueue: finally block executed
+    CheckTrailingQueue --> InFlightGeneration: pendingGenerationContext !== null & CB closed
+    CheckTrailingQueue --> FallbackTrailing: pendingGenerationContext !== null & CB open
+    CheckTrailingQueue --> Idle: pendingGenerationContext === null
+
+    state FallbackTrailing {
+        [*] --> RenderOfflineDirect: Apply Offline Plan Directly
+        RenderOfflineDirect --> NotifyStatus: showStatusBanner(CB paused, true, 5000)
+    }
+    FallbackTrailing --> Idle
+```
+
+### 6.2 Frame-Coalescing via `requestAnimationFrame`
+To prevent layout thrashing and garbage collection spikes when scrubbing sliders at 60–120Hz:
+```javascript
+export function scheduleOptimisticPlanRender() {
+  if (typeof window === 'undefined') {
+    executeOptimisticRecalculation();
+    return;
+  }
+  if (optimisticRafId) {
+    cancelAnimationFrame(optimisticRafId);
+  }
+  optimisticRafId = requestAnimationFrame(() => {
+    optimisticRafId = null;
+    executeOptimisticRecalculation();
+  });
+}
+```
+This guarantees at most one full view calculation per browser display refresh ($16.6\text{ms}$ at 60Hz or $8.3\text{ms}$ at 120Hz), maintaining fluid rendering without dropping frames.
+
+### 6.3 Monotonic Sequence Protection & In-Flight Abort
+Network race conditions where an earlier slow request returns after a newer fast request are eliminated using monotonic integer sequence identifiers:
+```javascript
+const currentSeq = ++generationSequenceId;
+// ...
+const result = await planProvider.getPlan(ctx, { signal: controller.signal });
+if (currentSeq !== generationSequenceId) return; // Stale response discarded
+```
+Additionally, `activeAbortController.abort('SUPERSEDED')` directly closes the in-flight HTTP socket, conserving user bandwidth and battery power.
+
+

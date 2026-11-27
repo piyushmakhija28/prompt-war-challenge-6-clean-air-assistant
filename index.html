@@ -33,7 +33,10 @@
     </div>
     <div style="display:flex; align-items:center; gap:8px;">
       <span id="active-engine-badge" class="badge-engine">INITIALIZING</span>
-      <span id="plan-spinner" class="badge-engine hidden" style="color:#f59e0b; border-color:#f59e0b;">Computing...</span>
+      <span id="plan-spinner" class="badge-engine hidden" style="color:#f59e0b; border-color:#f59e0b;" role="status" aria-live="polite">
+        <span class="spinner-ring" aria-hidden="true"></span>
+        <span id="plan-spinner-text">Computing...</span>
+      </span>
     </div>
   </header>
 

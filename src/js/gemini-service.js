@@ -17,7 +17,7 @@ import { generateOfflineCleanAirPlan, getCleaningProtocol, PlanFactory } from '.
 export function sanitizeCityInput(rawString) {
   if (typeof rawString !== 'string') return 'Delhi NCR';
   const trimmed = rawString.trim().slice(0, 50);
-  const sanitized = trimmed.replace(/[^a-zA-Z0-9\s,.-]/g, '');
+  const sanitized = trimmed.replace(/[^\p{L}\p{M}\p{N}\s,.-]/gu, '');
   return sanitized.length > 0 ? sanitized : 'Delhi NCR';
 }
 
@@ -172,7 +172,8 @@ export class CircuitBreaker {
  * @param {number} [timeoutMs=8000] - Timeout limit in milliseconds.
  * @returns {Promise<Response>} HTTP Response promise.
  */
-export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 12000) {
+export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 12000, externalSignal = null) {
+  const fetchOptions = options || {};
   let attempt = 0;
   let delay = 500;
 
@@ -182,12 +183,27 @@ export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 1
       controller.abort(new Error(`Gemini request timed out after ${timeoutMs / 1000}s`));
     }, timeoutMs);
 
+    let abortListener = null;
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        clearTimeout(timer);
+        throw new DOMException('Request aborted by user input', 'AbortError');
+      }
+      abortListener = () => {
+        controller.abort(externalSignal.reason || new DOMException('SUPERSEDED', 'AbortError'));
+      };
+      externalSignal.addEventListener('abort', abortListener, { once: true });
+    }
+
     try {
       const res = await fetch(url, {
-        ...options,
+        ...fetchOptions,
         signal: controller.signal
       });
       clearTimeout(timer);
+      if (abortListener && externalSignal) {
+        externalSignal.removeEventListener('abort', abortListener);
+      }
 
       if (res.status === 429 || (res.status >= 500 && res.status <= 504)) {
         if (attempt < maxRetries) {
@@ -201,7 +217,13 @@ export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 1
       return res;
     } catch (err) {
       clearTimeout(timer);
-      if (attempt < maxRetries && err.name !== 'AbortError') {
+      if (abortListener && externalSignal) {
+        externalSignal.removeEventListener('abort', abortListener);
+      }
+      if (externalSignal?.aborted || err.name === 'AbortError' || err.message?.includes('SUPERSEDED')) {
+        throw err;
+      }
+      if (attempt < maxRetries) {
         attempt++;
         const jitter = Math.random() * delay;
         await new Promise((resolve) => setTimeout(resolve, delay + jitter));
@@ -306,9 +328,10 @@ export class IPlanProvider {
   /**
    * Generates a clean air action plan from context.
    * @param {Object} context - Household context.
+   * @param {Object} [options={}] - Concurrency and preemption options.
    * @returns {Promise<{plan: Object, strategy: string, warning?: string}>}
    */
-  async getPlan(context) {
+  async getPlan(context, options = {}) {
     throw new Error('Method getPlan() must be implemented.');
   }
 }
@@ -321,9 +344,10 @@ export class OfflinePlanProvider extends IPlanProvider {
   /**
    * Executes deterministic offline plan generation in < 15ms.
    * @param {Object} context - Household context.
+   * @param {Object} [options={}] - Concurrency and preemption options.
    * @returns {Promise<{plan: Object, strategy: string}>}
    */
-  async getPlan(context) {
+  async getPlan(context, options = {}) {
     return {
       plan: generateOfflineCleanAirPlan(context),
       strategy: 'OFFLINE_DETERMINISTIC'
@@ -377,9 +401,12 @@ export class GeminiPlanProvider extends IPlanProvider {
    * Complexity: Sub-2.0s online, sub-15ms fallback.
    *
    * @param {Object} context - Household context.
+   * @param {Object} [options={}] - Concurrency and preemption options.
    * @returns {Promise<{plan: Object, strategy: string, warning?: string}>}
    */
-  async getPlan(context) {
+  async getPlan(context, options = {}) {
+    const signal = options.signal || null;
+
     if (!this.keyStore.hasKey()) {
       return {
         plan: generateOfflineCleanAirPlan(context),
@@ -535,7 +562,7 @@ export class GeminiPlanProvider extends IPlanProvider {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(modelPayload)
-        }, 0, attemptTimeout);
+        }, 0, attemptTimeout, signal);
 
         const elapsed = Date.now() - attemptStart;
 
@@ -633,6 +660,9 @@ export class GeminiPlanProvider extends IPlanProvider {
           strategy: finalStrategy
         };
       } catch (err) {
+        if (err.name === 'AbortError' || signal?.aborted || err.message?.includes('SUPERSEDED')) {
+          throw err;
+        }
         const elapsed = Date.now() - attemptStart;
         console.warn(
           `%c[GeminiCascade:EXCEPTION]%c ${modelName} failed in ${elapsed}ms: %s (%s)`,

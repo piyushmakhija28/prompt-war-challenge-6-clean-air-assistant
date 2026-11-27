@@ -78,6 +78,9 @@ export function packContextTo5Bytes(ctx) {
   const distanceKm = Math.max(0, Math.min(127, Math.round(Number(ctx.commuteKm) || 0)));
 
   let cityIdx = METRO_BASIN_PRESETS.indexOf(ctx.city);
+  if (cityIdx < 0 && ctx.nearestBasin && ctx.nearestBasin.name) {
+    cityIdx = METRO_BASIN_PRESETS.indexOf(ctx.nearestBasin.name);
+  }
   if (cityIdx < 0) cityIdx = 0;
 
   const simHour = ctx.simulatedHour !== null && ctx.simulatedHour !== undefined
@@ -160,18 +163,43 @@ export function unpackContextFrom5Bytes(bytes) {
 }
 
 /**
- * Serializes context into a 7-character Base64URL hash token.
+ * Serializes context into an efficient URL hash token.
+ * Uses compact 7-character Base64URL string (prefixed with 'b=') for standard presets,
+ * and lossless 'v1=' Base64URL string for dynamic custom locations.
+ *
  * @param {Object} ctx - Context object.
- * @returns {string} 7-character Base64URL string (prefixed with 'b=').
+ * @returns {string} URL hash token string.
  */
 export function contextToHashToken(ctx) {
-  const bytes = packContextTo5Bytes(ctx);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  if (METRO_BASIN_PRESETS.includes(ctx.city)) {
+    const bytes = packContextTo5Bytes(ctx);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const b64 = btoa(binary);
+    return 'b=' + b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
-  const b64 = btoa(binary);
-  return 'b=' + b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const cookingMethods = ['induction', 'png', 'lpg', 'biomass'];
+  const heatingMethods = ['electric_radiator', 'space_heater', 'heat_pump', 'open_fire'];
+  const commuteModes = ['walk_cycle', 'two_wheeler', 'public_transit', 'private_car'];
+  const cookIdx = cookingMethods.indexOf(ctx.cookingMethod);
+  const heatIdx = heatingMethods.indexOf(ctx.heatingMethod);
+  const commuteIdx = commuteModes.indexOf(ctx.commuteMode);
+  const simHour = ctx.simulatedHour !== null && ctx.simulatedHour !== undefined ? ctx.simulatedHour : '';
+
+  const payload = [
+    ctx.city,
+    ctx.aqi,
+    ctx.vulnBits,
+    cookIdx >= 0 ? cookIdx : 2,
+    heatIdx >= 0 ? heatIdx : 1,
+    commuteIdx >= 0 ? commuteIdx : 1,
+    simHour
+  ].join('|');
+
+  return 'v1=' + encodeBase64URL(payload);
 }
 
 /**
