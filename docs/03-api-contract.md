@@ -35,12 +35,13 @@ $$\text{Minimize } \text{Latency} \quad \text{subject to: } \text{Tokens}_{\text
 - **HTTP Method:** `POST`
 - **URL Endpoint:** `https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent?key={API_KEY}`
 - **High-Availability Cascade (`GEMINI_MODELS_CASCADE`):**
-  1. `gemini-3-flash-preview`
-  2. `gemini-3.1-flash-lite`
-  3. `gemini-3.8-flash`
-  4. `gemini-flash-latest`
+  1. `gemini-3.1-flash-lite` (thinkingLevel: MINIMAL)
+  2. `gemini-2.5-flash-lite` (thinkingBudget: 0)
+  3. `gemini-2.5-flash` (thinkingBudget: 0)
+  4. `gemini-3.8-flash` (thinkingLevel: MINIMAL)
+  5. `gemini-flash-latest`
 - **Headers:** `Content-Type: application/json`
-- **Timeout:** `25,000ms` (with `AbortSignal.timeout`)
+- **Timeout:** `12,000ms` per attempt (with `AbortSignal.timeout`)
 
 ### 2.1 Complete Request Payload with Native `responseSchema`:
 ```json

@@ -32,7 +32,7 @@
     <mxCell id="10" value="GeminiPlanProvider" style="swimlane;fontStyle=1;align=center;startSize=26;container=1;collapsible=0;expand=0;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
       <mxGeometry x="620" y="40" width="220" height="182" as="geometry" />
     </mxCell>
-    <mxCell id="11" value="- -keyStore: IKeyStore&amp;#xa;- -rateLimiter: TokenBucketLimiter&amp;#xa;- -circuitBreaker: CircuitBreaker&amp;#xa;- -timeoutMs: number = 25000&amp;#xa;- -modelsCascade: string[]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;" vertex="1" parent="10">
+    <mxCell id="11" value="- -keyStore: IKeyStore&amp;#xa;- -rateLimiter: TokenBucketLimiter&amp;#xa;- -circuitBreaker: CircuitBreaker&amp;#xa;- -timeoutMs: number = 12000&amp;#xa;- -modelsCascade: string[]" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;" vertex="1" parent="10">
       <mxGeometry x="0" y="26" width="220" height="104" as="geometry" />
     </mxCell>
     <mxCell id="12" value="" style="line;html=1;strokeColor=#9673A6;strokeWidth=1;fillColor=none;" vertex="1" parent="10">

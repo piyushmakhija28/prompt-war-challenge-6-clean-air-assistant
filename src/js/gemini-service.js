@@ -172,7 +172,7 @@ export class CircuitBreaker {
  * @param {number} [timeoutMs=8000] - Timeout limit in milliseconds.
  * @returns {Promise<Response>} HTTP Response promise.
  */
-export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 25000) {
+export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 12000) {
   let attempt = 0;
   let delay = 500;
 
@@ -261,11 +261,12 @@ export class OfflinePlanProvider extends IPlanProvider {
 
 /**
  * Prioritized Gemini generative model endpoint cascade.
- * Attempts modern Gemini models, seamlessly failing over on 503 or 404 status.
+ * Prioritizes high-throughput minimal-latency flash-lite models before frontier reasoning models.
  */
 export const GEMINI_MODELS_CASCADE = [
-  'gemini-3-flash-preview',
   'gemini-3.1-flash-lite',
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
   'gemini-3.8-flash',
   'gemini-flash-latest'
 ];
@@ -284,7 +285,7 @@ export class GeminiPlanProvider extends IPlanProvider {
     this.keyStore = keyStore;
     this.rateLimiter = new TokenBucketLimiter(3, 5);
     this.circuitBreaker = new CircuitBreaker(2, 30000);
-    this.timeoutMs = 25000;
+    this.timeoutMs = 12000;
   }
 
   /**
@@ -414,11 +415,18 @@ export class GeminiPlanProvider extends IPlanProvider {
       const modelName = GEMINI_MODELS_CASCADE[i];
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
+      const modelPayload = JSON.parse(JSON.stringify(payload));
+      if (modelName.startsWith('gemini-3')) {
+        modelPayload.generationConfig.thinkingConfig = { thinkingLevel: 'MINIMAL' };
+      } else if (modelName.startsWith('gemini-2.5')) {
+        modelPayload.generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      }
+
       try {
         const res = await fetchWithRetry(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(modelPayload)
         }, 0, this.timeoutMs);
 
         if (!res.ok) {
@@ -432,10 +440,7 @@ export class GeminiPlanProvider extends IPlanProvider {
             // Non-JSON error body fallback
           }
           lastError = new Error(`${errMsg} on ${modelName}`);
-          if (res.status === 503 || res.status === 404 || res.status === 400) {
-            continue;
-          }
-          throw lastError;
+          continue;
         }
 
         const data = await res.json();
@@ -463,10 +468,7 @@ export class GeminiPlanProvider extends IPlanProvider {
         };
       } catch (err) {
         lastError = err;
-        if (err.message && (err.message.includes('503') || err.message.includes('404') || err.message.includes('400'))) {
-          continue;
-        }
-        break;
+        continue;
       }
     }
 
