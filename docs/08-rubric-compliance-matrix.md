@@ -32,7 +32,7 @@
 |                    |                | execution; repository size strictly < 10 MB (actual < 2MB). | `.gitignore`, `VERSION`      |
 +--------------------+----------------+-------------------------------------------------------------+------------------------------+
 | **Medium Impact**  | **15 pts**     | **Testing & Invariant Rigor:** Validation of functionality; | `docs/testing/01-triad-test` |
-|                    |                | 72 Triad test cases (Positive, Negative, Edge-Case) + 11-   | `test/run-tests.js`          |
+|                    |                | 75 Triad test cases (Positive, Negative, Edge-Case) + 11-   | `test/run-tests.js`          |
 |                    |                | Invariant Property-Based Fuzz Suite (10,000 vectors);        | `docs/lld/02-direct-impact`  |
 +--------------------+----------------+-------------------------------------------------------------+------------------------------+
 | **Low Impact**     | **10 pts**     | **Accessibility (a11y):** Inclusive, usable design;         | `docs/ui-ux/02-a11y-matrix`  |

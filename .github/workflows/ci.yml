@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Execute 66 Triad Invariant Tests
+      - name: Execute 75 Triad Invariant Tests
         run: node test/run-tests.js
 
       - name: Execute 10,000 Property Fuzz Vectors (11 Algebraic Invariants)

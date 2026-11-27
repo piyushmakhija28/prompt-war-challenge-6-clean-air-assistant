@@ -12,7 +12,7 @@ import { SecureKeyStore, GeminiPlanProvider } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
 import { globalEventBus } from './event-bus.js';
 import { calculateRoomClearance, findNearestBasin } from './cadr-calculator.js';
-import { aqiToMassConcentration } from './impact-calculator.js';
+import { aqiToMassConcentration, dosageToCigarettes } from './impact-calculator.js';
 import { IAQ_HACKS_CATALOG } from './offline-advisor.js';
 import { createSignal, createComputed, createEffect } from './signals.js';
 
@@ -331,14 +331,20 @@ export function renderActivePlan() {
 
     // 2b. Comparative Inhaled Dose Exposure Gauge
     const unshieldedCp = aqiToMassConcentration(state.aqi);
-    const unshieldedDose = Math.max(10, unshieldedCp * 12.0 * 1.4 * (0.85 * 0.7 + 1.0 * 0.3));
+    const alphaInf = 0.65;
+    const dailyVolumeM3 = 10.8;
+    const alveolarDeposition = 0.28;
+    const unshieldedDose = Math.max(10, Math.round(unshieldedCp * (alphaInf * 0.75 + 1.0 * 0.25) * dailyVolumeM3 * 1.3 * alveolarDeposition));
     const avoidedUg = plan.quantifiedImpact ? plan.quantifiedImpact.pm25InhalationAvoidedMicrograms : 0;
     const protectedDose = Math.max(5, unshieldedDose - avoidedUg);
     const reductionPct = Math.min(99.9, Math.max(0, ((unshieldedDose - protectedDose) / unshieldedDose) * 100));
 
+    const unshieldedCigs = dosageToCigarettes(unshieldedDose);
+    const protectedCigs = dosageToCigarettes(protectedDose);
+
     setSafeText('badge-shield-reduction', `-${reductionPct.toFixed(1)}% Inhaled Dose`);
-    setSafeText('text-unshielded-dose', `${Math.round(unshieldedDose)} µg (${(unshieldedDose / 22).toFixed(1)} Cigs)`);
-    setSafeText('text-protected-dose', `${Math.round(protectedDose)} µg (${(protectedDose / 22).toFixed(1)} Cigs)`);
+    setSafeText('text-unshielded-dose', `${Math.round(unshieldedDose)} µg (${unshieldedCigs.toFixed(1)} Cigs)`);
+    setSafeText('text-protected-dose', `${Math.round(protectedDose)} µg (${protectedCigs.toFixed(1)} Cigs)`);
 
     const barProtected = document.getElementById('bar-protected-dose');
     if (barProtected) {

@@ -3,7 +3,7 @@
 
 **Document Identifier:** SRS-PW-CHALLENGE-6-V1.0  
 **Standard:** IEEE 29148-2018 Standard for Software Requirements Engineering  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Approved by Anti-Hallucination Gate 2  
 **Target Platform:** Google Gemini 3.8 Flash / Pure Web Runtime  
 
@@ -31,7 +31,7 @@ CleanAir Guardian ingests real-time localized environmental data (AQI, PM2.5, PM
 - **FR-03 (Vulnerability Index Math):** Computes $K_{\text{vuln}}$ biological susceptibility factor. *Details in [docs/lld/01-meteorological-inversion-engine.md](file:///docs/lld/01-meteorological-inversion-engine.md).*
 - **FR-04 (Dynamic Routine Rescheduling):** Generates hour-by-hour schedules avoiding peak morning/evening traps. *Details in [docs/01-prd.md](file:///docs/01-prd.md#fr-04-dynamic-routine-rescheduling-engine).*
 - **FR-05 (Corsi-Rosenthal DIY Hack):** Delivers verified CADR $\ge 270\text{ CFM}$ filter build plans. *Details in [ADR-006](file:///docs/06-adr/ADR-006-diy-iaq-corsi-rosenthal-hack.md).*
-- **FR-06 (Wet-Mopping IAQ Protocol):** Prescribes damp microfiber cleaning and bans dry sweeping. *Details in [docs/agent.md](file:///docs/agent.md).*
+- **FR-06 (Wet-Mopping IAQ Protocol):** Prescribes damp microfiber cleaning and bans dry sweeping. *Details in [agent.md](file:///agent.md) and [docs/01-prd.md](file:///docs/01-prd.md#fr-06-indoor-air-quality-iaq-and-wet-mopping-protocol).*
 - **FR-07 (Solar Ventilation Alerts):** Identifies 12:30–15:30 safe convective aeration window. *Details in [docs/lld/01-meteorological-inversion-engine.md](file:///docs/lld/01-meteorological-inversion-engine.md).*
 - **FR-08 (Sustainable Commute Optimizer):** Prescribes transit alternatives and carpool clusters. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](file:///docs/lld/02-direct-impact-mathematical-spec.md).*
 - **FR-09 (PM2.5 Inhaled Dosage Calculus):** Computes micrograms and cigarette equivalents avoided. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](file:///docs/lld/02-direct-impact-mathematical-spec.md).*

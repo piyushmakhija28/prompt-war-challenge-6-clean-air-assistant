@@ -35,7 +35,7 @@ CleanAir Guardian implements the **Triad Testing Architecture** (Positive, Negat
 
 ---
 
-## 2. Exhaustive Test Catalog (72 Test Cases)
+## 2. Exhaustive Test Catalog (75 Test Cases)
 
 ### Category 1: Positive Test Cases (Nominal Execution)
 - `TC-POS-001`: Ingestion of nominal context (Delhi, AQI 395, Infant, LPG, Space heater, Two-wheeler) produces non-null plan.
@@ -111,12 +111,15 @@ CleanAir Guardian implements the **Triad Testing Architecture** (Positive, Negat
 - `TC-A11Y-001`: WCAG 2.1 AA APCA contrast ratio verification ensuring body text exceeds 4.5:1 (actual ~14.3:1).
 - `TC-GOV-001`: Repository size budget invariant verification strictly under 10 MB limit (< 1.0 MB actual).
 - `TC-GOV-002`: Single branch invariant verification enforcing `main` only.
+- `TC-UIUX-001`: Comparative Inhaled Dose Exposure Gauge mathematical alignment ($66.5\ \mu\text{g}$ Berkeley Earth standard).
+- `TC-UIUX-002`: Dynamic Room CADR Clearance Estimator exact milestone decay alignment ($t_{50}=3.7\text{m}$, $t_{90}=12.2\text{m}$, $t_{99}=24.4\text{m}$).
+- `TC-UIUX-003`: Fitts's Law touch target ergonomics ($\ge 44\text{px}$) and WCAG 2.1 AA APCA contrast tokens ($\ge 4.5:1$).
 
 ---
 
 ## 3. Test Runner Architecture (`test/run-tests.js`)
 
-A lightweight, zero-dependency Node.js test runner verifies all 72 test cases:
+A lightweight, zero-dependency Node.js test runner verifies all 75 test cases:
 
 ```bash
 # Verification Command (Executes in < 500ms)
