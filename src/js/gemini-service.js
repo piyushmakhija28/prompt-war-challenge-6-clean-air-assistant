@@ -409,6 +409,21 @@ export class GeminiPlanProvider extends IPlanProvider {
       }
     };
 
+    const cascadeTraces = [];
+    const telemetryGlobal = (typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null));
+    if (telemetryGlobal) {
+      telemetryGlobal.__CLEANAIR_TELEMETRY__ = telemetryGlobal.__CLEANAIR_TELEMETRY__ || [];
+    }
+
+    console.info(
+      '%c[GeminiCascade:START]%c Initiating multi-model plan generation. Context: city=%s, aqi=%d, cascade=%o',
+      'color:#38bdf8;font-weight:bold;',
+      'color:inherit;',
+      context.city || 'Delhi NCR',
+      context.aqi || 395,
+      GEMINI_MODELS_CASCADE
+    );
+
     let lastError = null;
 
     for (let i = 0; i < GEMINI_MODELS_CASCADE.length; i++) {
@@ -420,6 +435,16 @@ export class GeminiPlanProvider extends IPlanProvider {
         modelPayload.generationConfig.thinkingConfig = { thinkingLevel: 'LOW' };
       }
 
+      const attemptStart = Date.now();
+      console.info(
+        `%c[GeminiCascade:ATTEMPT ${i + 1}/${GEMINI_MODELS_CASCADE.length}]%c Model: %s | thinkingLevel: %s | timeout: %dms`,
+        'color:#a855f7;font-weight:bold;',
+        'color:inherit;',
+        modelName,
+        modelPayload.generationConfig.thinkingConfig?.thinkingLevel || 'OFF',
+        this.timeoutMs
+      );
+
       try {
         const res = await fetchWithRetry(endpoint, {
           method: 'POST',
@@ -427,31 +452,54 @@ export class GeminiPlanProvider extends IPlanProvider {
           body: JSON.stringify(modelPayload)
         }, 0, this.timeoutMs);
 
+        const elapsed = Date.now() - attemptStart;
+
         if (!res.ok) {
           let errMsg = `HTTP ${res.status}`;
+          let errDetail = null;
           try {
-            const errJson = await res.json();
-            if (errJson?.error?.message) {
-              errMsg = `${res.status} (${errJson.error.message})`;
+            errDetail = await res.json();
+            if (errDetail?.error?.message) {
+              errMsg = `${res.status} (${errDetail.error.message})`;
             }
           } catch {
             // Non-JSON error body fallback
           }
+
+          console.warn(
+            `%c[GeminiCascade:HTTP_ERR]%c ${modelName} returned status ${res.status} in ${elapsed}ms: %s`,
+            'color:#f59e0b;font-weight:bold;',
+            'color:inherit;',
+            errMsg,
+            errDetail || ''
+          );
+
           lastError = new Error(`${errMsg} on ${modelName}`);
+          cascadeTraces.push({ model: modelName, status: res.status, message: errMsg, elapsedMs: elapsed });
           continue;
         }
 
         const data = await res.json();
         const rawOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!rawOutput) {
-          throw new Error(`Empty payload returned from ${modelName}`);
+          const emptyErr = `Empty payload returned from ${modelName} in ${elapsed}ms`;
+          console.warn(`%c[GeminiCascade:EMPTY]%c ${emptyErr}`, 'color:#f59e0b;font-weight:bold;', 'color:inherit;');
+          throw new Error(emptyErr);
         }
+
+        console.info(
+          `%c[GeminiCascade:DATA_RECEIVED]%c ${modelName} returned ${rawOutput.length} chars in ${elapsed}ms`,
+          'color:#06b6d4;font-weight:bold;',
+          'color:inherit;'
+        );
 
         const sanitized = sanitizeGeminiJSON(rawOutput);
         const parsedPlan = JSON.parse(sanitized);
 
         if (!parsedPlan.severityLevel || !parsedPlan.hourlyRoutines || !parsedPlan.quantifiedImpact) {
-          throw new Error(`Malformed schema returned from ${modelName}`);
+          const schemaErr = `Malformed schema returned from ${modelName}`;
+          console.error(`%c[GeminiCascade:SCHEMA_ERR]%c ${schemaErr}`, 'color:#ef4444;font-weight:bold;', 'color:inherit;', parsedPlan);
+          throw new Error(schemaErr);
         }
 
         if (!parsedPlan.cleaningProtocol) {
@@ -461,22 +509,68 @@ export class GeminiPlanProvider extends IPlanProvider {
         this.circuitBreaker.recordSuccess();
 
         const strategyCode = modelName.replace(/^gemini-/, '').toUpperCase().replace(/[^A-Z0-9]/g, '_');
+        const finalStrategy = `GEMINI_${strategyCode}`;
+
+        console.info(
+          `%c[GeminiCascade:SUCCESS]%c Plan verified from ${modelName} in ${elapsed}ms! Strategy: ${finalStrategy}`,
+          'color:#22c55e;font-weight:bold;',
+          'color:inherit;'
+        );
+
+        if (telemetryGlobal?.__CLEANAIR_TELEMETRY__) {
+          telemetryGlobal.__CLEANAIR_TELEMETRY__.push({
+            timestamp: new Date().toISOString(),
+            status: 'SUCCESS',
+            model: modelName,
+            strategy: finalStrategy,
+            elapsedMs: elapsed,
+            traces: cascadeTraces
+          });
+        }
+
         return {
           plan: PlanFactory.createPlan(parsedPlan),
-          strategy: `GEMINI_${strategyCode}`
+          strategy: finalStrategy
         };
       } catch (err) {
+        const elapsed = Date.now() - attemptStart;
+        console.warn(
+          `%c[GeminiCascade:EXCEPTION]%c ${modelName} failed in ${elapsed}ms: %s (%s)`,
+          'color:#ef4444;font-weight:bold;',
+          'color:inherit;',
+          err.name,
+          err.message
+        );
         lastError = err;
+        cascadeTraces.push({ model: modelName, status: 'EXCEPTION', message: err.message, elapsedMs: elapsed });
         continue;
       }
     }
 
     this.circuitBreaker.recordFailure();
 
+    const traceSummary = cascadeTraces.map(t => `${t.model}: ${t.status}`).join(' | ');
+    console.error(
+      '%c[GeminiCascade:EXHAUSTED]%c All cascade models exhausted. Summary: %s. Switched to offline deterministic plan.',
+      'color:#dc2626;font-weight:bold;',
+      'color:inherit;',
+      traceSummary,
+      cascadeTraces
+    );
+
+    if (telemetryGlobal?.__CLEANAIR_TELEMETRY__) {
+      telemetryGlobal.__CLEANAIR_TELEMETRY__.push({
+        timestamp: new Date().toISOString(),
+        status: 'EXHAUSTED',
+        traceSummary,
+        traces: cascadeTraces
+      });
+    }
+
     return {
       plan: generateOfflineCleanAirPlan(context),
       strategy: 'OFFLINE_FALLBACK',
-      warning: `Gemini live service unavailable (${lastError?.message || '503 Service Unavailable'}). Automatically switched to sub-15ms deterministic offline advisor.`
+      warning: `Gemini live service unavailable (${traceSummary || lastError?.message || '503 Service Unavailable'}). Automatically switched to sub-15ms deterministic offline advisor.`
     };
   }
 }

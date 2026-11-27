@@ -1105,6 +1105,7 @@ export function initApp() {
 
   if (btnSaveKey && inputKey) {
     btnSaveKey.addEventListener('click', () => {
+      console.info('%c[CleanAir:KeyStore]%c Ephemeral key activated in memory buffer. Triggering live generation...', 'color:#10b981;font-weight:bold;', 'color:inherit;');
       keyStore.setKey(inputKey.value);
       inputKey.value = '';
       setSafeText('key-status-text', '🔒 Active (In-Memory Only — Zero Disk Persistence)');
@@ -1114,6 +1115,7 @@ export function initApp() {
 
   if (btnClearKey) {
     btnClearKey.addEventListener('click', () => {
+      console.info('%c[CleanAir:KeyStore]%c Key zeroed and purged from RAM.', 'color:#64748b;font-weight:bold;', 'color:inherit;');
       keyStore.purge();
       setSafeText('key-status-text', 'Key Purged (Zeroed in RAM) — Operating in Offline Mode');
       triggerPlanGeneration();
