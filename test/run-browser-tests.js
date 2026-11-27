@@ -558,6 +558,79 @@ async function main() {
       'Visual loading indicator lifecycle accurately mounts and dismantles animated ring spinner and schedule shimmer'
     );
 
+    // BR-TEST-013: API Key Drawer Lifecycle (Input, Save, Active Status, and Purge)
+    const consoleErrorsBeforeKey = consoleErrors.length;
+    await cdp.evaluate(`
+      (() => {
+        const input = document.getElementById('input-gemini-key');
+        const btnSave = document.getElementById('btn-save-key');
+        if (input && btnSave) {
+          input.value = 'AIzaSyD-mock-test-key-for-e2e-browser-test';
+          btnSave.click();
+        }
+      })()
+    `);
+    await sleep(350);
+    const keyActiveText = await cdp.evaluate('document.getElementById("key-status-text").textContent');
+    const noKeyConsoleErrors = consoleErrors.length === consoleErrorsBeforeKey;
+
+    await cdp.evaluate('document.getElementById("btn-clear-key").click()');
+    await sleep(200);
+    const keyPurgedText = await cdp.evaluate('document.getElementById("key-status-text").textContent');
+
+    assert(
+      keyActiveText.includes('Active') &&
+      keyPurgedText.includes('Key Purged') &&
+      noKeyConsoleErrors,
+      'BR-TEST-013',
+      `API Key activation and zeroization execute without TypeErrors (Status: "${keyActiveText}")`
+    );
+
+    // BR-TEST-014: Circuit Breaker State Degradation & Banner Notification
+    await cdp.evaluate(`
+      (() => {
+        if (window.planProvider && window.planProvider.circuitBreaker) {
+          window.planProvider.circuitBreaker.recordSuccess();
+          window.planProvider.circuitBreaker.recordFailure();
+          window.planProvider.circuitBreaker.recordFailure();
+        }
+      })()
+    `);
+    const cbState = await cdp.evaluate(`
+      window.planProvider && window.planProvider.circuitBreaker ? window.planProvider.circuitBreaker.getState() : 'UNKNOWN'
+    `);
+    await cdp.evaluate(`
+      (() => {
+        if (window.keyStore) {
+          window.keyStore.setKey('AIzaSyD-mock-key-for-cb-test');
+        }
+        const btnGen = document.getElementById('btn-generate-plan');
+        if (btnGen) {
+          btnGen.disabled = false;
+          btnGen.click();
+        }
+      })()
+    `);
+    await sleep(300);
+    const cbBannerVisible = await cdp.evaluate('!document.getElementById("status-banner").classList.contains("hidden")');
+    const cbBannerText = await cdp.evaluate('document.getElementById("status-banner").textContent');
+    await cdp.evaluate(`
+      (() => {
+        if (window.planProvider && window.planProvider.circuitBreaker) {
+          window.planProvider.circuitBreaker.recordSuccess();
+        }
+        if (window.keyStore) {
+          window.keyStore.purge();
+        }
+      })()
+    `);
+    assert(
+      cbState === 'OPEN' &&
+      cbBannerVisible &&
+      cbBannerText.includes('rate limit paused'),
+      'BR-TEST-014',
+      `CircuitBreaker.getState() reflects OPEN state and displays rate limit paused banner upon generation attempt (cbState=${cbState}, bannerVisible=${cbBannerVisible}, bannerText="${cbBannerText}")`
+    );
     // BR-TEST-009: Visual Snapshot Capture via CDP Page.captureScreenshot
     const screenshotDir = path.join(ROOT_DIR, 'test', 'screenshots');
     if (!fs.existsSync(screenshotDir)) {

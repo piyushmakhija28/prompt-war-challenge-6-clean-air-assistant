@@ -131,6 +131,16 @@ export const fastDom = new FastDOMScheduler();
 export const keyStore = new SecureKeyStore();
 export const planProvider = new GeminiPlanProvider(keyStore);
 
+if (typeof window !== 'undefined') {
+  window.planProvider = planProvider;
+  window.keyStore = keyStore;
+  window.__cleanAirTestUtils = {
+    get triggerPlanGeneration() { return triggerPlanGeneration; },
+    get showStatusBanner() { return showStatusBanner; },
+    get hideStatusBanner() { return hideStatusBanner; }
+  };
+}
+
 /**
  * Initial canonical application state (Immutable).
  * Conforms to LLD 05 §1.
@@ -870,7 +880,12 @@ export async function triggerPlanGeneration(overrideContext = null) {
     return;
   }
 
-  if (planProvider.circuitBreaker && planProvider.circuitBreaker.getState() === 'OPEN') {
+  const isCircuitOpen = planProvider.circuitBreaker && (
+    typeof planProvider.circuitBreaker.getState === 'function'
+      ? planProvider.circuitBreaker.getState() === 'OPEN'
+      : planProvider.circuitBreaker.state === 'OPEN'
+  );
+  if (isCircuitOpen) {
     executeOptimisticRecalculation();
     showStatusBanner('Gemini API rate limit paused. Serving deterministic offline plan.', true, 4000);
     return;

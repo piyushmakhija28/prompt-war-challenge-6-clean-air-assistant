@@ -65,6 +65,8 @@ import {
   extractAreaNameFromNominatim,
   executeOptimisticRecalculation,
   schedulePlanGeneration,
+  triggerPlanGeneration,
+  keyStore,
   state
 } from '../src/js/app.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol, PlanFactory } from '../src/js/offline-advisor.js';
@@ -84,7 +86,7 @@ function assert(condition, testName, message = '') {
 }
 
 console.log('\n======================================================');
-console.log(' CleanAir Guardian — 97 Triad Invariant Test Suite');
+console.log(' CleanAir Guardian — 99 Triad Invariant Test Suite');
 console.log('======================================================\n');
 
 // ---------------------------------------------------------------------------
@@ -837,6 +839,43 @@ assert(
   token.startsWith('v1=') && decoded.city === 'Indirapuram, Ghaziabad' && decoded.aqi === 425 && decoded.vulnBits === 3,
   'TC-CODEC-003',
   'Dynamic micro-location encodes into lossless #v1= token and hydrates back with 100% fidelity'
+);
+
+// TC-CB-001: CircuitBreaker getState method contract and state transitions
+const testBreaker = new CircuitBreaker(2, 50);
+const initialState = testBreaker.getState();
+testBreaker.recordFailure();
+testBreaker.recordFailure();
+const openState = testBreaker.getState();
+await new Promise((r) => setTimeout(r, 60));
+testBreaker.canExecute();
+const halfOpenState = testBreaker.getState();
+testBreaker.recordSuccess();
+const closedAgain = testBreaker.getState();
+assert(
+  typeof testBreaker.getState === 'function' &&
+  initialState === 'CLOSED' &&
+  openState === 'OPEN' &&
+  halfOpenState === 'HALF_OPEN' &&
+  closedAgain === 'CLOSED',
+  'TC-CB-001',
+  'CircuitBreaker.getState() returns accurate FSM states (CLOSED -> OPEN -> HALF_OPEN -> CLOSED)'
+);
+
+// TC-KEY-001: triggerPlanGeneration execution with active keyStore key
+let keyGenError = null;
+try {
+  keyStore.setKey('AIzaSyD-mock-test-key-for-unit-test');
+  await triggerPlanGeneration();
+} catch (e) {
+  keyGenError = e;
+} finally {
+  keyStore.purge();
+}
+assert(
+  keyGenError === null,
+  'TC-KEY-001',
+  'triggerPlanGeneration executes with active API key without throwing TypeError'
 );
 console.log(` Test Execution Summary: ${passed} Passed, ${failed} Failed`);
 console.log('------------------------------------------------------\n');

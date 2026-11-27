@@ -127,6 +127,14 @@ export class CircuitBreaker {
   }
 
   /**
+   * Returns current finite state machine state.
+   * @returns {'CLOSED'|'OPEN'|'HALF_OPEN'}
+   */
+  getState() {
+    return this.state;
+  }
+
+  /**
    * Checks whether dispatch is allowed.
    * @returns {boolean}
    */
