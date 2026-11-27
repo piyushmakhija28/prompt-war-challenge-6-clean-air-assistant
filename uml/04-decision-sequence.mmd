@@ -17,11 +17,11 @@ sequenceDiagram
 
     UI->>Router: routePlanRequest(context)
     alt Gemini API Key Available & Online
-        Router->>Gemini: POST /v1beta/models/gemini-3.8-flash:generateContent
+        Router->>Gemini: POST /v1beta/models/{cascade}:generateContent
         alt Response HTTP 200 OK
             Gemini-->>Router: Validated CleanAirActionPlan JSON
             Router-->>UI: Return Generative Plan
-        else Timeout (>8s) or HTTP 429
+        else Timeout (>25s) or HTTP 429/503
             Router->>Offline: generateOfflinePlan(context)
             Offline-->>Router: Deterministic Action Plan
             Router-->>UI: Return Offline Fallback Plan (with ambient notice)

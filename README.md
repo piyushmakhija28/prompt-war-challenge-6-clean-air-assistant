@@ -213,15 +213,31 @@ prompt-war-challenge-6-clean-air-assistant/
 │   ├── resilience/                    # Fault Tolerance & High Availability
 │   │   └── 01-offline-degradation-and-fallback.md # Circuit Breaker State Machine & Jitter Math
 │   └── testing/                       # Quality Assurance & Verification
-│       ├── 01-triad-test-strategy.md  # 75 Triad Invariant Test Cases (Positive, Negative, Edge)
+│       ├── 01-triad-test-strategy.md  # 84 Triad Invariant Test Cases (Positive, Negative, Edge)
 │       └── 02-property-based-fuzzing-spec.md # 11 Algebraic Closure Invariants & Xorshift128+ PRNG
-└── uml/                               # The 6 Canonical Mermaid UML Architecture Diagrams
-    ├── 01-system-context.mmd          # C4 Level 1 Context Diagram
-    ├── 02-container-diagram.mmd       # C4 Level 2 Container Diagram
-    ├── 03-component-diagram.mmd       # C4 Level 3 Component Diagram
-    ├── 04-decision-sequence.mmd       # Sequence Diagram of Dual-Engine Execution
-    ├── 05-diurnal-inversion-state.mmd # State Machine Diagram of Atmospheric Inversion Layers
-    └── 06-impact-calculation-flow.mmd # Data Flow Diagram for Alveolar Dosage & Carbon Math
+├── uml/                               # 14 Standard Mermaid UML Architecture Models (Rule 45)
+│   ├── class_diagram.md               # Complete Class Hierarchy, Interfaces, & Domain Errors
+│   ├── package_diagram.md             # Clean Architecture Module & Layer Dependencies
+│   ├── component_diagram.md           # Internal ES6+ Module Interaction & Gateway Boundaries
+│   ├── sequence_diagram.md            # Dual-Engine 25s Timeout & Model Cascade Call Chains
+│   ├── state_diagram.md               # Atmospheric Inversion Cycle & Circuit Breaker States
+│   ├── activity_diagram.md            # End-to-End User Activity Pipeline & Calculation Decision
+│   ├── deployment_diagram.md          # Static Client Edge Deployment Topology (PWA + CDN)
+│   ├── usecase_diagram.md             # Persona Use-Cases (Ananya, Rajesh, Vikram, Ramesh)
+│   ├── object_diagram.md              # Runtime Instantiated State & Telemetry Instances
+│   ├── composite_diagram.md           # Composite Structure of CleanAirAssistant with Ports
+│   ├── interaction_diagram.md         # Interaction Overview Diagram with Sub-Flow References
+│   ├── communication_diagram.md       # Numbered Message Collaboration Graph Across Modules
+│   ├── call_graph_diagram.md          # Complete AST Execution & Dispatch Call Graph
+│   ├── timing_diagram.md              # UML 2.5 §14.3 Diurnal Inversion vs Exposure Timeline
+│   └── 01-system-context.mmd ... 06   # The 6 Canonical C4 & Mathematical Data Flow Models
+└── drawio/                            # 18 Native Vector Draw.io Diagrams (.drawio XML)
+    ├── class_diagram.drawio           # Editable Class Model
+    ├── sequence_diagram.drawio        # Editable Sequence Model
+    ├── activity_diagram.drawio        # Editable Activity Model
+    ├── state_diagram.drawio           # Editable Inversion & Circuit Breaker State Model
+    ├── ... (14 Standard Diagrams)     # Conforming strictly to Rule 45 & UDM Model Data
+    └── system_context.drawio ... 04   # 4 Canonical Architecture Diagrams (app.diagrams.net ready)
 ```
 
 ---

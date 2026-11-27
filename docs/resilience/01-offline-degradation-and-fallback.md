@@ -52,7 +52,7 @@ stateDiagram-v2
         Requesting --> Idle : HTTP 200 OK
     }
 
-    Closed --> Open : 2 consecutive timeouts (>8s) or HTTP 429
+    Closed --> Open : 2 consecutive timeouts (>25s) or HTTP 429/503
     
     state Open {
         [*] --> OfflineModeActive
@@ -80,7 +80,7 @@ stateDiagram-v2
  * @param {number} timeoutMs - Timeout limit in milliseconds.
  * @returns {Promise<Response>}
  */
-export async function fetchWithTimeout(url, options, timeoutMs = 8000) {
+export async function fetchWithTimeout(url, options, timeoutMs = 25000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
 

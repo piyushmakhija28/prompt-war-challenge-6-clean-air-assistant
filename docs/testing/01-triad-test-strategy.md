@@ -35,7 +35,7 @@ CleanAir Guardian implements the **Triad Testing Architecture** (Positive, Negat
 
 ---
 
-## 2. Exhaustive Test Catalog (75 Test Cases)
+## 2. Exhaustive Test Catalog (84 Test Cases)
 
 ### Category 1: Positive Test Cases (Nominal Execution)
 - `TC-POS-001`: Ingestion of nominal context (Delhi, AQI 395, Infant, LPG, Space heater, Two-wheeler) produces non-null plan.
@@ -114,12 +114,20 @@ CleanAir Guardian implements the **Triad Testing Architecture** (Positive, Negat
 - `TC-UIUX-001`: Comparative Inhaled Dose Exposure Gauge mathematical alignment ($66.5\ \mu\text{g}$ Berkeley Earth standard).
 - `TC-UIUX-002`: Dynamic Room CADR Clearance Estimator exact milestone decay alignment ($t_{50}=3.7\text{m}$, $t_{90}=12.2\text{m}$, $t_{99}=24.4\text{m}$).
 - `TC-UIUX-003`: Fitts's Law touch target ergonomics ($\ge 44\text{px}$) and WCAG 2.1 AA APCA contrast tokens ($\ge 4.5:1$).
+- `TC-SW-002`: Service Worker v1.2 Network-First cache policy contract with automated cache purge on activate.
+- `TC-CADR-003`: Metric unit dimension conversion mathematical equivalence ($L, W, H$ in feet converted to meters maintaining exact cubic volume parity).
+- `TC-CADR-004`: CDC and ASHRAE adequacy rating coverage across ACH boundaries ($<3$ poor, $3-6$ moderate, $6-12$ high, $\ge 12$ hospital standard).
+- `TC-CADR-005`: Universal exponential decay milestone ratios ($t_{50}:t_{90}:t_{99} \approx 1:3.32:6.64$ matching natural logarithm $-\ln(1-F)$ ratios).
+- `TC-UIUX-004`: Dynamic vulnerability and housing infiltration scaling in exposure dose ($K_{\text{vuln}}$ and $\alpha_{\text{housing}}$ compounding).
+- `TC-UIUX-005`: Diurnal scrubber live telemetry consistency across inversion phases (state badge and mixing height sync).
+- `TC-UIUX-006`: Timeline solar window mathematical coordinate precision ($12:30\text{--}15:00$ span markers).
+- `TC-UIUX-007`: Form control layout and Fitts's Law touch target minimum threshold ($\ge 44\text{px} / 48\text{px}$).
 
 ---
 
 ## 3. Test Runner Architecture (`test/run-tests.js`)
 
-A lightweight, zero-dependency Node.js test runner verifies all 75 test cases:
+A lightweight, zero-dependency Node.js test runner verifies all 84 test cases:
 
 ```bash
 # Verification Command (Executes in < 500ms)

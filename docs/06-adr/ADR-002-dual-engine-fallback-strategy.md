@@ -8,8 +8,8 @@ In competitive evaluations and real-world urban crises, users may lack an API ke
 
 ## Decision
 We architect a **Dual-Engine Execution Pipeline**:
-1. When a valid Google Gemini API key is present and network is available, invoke Gemini 3.8 Flash.
-2. If the API key is omitted, invalid, times out (>8s), or returns an error, gracefully failover to the local **Deterministic Offline Rule Advisor**.
+1. When a valid Google Gemini API key is present and network is available, invoke the Gemini model cascade.
+2. If the API key is omitted, invalid, times out (>25s), or returns an error, gracefully failover to the local **Deterministic Offline Rule Advisor**.
 
 ## Consequences
 ### Positive

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" type="diagram" version="24.0.0">
+  <diagram id="diagram1" name="Sequence Diagram">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+    <mxCell id="2" value="User" style="shape=mxgraph.uml.lifeline;align=center;startSize=40;strokeColor=#000000;strokeWidth=2;fillColor=#FFFFFF;html=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="60" y="20" width="140" height="900" as="geometry" />
+    </mxCell>
+    <mxCell id="3" value="AppController" style="shape=mxgraph.uml.lifeline;align=center;startSize=40;strokeColor=#000000;strokeWidth=2;fillColor=#FFFFFF;html=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="280" y="20" width="140" height="900" as="geometry" />
+    </mxCell>
+    <mxCell id="4" value="SignalsStore" style="shape=mxgraph.uml.lifeline;align=center;startSize=40;strokeColor=#000000;strokeWidth=2;fillColor=#FFFFFF;html=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="500" y="20" width="140" height="900" as="geometry" />
+    </mxCell>
+    <mxCell id="5" value="AirQualityEngine" style="shape=mxgraph.uml.lifeline;align=center;startSize=40;strokeColor=#000000;strokeWidth=2;fillColor=#FFFFFF;html=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="720" y="20" width="140" height="900" as="geometry" />
+    </mxCell>
+    <mxCell id="6" value="CadrCalculator" style="shape=mxgraph.uml.lifeline;align=center;startSize=40;strokeColor=#000000;strokeWidth=2;fillColor=#FFFFFF;html=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="940" y="20" width="140" height="900" as="geometry" />
+    </mxCell>
+    <mxCell id="7" value="SecureKeyStore" style="shape=mxgraph.uml.lifeline;align=center;startSize=40;strokeColor=#000000;strokeWidth=2;fillColor=#FFFFFF;html=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="1160" y="20" width="140" height="900" as="geometry" />
+    </mxCell>
+    <mxCell id="8" value="GeminiPlanProvider" style="shape=mxgraph.uml.lifeline;align=center;startSize=40;strokeColor=#000000;strokeWidth=2;fillColor=#FFFFFF;html=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="1380" y="20" width="140" height="900" as="geometry" />
+    </mxCell>
+    <mxCell id="9" value="OfflinePlanProvider" style="shape=mxgraph.uml.lifeline;align=center;startSize=40;strokeColor=#000000;strokeWidth=2;fillColor=#FFFFFF;html=1;resizable=0;" vertex="1" parent="1">
+      <mxGeometry x="1600" y="20" width="140" height="900" as="geometry" />
+    </mxCell>
+    <mxCell id="10" value="selectProfile(Ananya, AQI 395)" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="130" y="100" as="sourcePoint" />
+        <mxPoint x="350" y="100" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="11" value="setAQI(395) &amp; toggleVuln(0x01)" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="350" y="160" as="sourcePoint" />
+        <mxPoint x="570" y="160" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="12" value="determineInversionPhase(07:30)" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="350" y="220" as="sourcePoint" />
+        <mxPoint x="790" y="220" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="13" value="DAWN_TRAP (2.15x Multiplier)" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="790" y="280" as="sourcePoint" />
+        <mxPoint x="350" y="280" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="14" value="calculateAch(273 CFM, 1620 cuft)" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="350" y="340" as="sourcePoint" />
+        <mxPoint x="1010" y="340" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="15" value="10.1 ACH (High Protection)" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="1010" y="400" as="sourcePoint" />
+        <mxPoint x="350" y="400" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="16" value="hasKey()" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="350" y="460" as="sourcePoint" />
+        <mxPoint x="1230" y="460" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="17" value="generatePlan(context) [25s Timeout]" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="350" y="520" as="sourcePoint" />
+        <mxPoint x="1450" y="520" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="18" value="failover on 503 / timeout" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="1450" y="580" as="sourcePoint" />
+        <mxPoint x="1670" y="580" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="19" value="renderGlassmorphicDashboard()" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="350" y="760" as="sourcePoint" />
+        <mxPoint x="130" y="760" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

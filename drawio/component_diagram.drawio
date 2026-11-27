@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" type="diagram" version="24.0.0">
+  <diagram id="diagram1" name="Component Diagram">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+    <mxCell id="2" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;app.js (AppController &amp; Reducer)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="40" y="40" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="3" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;signals.js (Reactive Signals Engine)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="320" y="40" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="4" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;event-bus.js (Synchronous Pub-Sub Hub)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="600" y="40" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="5" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;air-quality-engine.js (Atmospheric Inversion)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="40" y="240" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="6" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;cadr-calculator.js (Room Clearance Physics)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="320" y="240" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="7" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;impact-calculator.js (Dosage &amp; Cigarette Math)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="600" y="240" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="8" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;offline-advisor.js (Deterministic Fallback)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="40" y="440" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="9" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;gemini-service.js (Gemini API Gateway)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="320" y="440" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="10" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;state-codec.js (5-Byte Binary Bitstream)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="600" y="440" width="200" height="120" as="geometry" />
+    </mxCell>
+    <mxCell id="11" value="&amp;lt;&amp;lt;component&amp;gt;&amp;gt;&amp;#xa;sw.js (Service Worker v1.2)" style="shape=mxgraph.uml.component;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#F5F5F5;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="40" y="640" width="200" height="120" as="geometry" />
+    </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

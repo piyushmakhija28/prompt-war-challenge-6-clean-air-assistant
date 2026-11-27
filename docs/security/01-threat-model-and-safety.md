@@ -27,7 +27,7 @@
 | **Information**   | Gemini API key leakage to  | HIGH     | In-memory ephemeral storage only; zero      |
 | **Disclosure**    | third-party endpoints/logs |          | telemetry scripts, CSP connect-src strict.  |
 +-------------------+----------------------------+----------+---------------------------------------------+
-| **Denial of**     | Runaway loop exhausting    | MED      | 8,000ms AbortController timeout ceiling;    |
+| **Denial of**     | Runaway loop exhausting    | MED      | 25,000ms AbortController timeout ceiling;   |
 | **Service (DoS)** | user Google API quota      |          | max 2 retries with exponential backoff.     |
 +-------------------+----------------------------+----------+---------------------------------------------+
 | **Elevation of**  | Client DOM XSS via prompt  | HIGH     | Strict JSON schema parsing; textContent/DOM |
@@ -127,8 +127,8 @@ To eliminate Supply Chain Poisoning (OWASP Top 10 A08:2021) and satisfy the comp
 User-provided Google Gemini API keys are treated with zero-trust confidentiality:
 1. **In-Memory Closure Storage:** The API key is stored strictly within a private JavaScript module closure variable (`let _sessionApiKey = null`).
 2. **Zero Persistent Storage:** Keys are NEVER written to `localStorage`, indexedDB, or web worker caches.
-3. **URL Exclusion:** Keys are strictly excluded from URL hash encoding (`#v1=...`) to prevent key exposure via browser history, server referer headers, or shoulder surfing.
-4. **Immediate Zeroization:** An explicit "Clear Key" action overwrites the closure variable with zeroes before discarding the pointer.
+3. **URL Exclusion:** Keys are strictly excluded from URL hash encoding (`#b=...` and `#v1=...`) to prevent key exposure via browser history, server referer headers, or shoulder surfing.
+4. **Immediate Zeroization:** An explicit "Purge Key" action (button labeled "Activate (In-Memory)") overwrites the buffer memory with cryptographically secure random values via `window.crypto.getRandomValues()` and zeroes (`fill(0)`) before discarding the pointer.
 
 ---
 

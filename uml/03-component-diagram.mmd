@@ -3,21 +3,30 @@ graph TD
     classDef comp fill:#1168BD,stroke:#0E5A9E,stroke-width:2px,color:#FFF;
     classDef data fill:#2D3E50,stroke:#1A252F,stroke-width:2px,color:#FFF;
 
-    APP["app.js<br/>[UI Controller & Event Bus]<br/>Coordinates UI events, tab navigation, and DOM reconciliation"]:::comp
+    APP["app.js<br/>[UI Controller & Orchestration]<br/>Coordinates UI events, DOM reconciliation, and lifecycle"]:::comp
     CONFIG["config.js<br/>[Configuration & Constants]<br/>Stores AQI bands, emission factors, and default presets"]:::data
     INVERSION["air-quality-engine.js<br/>[Diurnal Atmospheric Engine]<br/>Calculates boundary layer height, peak hazard hours, and K_vuln"]:::comp
     CALC["impact-calculator.js<br/>[Direct Impact Engine]<br/>Calculates PM2.5 inhalation avoided, cigarettes avoided, and CO2e"]:::comp
+    CADR["cadr-calculator.js<br/>[Room CADR & Decay Engine]<br/>Estimates air turnover (ACH) and monotonic room clearance decay"]:::comp
     OFFLINE["offline-advisor.js<br/>[Deterministic Rule Engine]<br/>Generates 100% parity plan without external network dependency"]:::comp
-    GEMINI["gemini-service.js<br/>[Google GenAI Client]<br/>Dispatches REST request, validates schema, handles retry jitter"]:::comp
+    GEMINI["gemini-service.js<br/>[Google GenAI Client]<br/>Dispatches REST request across 4-model cascade with circuit breaker"]:::comp
+    CODEC["state-codec.js<br/>[Binary Codec]<br/>5-Byte bitstream packing with parity checksum (#b=...) & legacy #v1="]:::comp
+    SIGNALS["signals.js<br/>[Reactive Signals]<br/>Fine-grained reactive state propagation"]:::comp
+    EVENTBUS["event-bus.js<br/>[Event Bus]<br/>Decoupled synchronous event dispatcher"]:::comp
+    ERRORS["errors.js<br/>[Domain Errors]<br/>Typed domain error hierarchy"]:::comp
 
     APP --> CONFIG
     APP --> INVERSION
     APP --> CALC
+    APP --> CADR
     APP --> OFFLINE
     APP --> GEMINI
+    APP --> CODEC
+    APP --> SIGNALS
+    APP --> EVENTBUS
+    APP --> ERRORS
 
     OFFLINE --> CONFIG
     OFFLINE --> INVERSION
     OFFLINE --> CALC
-
     GEMINI --> CONFIG

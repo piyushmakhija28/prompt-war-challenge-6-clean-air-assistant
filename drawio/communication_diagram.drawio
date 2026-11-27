@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" type="diagram" version="24.0.0">
+  <diagram id="diagram1" name="Communication Diagram">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+    <mxCell id="2" value="AppController" style="swimlane;fontStyle=1;align=center;startSize=24;container=0;collapsible=0;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="350" y="-60" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="3" value="SecureKeyStore" style="swimlane;fontStyle=1;align=center;startSize=24;container=0;collapsible=0;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="651" y="84" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="4" value="AirQualityEngine" style="swimlane;fontStyle=1;align=center;startSize=24;container=0;collapsible=0;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="725" y="410" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="5" value="CadrCalculator" style="swimlane;fontStyle=1;align=center;startSize=24;container=0;collapsible=0;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="517" y="671" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="6" value="DualEngineAdvisor" style="swimlane;fontStyle=1;align=center;startSize=24;container=0;collapsible=0;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="182" y="671" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="7" value="GeminiGateway" style="swimlane;fontStyle=1;align=center;startSize=24;container=0;collapsible=0;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="-25" y="410" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="8" value="ImpactCalculator" style="swimlane;fontStyle=1;align=center;startSize=24;container=0;collapsible=0;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="48" y="84" width="140" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="9" value="1: 1: hasKey()" style="endArrow=open;endSize=8;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" source="2" target="3" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="10" value="2: 2: determineInversionPhase(hour)" style="endArrow=open;endSize=8;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" source="2" target="4" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="11" value="3: 3: calculateAch(cadr, vol)" style="endArrow=open;endSize=8;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" source="2" target="5" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="12" value="4: 4: routePlanRequest(context)" style="endArrow=open;endSize=8;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" source="2" target="6" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="13" value="5: 5: generatePlan(context)" style="endArrow=open;endSize=8;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" source="6" target="7" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="14" value="6: 6: return CleanAirPlan" style="endArrow=open;endSize=8;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" source="6" target="2" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="15" value="7: 7: calculateAvoidedDose()" style="endArrow=open;endSize=8;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" source="2" target="8" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
