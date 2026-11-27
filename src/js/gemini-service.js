@@ -172,13 +172,15 @@ export class CircuitBreaker {
  * @param {number} [timeoutMs=8000] - Timeout limit in milliseconds.
  * @returns {Promise<Response>} HTTP Response promise.
  */
-export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 8000) {
+export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 25000) {
   let attempt = 0;
   let delay = 500;
 
   while (attempt <= maxRetries) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => {
+      controller.abort(new Error(`Gemini request timed out after ${timeoutMs / 1000}s`));
+    }, timeoutMs);
 
     try {
       const res = await fetch(url, {
@@ -199,7 +201,7 @@ export async function fetchWithRetry(url, options, maxRetries = 1, timeoutMs = 8
       return res;
     } catch (err) {
       clearTimeout(timer);
-      if (attempt < maxRetries) {
+      if (attempt < maxRetries && err.name !== 'AbortError') {
         attempt++;
         const jitter = Math.random() * delay;
         await new Promise((resolve) => setTimeout(resolve, delay + jitter));
@@ -282,7 +284,7 @@ export class GeminiPlanProvider extends IPlanProvider {
     this.keyStore = keyStore;
     this.rateLimiter = new TokenBucketLimiter(3, 5);
     this.circuitBreaker = new CircuitBreaker(2, 30000);
-    this.timeoutMs = 8000;
+    this.timeoutMs = 25000;
   }
 
   /**

@@ -496,10 +496,21 @@ export function renderActivePlan() {
   });
 }
 
+let isGeneratingPlan = false;
+
 /**
  * Dispatches plan generation and triggers UI reconciliation.
  */
 export async function triggerPlanGeneration() {
+  if (isGeneratingPlan) return;
+  isGeneratingPlan = true;
+
+  const btnGenerate = document.getElementById('btn-generate-plan');
+  if (btnGenerate) {
+    btnGenerate.disabled = true;
+    btnGenerate.textContent = 'Generating AI Plan... ✨';
+  }
+
   const spinner = document.getElementById('plan-spinner');
   if (spinner) spinner.classList.remove('hidden');
 
@@ -542,7 +553,12 @@ export async function triggerPlanGeneration() {
   } catch (err) {
     globalEventBus.emit('PLAN_ERROR', err);
   } finally {
+    isGeneratingPlan = false;
     if (spinner) spinner.classList.add('hidden');
+    if (btnGenerate) {
+      btnGenerate.disabled = false;
+      btnGenerate.textContent = 'Generate Clean Air Plan';
+    }
   }
 }
 
