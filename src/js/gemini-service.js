@@ -227,6 +227,78 @@ export function sanitizeGeminiJSON(raw) {
 }
 
 /**
+ * Repairs a truncated JSON string by closing dangling quotes, balancing structural brackets,
+ * and stripping incomplete keys or trailing commas.
+ * Conforms to Level 2.2 Docstrings-Only documentation governance.
+ *
+ * @param {string} raw - Truncated or incomplete JSON string.
+ * @returns {string} Syntactically closed JSON string.
+ */
+export function repairTruncatedJSON(raw) {
+  if (typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  let inString = false;
+  let isEscaped = false;
+  const stack = [];
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false;
+      } else if (ch === '\\') {
+        isEscaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '{' || ch === '[') {
+      stack.push(ch);
+    } else if (ch === '}') {
+      if (stack.length > 0 && stack[stack.length - 1] === '{') {
+        stack.pop();
+      }
+    } else if (ch === ']') {
+      if (stack.length > 0 && stack[stack.length - 1] === '[') {
+        stack.pop();
+      }
+    }
+  }
+
+  let repaired = trimmed;
+  if (inString) {
+    repaired += '"';
+  }
+
+  repaired = repaired.replace(/,\s*$/, '');
+  repaired = repaired.replace(/:\s*$/, ': null');
+  repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+
+  while (stack.length > 0) {
+    const top = stack.pop();
+    if (top === '{') {
+      repaired += '}';
+    } else if (top === '[') {
+      repaired += ']';
+    }
+  }
+
+  try {
+    JSON.parse(repaired);
+    return repaired;
+  } catch {
+    return trimmed;
+  }
+}
+
+/**
  * Abstract Strategy Plan Provider Interface for CleanAir Action Plans.
  * Conforms to Liskov Substitution Principle (LSP) and GoF Strategy Pattern (LLD 03).
  */
@@ -270,6 +342,18 @@ export const GEMINI_MODELS_CASCADE = [
   'gemini-3.8-flash',
   'gemini-flash-latest'
 ];
+
+/**
+ * Model-specific timeout allocations in milliseconds.
+ * Accommodates extended reasoning and thinking depth for frontier models.
+ */
+export const GEMINI_MODEL_TIMEOUTS = Object.freeze({
+  'gemini-3.5-flash-lite': 15000,
+  'gemini-flash-lite-latest': 15000,
+  'gemini-3.1-flash-lite': 15000,
+  'gemini-3.8-flash': 25000,
+  'gemini-flash-latest': 18000
+});
 
 /**
  * CleanAir Gemini 3.8 Flash Plan Provider Service.
@@ -336,7 +420,7 @@ export class GeminiPlanProvider extends IPlanProvider {
       generationConfig: {
         temperature: 0.2,
         topP: 0.85,
-        maxOutputTokens: 900,
+        maxOutputTokens: 4096,
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',
@@ -435,6 +519,7 @@ export class GeminiPlanProvider extends IPlanProvider {
         modelPayload.generationConfig.thinkingConfig = { thinkingLevel: 'LOW' };
       }
 
+      const attemptTimeout = GEMINI_MODEL_TIMEOUTS[modelName] || this.timeoutMs;
       const attemptStart = Date.now();
       console.info(
         `%c[GeminiCascade:ATTEMPT ${i + 1}/${GEMINI_MODELS_CASCADE.length}]%c Model: %s | thinkingLevel: %s | timeout: %dms`,
@@ -442,7 +527,7 @@ export class GeminiPlanProvider extends IPlanProvider {
         'color:inherit;',
         modelName,
         modelPayload.generationConfig.thinkingConfig?.thinkingLevel || 'OFF',
-        this.timeoutMs
+        attemptTimeout
       );
 
       try {
@@ -450,7 +535,7 @@ export class GeminiPlanProvider extends IPlanProvider {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(modelPayload)
-        }, 0, this.timeoutMs);
+        }, 0, attemptTimeout);
 
         const elapsed = Date.now() - attemptStart;
 
@@ -494,7 +579,22 @@ export class GeminiPlanProvider extends IPlanProvider {
         );
 
         const sanitized = sanitizeGeminiJSON(rawOutput);
-        const parsedPlan = JSON.parse(sanitized);
+        let parsedPlan;
+        try {
+          parsedPlan = JSON.parse(sanitized);
+        } catch (parseErr) {
+          const repaired = repairTruncatedJSON(sanitized);
+          try {
+            parsedPlan = JSON.parse(repaired);
+            console.warn(
+              `%c[GeminiCascade:HEALED]%c Truncated JSON successfully recovered via repairTruncatedJSON for ${modelName}`,
+              'color:#eab308;font-weight:bold;',
+              'color:inherit;'
+            );
+          } catch {
+            throw parseErr;
+          }
+        }
 
         if (!parsedPlan.severityLevel || !parsedPlan.hourlyRoutines || !parsedPlan.quantifiedImpact) {
           const schemaErr = `Malformed schema returned from ${modelName}`;

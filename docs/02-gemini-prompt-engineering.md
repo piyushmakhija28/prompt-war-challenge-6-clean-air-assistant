@@ -215,7 +215,8 @@ To minimize payload size and achieve sub-second generation speeds:
    {"c":"Delhi-NCR","aqi":395,"vb":3,"ck":2,"ht":1,"cm":1,"d":12}
    ```
 2. **Explicit Stop Sequences:** `stopSequences: ["}\n\n", "```"]` ensure the model halts generation immediately upon completing the final JSON closing brace.
-3. **Output Token Bounding:** `maxOutputTokens: 900` prevents run-away token generation while providing full headroom for the 4-slot hourly schedule.
+3. **Output Token Bounding:** `maxOutputTokens: 4096` ensures robust headroom for the complete structured JSON response (schema requires ~850-1200 tokens across routines, hacks, cleaning protocol, and quantified metrics) plus any model-specific thinking tokens, preventing mid-stream token exhaustion and JSON truncation.
+4. **Self-Healing JSON Resiliency:** Integrated `repairTruncatedJSON()` algorithmically closes dangling string literals, object keys, and structural delimiters in case of unexpected stream termination.
 
 ---
 

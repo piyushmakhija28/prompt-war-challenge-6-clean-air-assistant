@@ -25,3 +25,4 @@ If an endpoint responds with HTTP 503 (Service Unavailable) or high-demand queue
 
 ### Negative & Mitigated
 - **API Key Requirement:** Solved via the Dual-Engine architecture, providing a zero-key deterministic fallback.
+- **Thinking Token Budget & JSON Truncation:** Mitigated by configuring `maxOutputTokens: 4096`, adaptive model-tier timeouts ($15\text{s}$ for lite, $25\text{s}$ for frontier reasoning), and self-healing `repairTruncatedJSON` recovery.

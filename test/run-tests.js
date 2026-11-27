@@ -54,7 +54,7 @@ import {
 } from '../src/js/state-codec.js';
 import { INITIAL_STATE, appReducer, registerServiceWorker, AppController, appController } from '../src/js/app.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol, PlanFactory } from '../src/js/offline-advisor.js';
-import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry, sanitizeCityInput, GEMINI_MODELS_CASCADE } from '../src/js/gemini-service.js';
+import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, repairTruncatedJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry, sanitizeCityInput, GEMINI_MODELS_CASCADE, GEMINI_MODEL_TIMEOUTS } from '../src/js/gemini-service.js';
 
 let passed = 0;
 let failed = 0;
@@ -70,7 +70,7 @@ function assert(condition, testName, message = '') {
 }
 
 console.log('\n======================================================');
-console.log(' CleanAir Guardian — 84 Triad Invariant Test Suite');
+console.log(' CleanAir Guardian — 87 Triad Invariant Test Suite');
 console.log('======================================================\n');
 
 // ---------------------------------------------------------------------------
@@ -412,6 +412,46 @@ assert(aqiClamped === 999 && concPos === 0 && Math.abs(hourCyclic - 3.5) < 0.001
 const dirtyCity = "Delhi<script>alert('xss')</script> NCR; DROP TABLE--";
 const cleanCity = sanitizeCityInput(dirtyCity);
 assert(!cleanCity.includes('<') && !cleanCity.includes('>') && !cleanCity.includes("'") && cleanCity.includes('Delhi'), 'TC-SAN-001', 'sanitizeCityInput strips HTML tags, quotes, and punctuation anomalies');
+
+// TC-SAN-002: repairTruncatedJSON self-healing JSON repair for truncated streaming chunks
+const truncatedChunk = '{"severityLevel":"SEVERE","diurnalWindowNotice":"Severe winter inversion active until 09:30","hourlyRoutines":[{"timeSlot":"07:00","activity":"Morning Run","recommendation":"Stay indoors';
+const healedChunk = repairTruncatedJSON(truncatedChunk);
+let healedParsed = null;
+try {
+  healedParsed = JSON.parse(healedChunk);
+} catch {
+  healedParsed = null;
+}
+assert(
+  healedParsed !== null &&
+  healedParsed.severityLevel === 'SEVERE' &&
+  Array.isArray(healedParsed.hourlyRoutines) &&
+  healedParsed.hourlyRoutines[0].recommendation === 'Stay indoors',
+  'TC-SAN-002',
+  'repairTruncatedJSON successfully recovers valid JSON AST from truncated streaming response'
+);
+
+// TC-RES-002: Adaptive cascade timeout calibration across model tiers
+assert(
+  GEMINI_MODEL_TIMEOUTS['gemini-3.5-flash-lite'] >= 15000 &&
+  GEMINI_MODEL_TIMEOUTS['gemini-3.8-flash'] >= 25000 &&
+  GEMINI_MODEL_TIMEOUTS['gemini-flash-lite-latest'] >= 15000,
+  'TC-RES-002',
+  'Adaptive cascade timeouts assign >= 15s to flash-lite and >= 25s to frontier reasoning'
+);
+
+// TC-RES-003: repairTruncatedJSON boundary edge cases (empty, non-string, already valid)
+const validJSON = '{"status":"OK","items":[1,2,3]}';
+const emptyRepair = repairTruncatedJSON('');
+const nonStrRepair = repairTruncatedJSON(null);
+const validRepair = repairTruncatedJSON(validJSON);
+assert(
+  emptyRepair === '' &&
+  nonStrRepair === '' &&
+  validRepair === validJSON,
+  'TC-RES-003',
+  'repairTruncatedJSON handles empty strings, non-string nulls, and already-valid JSON idempotently'
+);
 
 // TC-LEGACY-001: Legacy #v1= pipe-delimited Base64URL state decoding (PRD FR-12)
 const legacyRaw = 'Lahore|380|2|1|0|1|14.0';
