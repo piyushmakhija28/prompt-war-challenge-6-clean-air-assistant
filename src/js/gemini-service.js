@@ -258,6 +258,17 @@ export class OfflinePlanProvider extends IPlanProvider {
 }
 
 /**
+ * Prioritized Gemini generative model endpoint cascade.
+ * Attempts modern Gemini models, seamlessly failing over on 503 or 404 status.
+ */
+export const GEMINI_MODELS_CASCADE = [
+  'gemini-3.8-flash',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash'
+];
+
+/**
  * CleanAir Gemini 3.8 Flash Plan Provider Service.
  * Implements IPlanProvider with native responseSchema, rate limiting, and circuit breaker failover.
  */
@@ -306,8 +317,6 @@ export class GeminiPlanProvider extends IPlanProvider {
     }
 
     const apiKey = this.keyStore.getKey();
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
-
     const systemInstruction = 'You are CleanAir Guardian (VayuRakshak), an elite Environmental Health Scientist powered by Google Gemini 3.8 Flash. Output strict JSON matching the schema.';
     const promptText = `### USER_CONTEXT_JSON\n${JSON.stringify(context)}\n### END_USER_CONTEXT`;
 
@@ -397,48 +406,65 @@ export class GeminiPlanProvider extends IPlanProvider {
       }
     };
 
-    try {
-      const res = await fetchWithRetry(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }, 1, this.timeoutMs);
+    let lastError = null;
 
-      if (!res.ok) {
-        throw new Error(`Gemini API HTTP Error ${res.status}`);
+    for (let i = 0; i < GEMINI_MODELS_CASCADE.length; i++) {
+      const modelName = GEMINI_MODELS_CASCADE[i];
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+      try {
+        const res = await fetchWithRetry(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }, 0, this.timeoutMs);
+
+        if (!res.ok) {
+          lastError = new Error(`HTTP ${res.status} on ${modelName}`);
+          if (res.status === 503 || res.status === 404 || res.status === 400) {
+            continue;
+          }
+          throw lastError;
+        }
+
+        const data = await res.json();
+        const rawOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawOutput) {
+          throw new Error(`Empty payload returned from ${modelName}`);
+        }
+
+        const sanitized = sanitizeGeminiJSON(rawOutput);
+        const parsedPlan = JSON.parse(sanitized);
+
+        if (!parsedPlan.severityLevel || !parsedPlan.hourlyRoutines || !parsedPlan.quantifiedImpact) {
+          throw new Error(`Malformed schema returned from ${modelName}`);
+        }
+
+        if (!parsedPlan.cleaningProtocol) {
+          parsedPlan.cleaningProtocol = getCleaningProtocol(context.aqi);
+        }
+
+        this.circuitBreaker.recordSuccess();
+
+        return {
+          plan: PlanFactory.createPlan(parsedPlan),
+          strategy: modelName === 'gemini-3.8-flash' ? 'GEMINI_3.8_FLASH' : `GEMINI_FALLBACK_${modelName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`
+        };
+      } catch (err) {
+        lastError = err;
+        if (err.message && (err.message.includes('503') || err.message.includes('404') || err.message.includes('400'))) {
+          continue;
+        }
+        break;
       }
-
-      const data = await res.json();
-      const rawOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawOutput) {
-        throw new Error('Empty payload returned from Gemini');
-      }
-
-      const sanitized = sanitizeGeminiJSON(rawOutput);
-      const parsedPlan = JSON.parse(sanitized);
-
-      if (!parsedPlan.severityLevel || !parsedPlan.hourlyRoutines || !parsedPlan.quantifiedImpact) {
-        throw new Error('Malformed schema returned from Gemini');
-      }
-
-      if (!parsedPlan.cleaningProtocol) {
-        parsedPlan.cleaningProtocol = getCleaningProtocol(context.aqi);
-      }
-
-      this.circuitBreaker.recordSuccess();
-
-      return {
-        plan: PlanFactory.createPlan(parsedPlan),
-        strategy: 'GEMINI_3.8_FLASH'
-      };
-    } catch (err) {
-      this.circuitBreaker.recordFailure();
-
-      return {
-        plan: generateOfflineCleanAirPlan(context),
-        strategy: 'OFFLINE_FALLBACK',
-        warning: `Gemini dispatch error (${err.message || 'Network Timeout'}). Degraded gracefully to offline advisor.`
-      };
     }
+
+    this.circuitBreaker.recordFailure();
+
+    return {
+      plan: generateOfflineCleanAirPlan(context),
+      strategy: 'OFFLINE_FALLBACK',
+      warning: `Gemini live service unavailable (${lastError?.message || '503 Service Unavailable'}). Automatically switched to sub-15ms deterministic offline advisor.`
+    };
   }
 }

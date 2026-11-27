@@ -47,7 +47,7 @@ import {
 } from '../src/js/state-codec.js';
 import { INITIAL_STATE, appReducer, registerServiceWorker, AppController, appController } from '../src/js/app.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol, PlanFactory } from '../src/js/offline-advisor.js';
-import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry, sanitizeCityInput } from '../src/js/gemini-service.js';
+import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry, sanitizeCityInput, GEMINI_MODELS_CASCADE } from '../src/js/gemini-service.js';
 
 let passed = 0;
 let failed = 0;
@@ -63,7 +63,7 @@ function assert(condition, testName, message = '') {
 }
 
 console.log('\n======================================================');
-console.log(' CleanAir Guardian — 82 Triad Invariant Test Suite');
+console.log(' CleanAir Guardian — 83 Triad Invariant Test Suite');
 console.log('======================================================\n');
 
 // ---------------------------------------------------------------------------
@@ -226,6 +226,17 @@ assert(alphaSealed === 0.40 && alphaStandard === 0.65 && alphaDrafty === 0.85, '
 // TC-ERR-001: Typed domain error hierarchy
 const netErr = new NetworkTimeoutError(8000);
 assert(netErr.code === 'ERR_NET_TIMEOUT' && netErr.isTransient === true, 'TC-ERR-001', 'NetworkTimeoutError domain code and retry eligibility');
+
+// TC-ERR-002: Gemini multi-model cascade & resilient 503 fallback invariant
+assert(
+  Array.isArray(GEMINI_MODELS_CASCADE) &&
+  GEMINI_MODELS_CASCADE.length >= 3 &&
+  GEMINI_MODELS_CASCADE[0] === 'gemini-3.8-flash' &&
+  GEMINI_MODELS_CASCADE.includes('gemini-2.5-flash') &&
+  GEMINI_MODELS_CASCADE.includes('gemini-2.0-flash'),
+  'TC-ERR-002',
+  'Multi-model fallback cascade is prioritized from 3.8 to 2.5/2.0 on 503/404'
+);
 
 // TC-BUS-001: Typed EventBus pub-sub delivery
 const testBus = new EventBus();

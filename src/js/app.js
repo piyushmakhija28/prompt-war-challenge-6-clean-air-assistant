@@ -527,6 +527,13 @@ export async function triggerPlanGeneration() {
       if (banner) {
         banner.textContent = result.warning;
         banner.classList.remove('hidden');
+        if (typeof window !== 'undefined') {
+          if (window._bannerTimer) clearTimeout(window._bannerTimer);
+          window._bannerTimer = setTimeout(() => {
+            const b = document.getElementById('status-banner');
+            if (b) b.classList.add('hidden');
+          }, 6000);
+        }
       }
     } else {
       const banner = document.getElementById('status-banner');
@@ -1071,6 +1078,14 @@ export function initApp() {
   const inputKey = document.getElementById('input-gemini-key');
   const btnSaveKey = document.getElementById('btn-save-key');
   const btnClearKey = document.getElementById('btn-clear-key');
+  const formKey = document.getElementById('form-gemini-key');
+
+  if (formKey && btnSaveKey) {
+    formKey.addEventListener('submit', (e) => {
+      e.preventDefault();
+      btnSaveKey.click();
+    });
+  }
 
   if (btnSaveKey && inputKey) {
     btnSaveKey.addEventListener('click', () => {
@@ -1159,7 +1174,11 @@ export class AppController {
 export const appController = new AppController(globalEventBus, planProvider);
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('DOMContentLoaded', () => {
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', () => {
+      initApp();
+    });
+  } else {
     initApp();
-  });
+  }
 }

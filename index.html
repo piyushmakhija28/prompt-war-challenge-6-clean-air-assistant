@@ -266,12 +266,14 @@
       <!-- Ephemeral Gemini Key Drawer -->
       <div class="key-drawer">
         <h3 style="font-size:0.875rem; font-weight:600; margin-bottom:8px; color:#94a3b8;">Gemini 3.8 Flash Settings</h3>
-        <input type="password" id="input-gemini-key" class="form-input" placeholder="Paste Gemini API Key (Ephemeral)" autocomplete="off">
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button id="btn-save-key" class="btn-secondary" type="button" style="min-height:38px; padding:6px 12px;">Save Key</button>
-          <button id="btn-clear-key" class="btn-secondary" type="button" style="min-height:38px; padding:6px 12px; color:#f87171;">Clear</button>
-        </div>
-        <p id="key-status-text" class="key-status">Zero Persistent Storage: Held in ephemeral byte buffer</p>
+        <form id="form-gemini-key" onsubmit="return false;" style="margin:0; padding:0;">
+          <input type="password" id="input-gemini-key" class="form-input" placeholder="Paste Gemini API Key (AIzaSy...)" autocomplete="off">
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button id="btn-save-key" class="btn-secondary" type="submit" style="min-height:38px; padding:6px 12px;">Save Key</button>
+            <button id="btn-clear-key" class="btn-secondary" type="button" style="min-height:38px; padding:6px 12px; color:#f87171;">Clear</button>
+          </div>
+        </form>
+        <p id="key-status-text" class="key-status">Zero Persistent Storage: Held in ephemeral byte buffer (Google AI Studio keys start with AIzaSy...)</p>
       </div>
     </section>
 
