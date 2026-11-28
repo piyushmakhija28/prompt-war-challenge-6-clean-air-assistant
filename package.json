@@ -1,15 +1,16 @@
 {
   "name": "prompt-war-challenge-6-clean-air-assistant",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "CleanAir Guardian (VayuRakshak) — Winter Smog & Urban Pollution Community AI Assistant",
   "type": "module",
   "main": "src/js/app.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/run-tests.js",
+    "test": "node test/run-tests.js && node --test \"test/unit/*.test.js\" \"test/integration/*.test.js\"",
     "test:fuzz": "node test/run-fuzz-tests.js",
     "test:browser": "node test/run-browser-tests.js",
-    "verify": "node test/run-tests.js && node test/run-fuzz-tests.js && node test/run-browser-tests.js"
+    "test:e2e": "playwright test",
+    "verify": "npm test && npm run test:fuzz && npm run test:browser && npm run test:e2e"
   },
   "keywords": [
     "clean-air",
@@ -20,5 +21,11 @@
     "prompt-war-6"
   ],
   "author": "Piyush Makhija",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.65.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }

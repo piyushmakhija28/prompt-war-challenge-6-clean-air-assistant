@@ -6,26 +6,56 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: npm
 
-      - name: Execute 75 Triad Invariant Tests
-        run: node test/run-tests.js
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts
 
-      - name: Execute 10,000 Property Fuzz Vectors (11 Algebraic Invariants)
-        run: node test/run-fuzz-tests.js
+      - name: Refuse committed Google API keys
+        run: |
+          if git grep -lE 'AIza[0-9A-Za-z_-]{35}' -- .; then
+            echo "A string shaped like a Google API key is committed in the files above."
+            exit 1
+          fi
 
-      - name: Execute Chrome CDP End-to-End Browser Automation Tests
-        run: node test/run-browser-tests.js
+      - name: Execute unit and integration tests
+        run: npm test
 
-      - name: Verify Repository Size Budget (< 10 MB)
-        run: git count-objects -vH
+      - name: Execute property fuzz tests
+        run: npm run test:fuzz
+
+      - name: Execute Chrome CDP browser tests
+        run: npm run test:browser
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Execute Playwright end-to-end scenarios
+        run: npm run test:e2e
+
+      - name: Verify repository size budget (< 10 MB)
+        run: |
+          bytes=$(git ls-files -z | xargs -0 cat | wc -c)
+          echo "Tracked file size: ${bytes} bytes"
+          test "$bytes" -lt 10485760

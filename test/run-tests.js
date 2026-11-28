@@ -67,6 +67,7 @@ import {
   schedulePlanGeneration,
   triggerPlanGeneration,
   keyStore,
+  planProvider,
   state
 } from '../src/js/app.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol, PlanFactory } from '../src/js/offline-advisor.js';
@@ -502,14 +503,14 @@ assert(isSchemaValid && isInvalidRejected, 'TC-FAC-002', 'PlanFactory.validateSc
 const swPromise = registerServiceWorker('sw.js');
 assert(swPromise instanceof Promise, 'TC-SW-001', 'registerServiceWorker returns a Promise adhering to W3C Service Worker API');
 
-// TC-SW-002: Service Worker v1.2 Network-First cache policy contract
+// TC-SW-002: Service Worker v1.3 Network-First cache policy contract
 const swContent = fs.readFileSync(path.resolve(__dirname, '../sw.js'), 'utf-8');
 assert(
-  swContent.includes('cleanair-guardian-v1.2') &&
+  swContent.includes('cleanair-guardian-v1.3') &&
   swContent.includes('fetch(event.request)') &&
   swContent.includes('caches.open(CACHE_NAME)'),
   'TC-SW-002',
-  'sw.js implements Network-First v1.2 cache synchronization and purge'
+  'sw.js implements Network-First v1.3 cache synchronization and purge'
 );
 
 // TC-CTRL-001: AppController C4 Model contract and dependency injection (HLD 02 §2.4)
@@ -864,6 +865,13 @@ assert(
 
 // TC-KEY-001: triggerPlanGeneration execution with active keyStore key
 let keyGenError = null;
+const originalProviderFetch = planProvider.fetchImpl;
+planProvider.fetchImpl = async () => new Response(JSON.stringify({
+  candidates: [{ content: { parts: [{ text: JSON.stringify({
+    hourlyRoutines: [{ timeSlot: '07:00', activity: 'Morning', recommendation: 'Stay indoors.', actionType: 'SHIFT_INDOORS' }],
+    communityAdvisory: 'Keep windows closed in the morning.'
+  }) }] } }]
+}), { status: 200 });
 try {
   keyStore.setKey('AIzaSyD-mock-test-key-for-unit-test');
   await triggerPlanGeneration();
@@ -871,6 +879,7 @@ try {
   keyGenError = e;
 } finally {
   keyStore.purge();
+  planProvider.fetchImpl = originalProviderFetch;
 }
 assert(
   keyGenError === null,

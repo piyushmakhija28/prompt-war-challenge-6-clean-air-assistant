@@ -1,0 +1,167 @@
+/**
+ * @fileoverview Number consistency: cards, bars, advisory text and the Gemini prompt must all
+ * carry the same figures, with and without a model.
+ * @module test/e2e/consistency
+ */
+
+import { contextToHashToken } from '../../src/js/state-codec.js';
+import { getDiurnalInversion } from '../../src/js/air-quality-engine.js';
+import { test, expect, defaultModel, computeImpact } from './fixtures.js';
+
+const CONTEXTS = [
+  { label: 'default household', aqi: 395 },
+  { label: 'clean air', aqi: 0, vulnBits: 0, commuteMode: 'walk_cycle' },
+  { label: 'good boundary', aqi: 50, housingType: 'sealed_apartment', commuteMode: 'public_transit' },
+  { label: 'between breakpoints', aqi: 100, city: 'Patna', cookingMethod: 'png' },
+  { label: 'solo car long commute', aqi: 201, commuteMode: 'private_car', commuteKm: 50 },
+  { label: 'all vulnerabilities', aqi: 460, vulnBits: 31, housingType: 'drafty_home', cookingMethod: 'biomass' },
+  { label: 'maximum AQI', aqi: 999, city: 'Ulaanbaatar', heatingMethod: 'open_fire', commuteKm: 1 },
+  { label: 'detected place name', aqi: 301, city: 'Karol Bagh, New Delhi' }
+];
+
+/**
+ * Severity label the screen must show for an AQI.
+ *
+ * @param {number} aqi - AQI.
+ * @returns {string} Severity code.
+ */
+function severityFor(aqi) {
+  const band = [[50, 'GOOD'], [100, 'MODERATE'], [200, 'POOR'], [300, 'VERY_POOR'], [400, 'SEVERE']]
+    .find(([limit]) => aqi <= limit);
+  return band ? band[1] : 'HAZARDOUS';
+}
+
+test.describe('on-device consistency', () => {
+  test('the default household shows hand calculated figures', async ({ app, page }) => {
+    const token = contextToHashToken(defaultModel({ aqi: 395, simulatedHour: null }));
+    await app.open(`#${token}`);
+
+    await expect.poll(() => app.figures()).toMatchObject({
+      hero: '395',
+      avoided: '1078 µg',
+      cigarettes: '16.2 Cigs',
+      carbon: '0.45 kg',
+      score: '98%',
+      unshielded: '1341 µg (20.2 Cigs)',
+      shielded: '263 µg (4.0 Cigs)',
+      delta: 'Saved: 1078 µg (16.2 Cigs)'
+    });
+    await expect(app.advisory).toContainText('1078 µg');
+    await expect(page.locator('#alternatives-container')).toContainText('avoids 0.45 kg CO2e');
+  });
+
+  for (const { label, ...overrides } of CONTEXTS) {
+    test(`${label}: cards, bars, inputs and advisory agree`, async ({ app, page }) => {
+      const model = defaultModel({ aqiSource: 'manual', ...overrides });
+      await app.open(`#${contextToHashToken({ ...model, simulatedHour: null })}`);
+
+      await app.expectFigures(model);
+      await expect(page.locator('#hero-severity-badge')).toHaveText(severityFor(model.aqi));
+      await expect(page.locator('#badge-cleaning-status'))
+        .toHaveText(model.aqi > 200 ? 'DRY SWEEPING PROHIBITED' : 'STANDARD DAMP DUSTING');
+      const alternatives = page.locator('#alternatives-container');
+      if (['private_car', 'two_wheeler'].includes(model.commuteMode)) {
+        await expect(alternatives).toContainText(`avoids ${computeImpact(model).carbonSavedKg} kg CO2e`);
+      } else {
+        await expect(alternatives).toContainText('already low-carbon');
+        await expect(page.locator('#metric-carbon-saved')).toHaveText('0 kg');
+      }
+      const visible = await page.locator('main').innerText();
+      expect(visible).not.toMatch(/NaN|undefined|Infinity|\[object/);
+    });
+  }
+
+  test('moving the AQI across its whole range keeps every figure in step', async ({ app }) => {
+    await app.open();
+    for (const aqi of [0, 1, 50, 51, 100, 101, 200, 201, 300, 301, 400, 401, 500, 501, 999]) {
+      await app.aqiSlider.fill(String(aqi));
+      await app.expectFigures(defaultModel({ aqi, aqiSource: 'manual' }));
+    }
+  });
+
+  test('the severity badge, scrubber telemetry and curve follow the AQI', async ({ app, page }) => {
+    await app.open();
+    const marker = page.locator('#svg-spline-marker');
+    for (const aqi of [40, 150, 420, 999]) {
+      await app.aqiSlider.fill(String(aqi));
+      await expect(page.locator('#hero-severity-badge')).toHaveText(severityFor(aqi));
+      const { effectiveAQI, multiplier } = getDiurnalInversion(7.5, aqi);
+      await expect(page.locator('#label-scrubber-telemetry'))
+        .toHaveText(`AQI ${effectiveAQI} (${multiplier.toFixed(2)}x Trap)`);
+    }
+    await expect(marker).toHaveAttribute('cx', '75');
+  });
+});
+
+test.describe('model mode consistency', () => {
+  const steps = [
+    ['baseline', async () => {}, {}],
+    ['solo car', (app) => app.choose('commute', 'private_car'), { commuteMode: 'private_car' }],
+    ['longer commute', (app) => app.kmSlider.fill('37'), { commuteKm: 37 }],
+    ['sealed home', (app) => app.housing.selectOption('sealed_apartment'), { housingType: 'sealed_apartment' }],
+    ['pregnant resident', (app) => app.setVulnerability(8, true), { vulnBits: 11 }],
+    ['manual low AQI', (app) => app.aqiSlider.fill('73'), { aqi: 73, aqiSource: 'manual' }]
+  ];
+
+  test('prompt facts equal the figures on screen at every step', async ({ app, mocks }) => {
+    let model = defaultModel();
+    await app.open();
+    await app.activate(model);
+    for (const [label, act, patch] of steps) {
+      await test.step(label, async () => {
+        await app.refill();
+        await act(app);
+        model = { ...model, ...patch };
+        await app.expectAdvice(model);
+        await app.expectFigures(model);
+
+        const { facts } = mocks.gemini.calls.at(-1);
+        const shown = await app.figures();
+        expect(String(facts.aqi)).toBe(shown.hero);
+        expect(facts.city).toBe(model.city);
+        expect(`${facts.computed.pm25AvoidedUg} µg`).toBe(shown.avoided);
+        expect(`${facts.computed.cigarettesAvoided.toFixed(1)} Cigs`).toBe(shown.cigarettes);
+        expect(`${facts.computed.carbonSavedKg} kg`).toBe(shown.carbon);
+        expect(`${facts.computed.protectionScore}%`).toBe(shown.score);
+        expect(shown.unshielded.startsWith(`${facts.computed.unshieldedDoseUg} µg`)).toBe(true);
+        expect(shown.shielded.startsWith(`${facts.computed.protectedDoseUg} µg`)).toBe(true);
+      });
+    }
+  });
+
+  test('the same inputs give the same figures with and without the model', async ({ app }) => {
+    await app.open();
+    await app.expectFigures(defaultModel());
+    const offline = await app.figures();
+
+    await app.activate();
+    expect(await app.figures()).toEqual(offline);
+
+    await app.purgeButton.click();
+    await app.expectOffline();
+    expect(await app.figures()).toEqual(offline);
+  });
+
+  test('cached advice shown during a refresh is re-framed with the current figures', async ({ app, mocks }) => {
+    await app.open();
+    await app.activate();
+    const gate = mocks.gemini.hold();
+    await app.aqiSlider.fill('88');
+    const model = defaultModel({ aqi: 88, aqiSource: 'manual' });
+
+    await app.expectFigures(model);
+    await expect(app.advisory).not.toContainText(`(AQI ${defaultModel().aqi})`);
+    await expect.poll(() => mocks.gemini.calls.length).toBe(2);
+    await gate.release();
+    await app.expectAdvice(model);
+  });
+
+  test('the prompt carries only whitelisted household fields', async ({ app, mocks }) => {
+    await app.open();
+    await app.activate();
+    expect(Object.keys(mocks.gemini.calls[0].facts).sort()).toEqual([
+      'aqi', 'aqiSource', 'city', 'commuteKm', 'commuteMode', 'computed', 'cookingMethod',
+      'heatingMethod', 'housingType', 'vulnerabilities'
+    ]);
+  });
+});

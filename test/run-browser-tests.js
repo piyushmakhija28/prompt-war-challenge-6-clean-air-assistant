@@ -12,6 +12,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { aqiToMassConcentration } from '../src/js/impact-calculator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,6 +66,27 @@ function startStaticServer(port) {
       resolve(server);
     });
   });
+}
+
+/**
+ * Builds the canned response for an intercepted third-party request, so that the
+ * browser suite never touches a real external service.
+ *
+ * @param {string} url - Requested URL.
+ * @returns {Object} Decoded response body.
+ */
+function mockExternalBody(url) {
+  if (url.includes('open-meteo.com')) {
+    return { current: { time: '2026-11-28T08:00', pm2_5: aqiToMassConcentration(395), pm10: 300 } };
+  }
+  if (url.includes('generativelanguage.googleapis.com')) {
+    const advice = {
+      hourlyRoutines: [{ timeSlot: '07:00', activity: 'Morning', recommendation: 'Stay indoors.', actionType: 'SHIFT_INDOORS' }],
+      communityAdvisory: 'Keep windows closed in the morning.'
+    };
+    return { candidates: [{ content: { parts: [{ text: JSON.stringify(advice) }] } }] };
+  }
+  return { locality: 'Test Locality', principalSubdivision: 'Delhi' };
 }
 
 /**
@@ -287,6 +309,20 @@ async function main() {
     consoleErrors.push(params.exceptionDetails.exception?.description || params.exceptionDetails.text);
   });
 
+  cdp.on('Fetch.requestPaused', ({ requestId, request }) => {
+    cdp.send('Fetch.fulfillRequest', {
+      requestId,
+      responseCode: 200,
+      responseHeaders: [
+        { name: 'Content-Type', value: 'application/json' },
+        { name: 'Access-Control-Allow-Origin', value: '*' },
+        { name: 'Access-Control-Allow-Headers', value: 'content-type,x-goog-api-key' }
+      ],
+      body: Buffer.from(JSON.stringify(mockExternalBody(request.url))).toString('base64')
+    });
+  });
+
+  await cdp.send('Fetch.enable', { patterns: [{ urlPattern: 'https://*' }] });
   await cdp.send('Page.enable');
   await cdp.send('Runtime.enable');
   await cdp.send('DOM.enable');
@@ -565,7 +601,7 @@ async function main() {
         const input = document.getElementById('input-gemini-key');
         const btnSave = document.getElementById('btn-save-key');
         if (input && btnSave) {
-          input.value = 'AIzaSyD-mock-test-key-for-e2e-browser-test';
+          input.value = 'browser-suite-mock-key';
           btnSave.click();
         }
       })()

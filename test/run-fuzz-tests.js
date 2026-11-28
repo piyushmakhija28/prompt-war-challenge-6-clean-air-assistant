@@ -107,7 +107,7 @@ for (let i = 0; i < ITERATIONS; i++) {
 
   // Invariant 6: 5-Byte binary packing roundtrip isomorphism for clamped ranges
   const clampedCtx = {
-    aqi: Math.max(0, Math.min(1023, Math.round(aqi))),
+    aqi: Math.max(0, Math.min(999, Math.round(aqi))),
     vulnBits: vulnBits & 0x1F,
     cookingMethod: cook,
     heatingMethod: heat,
@@ -177,9 +177,11 @@ for (let i = 0; i < ITERATIONS; i++) {
 
 const elapsedMs = Date.now() - startTime;
 
-console.log(`\n  \x1b[32mSUCCESS\x1b[0m Tested ${ITERATIONS.toLocaleString()} pseudorandom vectors in ${elapsedMs}ms.`);
+console.log(`\n  Tested ${ITERATIONS.toLocaleString()} pseudorandom vectors in ${elapsedMs}ms.`);
 console.log(`  Violations: ${violations}`);
-console.log('  Algebraic Closure Invariants: PASS (Zero NaN, Zero Inf, Zero Undefined, Lossless Codec)');
+console.log(violations > 0
+  ? '  \x1b[31mFAILED\x1b[0m Algebraic closure invariants did not hold.'
+  : '  \x1b[32mSUCCESS\x1b[0m Algebraic Closure Invariants: PASS (Zero NaN, Zero Inf, Zero Undefined, Lossless Codec)');
 
 if (violations > 0) {
   process.exit(1);
