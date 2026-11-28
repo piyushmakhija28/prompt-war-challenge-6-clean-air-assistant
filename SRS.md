@@ -38,6 +38,11 @@ CleanAir Guardian ingests real-time localized environmental data (AQI, PM2.5, PM
 - **FR-10 (Carbon Emissions Avoidance):** Calculates kilograms of $CO_2e$ prevented. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](file:///docs/lld/02-direct-impact-mathematical-spec.md).*
 - **FR-11 (Community Bulletin Generator):** Generates one-click WhatsApp/RWA advisories. *Details in [docs/03-api-contract.md](file:///docs/03-api-contract.md).*
 - **FR-12 (Stateless URL Hash Codec):** Encodes context into `#v1=...` string under 128 bytes. *Details in [ADR-007](file:///docs/06-adr/ADR-007-state-management-and-url-serialization.md).*
+- **FR-13 (Live Air Quality):** The system SHALL show a current modelled PM2.5 based AQI for the selected or detected location, refresh it every 15 minutes, and let the user override it manually and return to live data. Priority: High. Source: GitHub Issue #11. Added: 2026-11-28.
+- **FR-14 (Single Source of Figures):** The system SHALL derive every displayed, shared and AI-prompted impact figure from one calculation, recalculated immediately on any input change. Priority: High. Source: GitHub Issue #9. Added: 2026-11-28.
+- **FR-15 (Advice Binding):** The system SHALL keep generated advice consistent with the latest inputs, label its source and refresh state, and never let an older response replace a newer one. Priority: High. Source: GitHub Issue #9. Added: 2026-11-28.
+- **FR-16 (Failure Recovery):** The system SHALL fall back to on-device advice on any Gemini failure, retry temporary failures at most three times automatically, and stop calling with a rejected key. Priority: High. Source: GitHub Issue #10. Added: 2026-11-28.
+- **FR-17 (Complete Shared State):** A shared link SHALL restore location, AQI, household profile, commute distance and housing type. Priority: Medium. Source: GitHub Issue #12. Added: 2026-11-28.
 
 ### 3.2 Non-Functional Requirements (NFR-01 to NFR-10)
 - **NFR-01 (Latency):** Sub-15ms offline execution; sub-1.8s Gemini Flash latency. *Details in [docs/02-hld.md](file:///docs/02-hld.md).*
@@ -50,6 +55,9 @@ CleanAir Guardian ingests real-time localized environmental data (AQI, PM2.5, PM
 - **NFR-08 (Ergonomics):** Responsive across mobile, tablet, and desktop. *Details in [docs/ui-ux/01-design-system-and-tokens.md](file:///docs/ui-ux/01-design-system-and-tokens.md).*
 - **NFR-09 (Determinism):** Calculations produce mathematically identical results given identical inputs. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](file:///docs/lld/02-direct-impact-mathematical-spec.md).*
 - **NFR-10 (High-Contrast Themes):** Legible under outdoor smog haze. *Details in [docs/ui-ux/01-design-system-and-tokens.md](file:///docs/ui-ux/01-design-system-and-tokens.md).*
+- **NFR-11 (Credential Transport):** The API key SHALL be held in memory only and sent only in a request header to the Gemini API. Source: GitHub Issue #10. Added: 2026-11-28.
+- **NFR-12 (Data Minimisation):** Coordinates SHALL be rounded to about 1 km before leaving the device and SHALL NOT be sent to Gemini. Source: GitHub Issues #9 and #11. Added: 2026-11-28.
+- **NFR-13 (Testability):** Automated tests SHALL NOT call any real external service. Source: GitHub Issue #13. Added: 2026-11-28.
 
 ---
 
@@ -74,3 +82,26 @@ For the exhaustive engineering specifications, reference the authoritative docum
 - [Triad Testing Strategy & Test Catalog](file:///docs/testing/01-triad-test-strategy.md)
 - [Rubric Compliance & Scorecard Matrix](file:///docs/08-rubric-compliance-matrix.md)
 - [Canonical Mermaid UML Diagrams Suite](file:///uml/)
+
+---
+
+## 5. Acceptance Criteria
+
+- **AC-13:** On load without a shared link the AQI source reads "Live" with an observation time; a feed failure keeps the previous value and says so; moving the slider reads "Manual" and "Use live AQI" restores live data.
+- **AC-14:** For any input combination, cards, dose bars, advisory and Gemini prompt show the same figures.
+- **AC-15:** After any input change the advice source reads "Refreshing" and then matches the latest inputs; a slower older response changes nothing.
+- **AC-16:** For HTTP 429, 5xx, timeout, network loss and malformed replies the app stays usable; a rejected key causes exactly one request and a visible message.
+- **AC-17:** Encoding then decoding a shared link returns the same profile.
+
+## 6. Out of Scope
+
+- A backend, user accounts or server-side storage of API keys.
+- Local sensor hardware, official regulatory AQI feeds and forecasting.
+- Medical diagnosis or medication advice.
+- Commercial use of the free Open-Meteo tier.
+
+## 7. Change Log
+
+| Date | Version | Task | Change Summary | Status |
+|------|---------|------|----------------|--------|
+| 2026-11-28 | 1.2.0 | Live data binding, live AQI, resilience, scenario testing | Added FR-13 to FR-17, NFR-11 to NFR-13 and AC-13 to AC-17 | Done |

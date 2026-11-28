@@ -7,118 +7,88 @@
 
 ---
 
-## 1. Token Budget Linear Program (LP) & Memory Footprint
+## 1. Request Budget
 
-To ensure sub-second Time to First Token (TTFT) and prevent memory-bound GPU degradation, the prompt lifecycle is governed by an explicit **Token Budget Linear Program**:
-
-$$\text{Minimize } \text{Latency} \quad \text{subject to: } \text{Tokens}_{\text{system}} + \text{Tokens}_{\text{context}} + \text{Tokens}_{\text{output}} \le 2,000\text{ tokens}$$
-
-```
-+---------------------------------------------------------------------------------------------------------+
-|                                    TOKEN BUDGET ALLOCATION TABLE                                        |
-+--------------------------+-----------------------+---------------------+--------------------------------+
-| Component                | Budget Ceiling        | Actual Tokens       | Allocation Breakdown           |
-+--------------------------+-----------------------+---------------------+--------------------------------+
-| **System Instructions**  | 500 tokens            | ~420 tokens         | Persona rules, diurnal times   |
-| **User Context Payload** | 400 tokens            | ~280 tokens         | Sanitized typed JSON block     |
-| **Few-Shot Anchor**      | 550 tokens            | ~480 tokens         | 1 worked input-output pair     |
-| **Model Output Window**  | 1,200 tokens          | ~780 tokens         | Full CleanAirActionPlan JSON   |
-+--------------------------+-----------------------+---------------------+--------------------------------+
-| **Total Call Footprint** | **2,650 tokens**      | **~1,960 tokens**   | **0.19% of Gemini 1M Context** |
-+--------------------------+-----------------------+---------------------+--------------------------------+
-```
+| Limit | Value |
+|-------|-------|
+| `maxOutputTokens` | 4096 |
+| Overall time budget per generation | 45,000 ms |
+| Smallest remaining budget that starts another model | 5,000 ms |
+| Client rate limit | burst of 3, refilled at 5 per minute |
+| Circuit breaker | opens after 2 failed generations, one probe after 30 s |
+| Input debounce | 800 ms |
+| Automatic retries | at most 3, delay of at most 120 s |
 
 ---
 
-## 2. Google Gemini 3.8 Flash REST Contract & High-Availability Cascade
+## 2. Google Gemini REST Contract and Model Cascade
 
-- **HTTP Method:** `POST`
-- **URL Endpoint:** `https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent?key={API_KEY}`
-- **High-Availability Cascade (`GEMINI_MODELS_CASCADE`):**
-  1. `gemini-3.5-flash-lite` (thinkingLevel: LOW)
-  2. `gemini-flash-lite-latest`
-  3. `gemini-3.1-flash-lite` (thinkingLevel: LOW)
-  4. `gemini-3.8-flash` (thinkingLevel: LOW)
-  5. `gemini-flash-latest`
-- **Headers:** `Content-Type: application/json`
-- **Timeout:** `12,000ms` per attempt (with `AbortSignal.timeout`)
+- **Method and URL:** `POST https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent`
+- **Headers:** `Content-Type: application/json`, `x-goog-api-key: <key held in memory>`. The key never appears in a URL or body. Redirects are refused.
+- **Cascade and per-attempt deadline** (`GEMINI_MODELS_CASCADE`, `GEMINI_MODEL_TIMEOUTS`):
 
-### 2.1 Complete Request Payload with Native `responseSchema`:
+| Order | Model | Deadline | `thinkingLevel` |
+|-------|-------|----------|-----------------|
+| 1 | `gemini-3.5-flash-lite` | 15 s | LOW |
+| 2 | `gemini-flash-lite-latest` | 15 s | not sent |
+| 3 | `gemini-3.1-flash-lite` | 15 s | LOW |
+| 4 | `gemini-3.8-flash` | 25 s | LOW |
+| 5 | `gemini-flash-latest` | 18 s | not sent |
+
+### 2.1 Request Payload
+
+`systemInstruction` is `GEMINI_SYSTEM_INSTRUCTION`. The user part wraps a data-only block:
+
 ```json
 {
-  "systemInstruction": {
-    "parts": [{ "text": "You are CleanAir Guardian (VayuRakshak), an elite Environmental Health Scientist powered by Google Gemini 3.8 Flash. Output strict JSON matching the schema." }]
-  },
-  "contents": [
-    {
-      "role": "user",
-      "parts": [{ "text": "### USER_CONTEXT_JSON\n{\"city\":\"Delhi-NCR\",\"aqi\":395,\"vulnBits\":3,\"cooking\":\"LPG\",\"heating\":\"space_heater\",\"commute\":\"two_wheeler\"}\n### END_USER_CONTEXT" }]
-    }
-  ],
-  "generationConfig": {
-    "temperature": 0.2,
-    "topP": 0.85,
-    "maxOutputTokens": 900,
-    "responseMimeType": "application/json",
-    "responseSchema": {
-      "type": "OBJECT",
-      "properties": {
-        "severityLevel": { "type": "STRING", "enum": ["GOOD", "MODERATE", "POOR", "VERY_POOR", "SEVERE", "HAZARDOUS"] },
-        "diurnalWindowNotice": { "type": "STRING" },
-        "hourlyRoutines": {
-          "type": "ARRAY",
-          "items": {
-            "type": "OBJECT",
-            "properties": {
-              "timeSlot": { "type": "STRING" },
-              "activity": { "type": "STRING" },
-              "recommendation": { "type": "STRING" },
-              "actionType": { "type": "STRING", "enum": ["SHIFT_INDOORS", "SAFE_VENTILATION", "SEAL_HOME", "COMMUTE_SHIELD"] }
-            },
-            "required": ["timeSlot", "activity", "recommendation", "actionType"]
-          }
-        },
-        "iaqHack": {
-          "type": "OBJECT",
-          "properties": {
-            "title": { "type": "STRING" },
-            "materials": { "type": "ARRAY", "items": { "type": "STRING" } },
-            "cadrEstimate": { "type": "STRING" },
-            "costEstimate": { "type": "STRING" },
-            "steps": { "type": "ARRAY", "items": { "type": "STRING" } }
-          },
-          "required": ["title", "materials", "cadrEstimate", "costEstimate", "steps"]
-        },
-        "sustainableAlternatives": {
-          "type": "ARRAY",
-          "items": {
-            "type": "OBJECT",
-            "properties": {
-              "category": { "type": "STRING" },
-              "currentChoice": { "type": "STRING" },
-              "cleanAlternative": { "type": "STRING" },
-              "benefit": { "type": "STRING" }
-            },
-            "required": ["category", "currentChoice", "cleanAlternative", "benefit"]
-          }
-        },
-        "quantifiedImpact": {
-          "type": "OBJECT",
-          "properties": {
-            "pm25InhalationAvoidedMicrograms": { "type": "NUMBER" },
-            "cigaretteEquivalentsAvoided": { "type": "NUMBER" },
-            "co2eSavedKg": { "type": "NUMBER" },
-            "protectionScorePercent": { "type": "INTEGER" }
-          },
-          "required": ["pm25InhalationAvoidedMicrograms", "cigaretteEquivalentsAvoided", "co2eSavedKg", "protectionScorePercent"]
-        },
-        "communityAdvisory": { "type": "STRING" }
-      },
-      "required": ["severityLevel", "diurnalWindowNotice", "hourlyRoutines", "iaqHack", "sustainableAlternatives", "quantifiedImpact", "communityAdvisory"]
-    }
+  "city": "Delhi NCR",
+  "aqi": 364,
+  "aqiSource": "live",
+  "housingType": "standard_flat",
+  "cookingMethod": "lpg",
+  "heatingMethod": "space_heater",
+  "commuteMode": "two_wheeler",
+  "commuteKm": 14,
+  "vulnerabilities": ["infant", "asthma or COPD"],
+  "computed": {
+    "pm25UgM3": 0, "unshieldedDoseUg": 0, "protectedDoseUg": 0, "pm25AvoidedUg": 0,
+    "cigarettesAvoided": 0, "carbonSavedKg": 0, "protectionScore": 0
   }
 }
 ```
+
+The `computed` values above are placeholders; the application fills them from `computeImpact`. No coordinates, previous plan or key is included.
+
+`generationConfig`: `temperature` 0.2, `topP` 0.85, `maxOutputTokens` 4096, `responseMimeType` `application/json`, and this schema:
+
+| Field | Type | Required |
+|-------|------|----------|
+| `hourlyRoutines[]` with `timeSlot`, `activity`, `recommendation`, `actionType` | array | yes |
+| `actionType` | `SHIFT_INDOORS`, `SAFE_VENTILATION`, `SEAL_HOME`, `COMMUTE_SHIELD` | yes |
+| `communityAdvisory` (English) | string | yes |
+| `communityAdvisoryHi` (Devanagari) | string | no |
+
+### 2.2 Response Handling
+
+Text containing markup, links or application-owned figures (mass, percentage, cigarette count, AQI value) is rejected. A reply with no usable routine counts as a failed attempt. A missing advisory falls back to the on-device advisory in that language. All other plan fields come from the on-device engine.
+
+| Condition | Behaviour | Strategy |
+|-----------|-----------|----------|
+| 401, 403, or 400 naming the API key | stop at once; no further calls until a key is saved | `OFFLINE_KEY_REJECTED` |
+| 429 | try next model; then wait for the server delay (12 s floor, 30 s default) | `OFFLINE_RATE_LIMITED` |
+| 408, 5xx, timeout, unusable reply | try next model; then count one breaker failure | `OFFLINE_FALLBACK` |
+| Other 400, 404 | try next model | `OFFLINE_FALLBACK` |
+| Prompt blocked | stop | `OFFLINE_BLOCKED` |
+| Device offline | stop; retry on the `online` event | `OFFLINE_NETWORK` |
+| Breaker open | no request | `OFFLINE_CIRCUIT_OPEN` |
+| Success | advice shown | `GEMINI_<MODEL>` |
+
+### 2.3 Open-Meteo Air Quality Contract
+
+- `GET https://air-quality-api.open-meteo.com/v1/air-quality?latitude=..&longitude=..&current=pm2_5,pm10&timezone=auto`
+- Coordinates are rounded to two decimals. Deadline 8 s, refresh every 15 minutes.
+- Used fields: `current.pm2_5` (required, non-negative number), `current.pm10`, `current.time`.
+- Licence CC BY 4.0 with attribution in the UI; the free tier is for non-commercial use. Values are modelled hourly estimates.
 
 ---
 
@@ -182,6 +152,8 @@ For systems-level efficiency, the application also implements a high-density bin
 ```
 - **Total Payload Size:** Exactly $5\text{ bytes}$ (`Uint8Array(5)`).
 - **Base64URL Hash Size:** Exactly **7 characters** (e.g. `#b=A3fZ9qA`).
+- **Lossless fallback:** when a profile cannot be represented in 40 bits (for example a non-preset city or housing type), the `v1=` form is used and also carries `commuteKm` and the housing type index.
+- **Live suffix:** `&live=1` marks that the AQI follows the live feed. Links without it open in manual mode with the shared AQI.
 - **Network Overhead:** $0.00\text{ KB}$ network payload; instant zero-allocation decoding via `DataView`.
 
 
@@ -222,6 +194,7 @@ export interface CleanAirActionPlan {
     cleanAlternative: string;
     benefit: string;
   }>;
+  bilingualAdvisory?: { en: string; hi: string };
   quantifiedImpact: {
     pm25InhalationAvoidedMicrograms: number;
     cigaretteEquivalentsAvoided: number;

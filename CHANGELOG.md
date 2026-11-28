@@ -5,6 +5,36 @@ All notable changes to the **CleanAir Assistant** (Prompt War Challenge No. 6) w
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-28
+
+### Added
+- **Live air quality** (`src/js/live-aqi.js`): current modelled PM2.5 from the Open-Meteo Air Quality API for preset cities or the detected location, converted to the app's AQI scale. Fetched on load, on city change, on location detect, on demand and every 15 minutes. Slider, number box, persona and shared links switch to manual mode; "Use live AQI" switches back. CC BY 4.0 attribution is shown (#11).
+- Source lines that state where the AQI and the advice came from, and an on-screen community advisory preview (#9).
+- Playwright end-to-end suite and new `node:test` unit and integration suites. Every third-party host is mocked (#13).
+
+### Changed
+- One impact function (`computeImpact`) now drives the metric cards, dose bars, offline advisory and Gemini prompt (#9).
+- Gemini supplies routines and advisory text only. It receives a whitelisted profile plus the figures the app displays; the application owns every number (#9).
+- The API key is sent in the `x-goog-api-key` header instead of the URL (#10).
+- Advice requests are debounced (800 ms), de-duplicated, latest-wins, and retried automatically after temporary failures (at most three times) (#10).
+- CI runs on Node 22 and adds a committed-key check, the Playwright suite and a size gate (#13).
+
+### Fixed
+- Gemini advice was replaced by the offline plan on every input change because of a stale strategy name (#9).
+- The language toggle had no visible effect on a Gemini plan; the spinner could stay stuck after a superseded request (#9).
+- The circuit breaker never recovered, slider moves exhausted the rate limit, and a rejected key still showed as active (#10).
+- The Content Security Policy blocked reverse geocoding (#11).
+- Shared links lost some choices, commute distance and housing type; walking and metro users were credited with CO2 savings; fractional AQI values converted wrongly; the local server served hidden files and paths outside the project (#12).
+- Assembly steps were numbered twice.
+- A shared link pasted into an open tab was ignored; silent location detection could override a linked or chosen city or persona (#11, #12).
+- The AQI number box, commute distance and screen reader announcements could disagree with the value in use (#9, #12).
+- Advice text that stated its own AQI, dose or cost-of-exposure figures could appear next to different on-screen figures (#9).
+- A queued advice retry after Recalculate did not call Gemini; malformed Gemini replies could be repaired into the wrong text (#10).
+- The local server exposed hidden files through Windows short names, and the offline cache missed versioned script requests (#12).
+- An offline service worker update raised an uncaught error (#13).
+- A slow first geocoding provider cancelled the fallback provider; a place from a shared link was labelled as the device position (#11).
+- A pasted link did not restore its simulated time; a blank key save overwrote the active key status; the key field had no label (#9, #10).
+
 ## [1.1.0] - 2026-11-27
 
 ### Added

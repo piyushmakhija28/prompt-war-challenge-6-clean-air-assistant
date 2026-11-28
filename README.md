@@ -8,9 +8,9 @@
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/piyushmakhija28/prompt-war-challenge-6-clean-air-assistant)
 [![Build Status](https://github.com/piyushmakhija28/prompt-war-challenge-6-clean-air-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/piyushmakhija28/prompt-war-challenge-6-clean-air-assistant/actions)
 [![Branch](https://img.shields.io/badge/Branch-Single_main_only-success.svg)](#)
-[![Size](https://img.shields.io/badge/Repo_Size-%3C_1_MB_Compliant-brightgreen.svg)](#)
+[![Size](https://img.shields.io/badge/Repo_Size-%3C_10_MB_Compliant-brightgreen.svg)](#)
 [![AI Engine](https://img.shields.io/badge/AI_Engine-Google_Gemini_3.8_Flash-4285F4?logo=google)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-84_Passed_%7C_10k_Fuzz_%7C_8_CDP-success.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-99_Invariant_%7C_554_Node_%7C_281_E2E_%7C_10k_Fuzz-success.svg)](#)
 [![PWA](https://img.shields.io/badge/PWA-Offline_Ready-purple.svg)](#)
 [![Architecture Docs](https://img.shields.io/badge/Enterprise_Architecture-33_Deep_Specs_%2B_6_UML-purple.svg)](file:///docs/)
 [![ADR-011](https://img.shields.io/badge/ADR--011-Dual--Phase_Reactive_Sync-blue.svg)](file:///docs/06-adr/ADR-011-dual-phase-micro-reactive-pipeline-and-dynamic-geolocation.md)
@@ -30,9 +30,10 @@
 | **Target Challenge**     | Prompt War Challenge No. 6                                                   |
 | **Public Repository**    | https://github.com/piyushmakhija28/prompt-war-challenge-6-clean-air-assistant|
 | **Single Branch Name**   | main (Single branch strictly enforced; zero auxiliary branches)              |
-| **Repository Size**      | < 1.0 MB (Currently 614 KiB / 0.60 MB; strictly compliant with < 10 MB limit)|
+| **Repository Size**      | About 1.2 MB of tracked files; compliant with the < 10 MB limit              |
 | **AI Architecture**      | Dual-Engine: Google Gemini 3.8 Flash + Sub-15ms Deterministic Offline Advisor|
-| **Reactive Sync**        | Dual-Phase Pipeline: <5ms synchronous local + 250ms debounced Gemini AI sync |
+| **Reactive Sync**        | Figures recalculate instantly; Gemini advice follows after 800 ms of quiet   |
+| **Live Data**            | Open-Meteo modelled PM2.5, refreshed every 15 minutes, with manual override  |
 | **System Blueprint**     | 33 Deep Enterprise Specs (`docs/`) + 6 Canonical Mermaid UML Diagrams (`uml/`)|
 +--------------------------+------------------------------------------------------------------------------+
 ```
@@ -126,14 +127,14 @@ Behavior change requires concrete, transparent feedback. The assistant calculate
 ## ⚙️ 3. How the Solution Works
 
 1. **Dual-Engine Architecture (`docs/02-hld.md` & `ADR-002`):**
-   - **Online Mode:** Routes context to **Google Gemini 3.8 Flash** (`gemini-3.8-flash`) using native JSON schema enforcement (`responseSchema`) with structured system prompts (`agent.md`).
+   - **Online Mode:** Sends a whitelisted profile and the app's own computed figures to the Gemini model cascade (`gemini-3.5-flash-lite` first, `gemini-3.8-flash` included) with a native `responseSchema`. Gemini writes the routines and advisory; the application owns every number.
    - **Offline Mode:** If an API key is omitted or the user is offline, the client invokes `offline-advisor.js` in $<15\text{ms}$ via the GoF `PlanFactory` normalization engine (`docs/lld/03`), guaranteeing zero evaluation failure and identical JSON schema shape.
    - **Resilient Network Backoff (`fetchWithRetry`):** Retries network failures with exponential backoff and randomized decorrelated jitter ($t_{\text{wait}} = \min(t_{\text{max}}, \text{random}(t_{\text{base}}, t_{\text{prev}} \times 3))$) per Discipline D50 Resilience Architecture (`docs/resilience/01-offline-degradation-and-fallback.md`).
 2. **1-Click Target Personas Quick Preset Bar (`docs/00-problem-statement.md` §5):**
    - Instant pre-hydration of the four official competition personas directly above the profile form:
      - **Ananya (Young Family):** 18-month-old infant, East Delhi (AQI 425), ground floor flat, LPG cooking, nursery Corsi-Rosenthal priority.
-     - **Rajesh (Senior Citizen):** 68-year-old with asthma/COPD, Anand Vihar (AQI 380), morning walk habit, electric heating.
-     - **Vikram (Gig Worker):** 22 km outdoor two-wheeler commute, Noida (AQI 410), N95 elastomeric fit, saline nasal flush.
+     - **Rajesh (Senior Citizen):** 68-year-old with asthma/COPD, Lahore (AQI 380), morning walk habit, electric heating.
+     - **Vikram (Gig Worker):** 22 km outdoor two-wheeler commute, Delhi NCR (AQI 410), N95 elastomeric fit, saline nasal flush.
      - **Ramesh (Traffic Cop):** 8-hour outdoor intersection duty, ITO Chowk (AQI 460), acute toxic load, post-shift barrier protocol.
 3. **Atmospheric Diurnal Inversion & `TimeEngine` Dual-Mode Scrubber (`docs/lld/01`):**
    - **Dual-Mode Time Engine:** Supports both Discrete 4-State evaluation (`DAWN_TRAP`, `SOLAR_DISPERSAL`, `EVENING_PEAK`, `NIGHT_SETTLING`) and Continuous 24-Hour Solar Spline evaluation across 96 astronomical quarter-hour points.
@@ -154,6 +155,19 @@ Behavior change requires concrete, transparent feedback. The assistant calculate
    - Backward-compatible pipe-delimited `#v1=` parser ensuring legacy shared bookmarks hydrate flawlessly.
    - **1-Click Share Direct Link Button (`#btn-copy-link`):** Copies deep URL to clipboard with polite ARIA screen-reader announcement.
 
+
+### Live Data and Binding
+
+| What you see | Where it comes from | When it changes |
+|---|---|---|
+| AQI | Open-Meteo modelled PM2.5 (`AQI: Live`) or your own value (`AQI: Manual`) | load, city change, detect, refresh button, every 15 minutes, slider, persona |
+| Metric cards, dose bars, advisory figures | one on-device calculation (`computeImpact`) | immediately on every change |
+| Routines and advisory text | Gemini (`Advice: Gemini <model>`) or the on-device advisor (`Advice: Offline`) | after 800 ms without further changes; `Advice: Refreshing` meanwhile |
+
+Slider moves, personas and shared links switch to manual AQI; **Use live AQI** switches back. If the feed or Gemini fails, the app keeps working with on-device results and says why. Locating yourself sends coordinates rounded to about 1 km to Open-Meteo, BigDataCloud and OpenStreetMap; Gemini never receives coordinates. A shared link contains your household profile, including vulnerability selections, so share it with people you trust.
+
+Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0, non-commercial free tier).
+
 ---
 
 ## 🔬 4. Assumptions Made
@@ -162,6 +176,7 @@ Behavior change requires concrete, transparent feedback. The assistant calculate
 2. **Indoor/Outdoor Infiltration Ratio:** Unsealed residential structures in dense urban zones have an average baseline indoor particulate infiltration ratio of $0.65$ to $0.75$ of outdoor $PM_{2.5}$ unless mechanical filtration or active sealing is deployed.
 3. **Linearity of Inhalation Dose:** Inhaled dosage calculations assume standard human ventilation rates ($0.45\text{ m}^3/\text{h}$ for resting adults, $1.2\text{ m}^3/\text{h}$ for moderate exertion, and $0.3\text{ m}^3/\text{h}$ for young children) as defined in EPA Exposure Factors Handbooks.
 4. **Budget Accessibility:** Assumes families have heterogeneous financial resources; hence, zero-cost (routine shifting, wet mopping) and low-cost (DIY Corsi-Rosenthal box) alternatives are always prioritized before commercial equipment.
+5. **Live AQI:** The live value is a modelled hourly area estimate converted from PM2.5 to the app's AQI scale, not a local sensor reading.
 
 ---
 
@@ -215,7 +230,7 @@ prompt-war-challenge-6-clean-air-assistant/
 │   ├── resilience/                    # Fault Tolerance & High Availability
 │   │   └── 01-offline-degradation-and-fallback.md # Circuit Breaker State Machine & Jitter Math
 │   └── testing/                       # Quality Assurance & Verification
-│       ├── 01-triad-test-strategy.md  # 84 Triad Invariant Test Cases (Positive, Negative, Edge)
+│       ├── 01-triad-test-strategy.md  # Triad Test Strategy (Positive, Negative, Edge)
 │       └── 02-property-based-fuzzing-spec.md # 11 Algebraic Closure Invariants & Xorshift128+ PRNG
 ├── uml/                               # 14 Standard Mermaid UML Architecture Models (Rule 45)
 │   ├── class_diagram.md               # Complete Class Hierarchy, Interfaces, & Domain Errors
@@ -251,8 +266,8 @@ prompt-war-challenge-6-clean-air-assistant/
 | **Problem Statement Alignment** | **High** | **20/20** | Models diurnal temperature inversions; provides actionable IAQ hacks (Corsi-Rosenthal); computes exact micrograms saved. |
 | **Code Quality & Architecture** | **High** | **15/15** | Strict Level 2.2 Documentation Governance; modular ES6+ architecture; complete JSDoc typed contracts; zero dead code. |
 | **Security & Privacy** | **High** | **15/15** | STRIDE threat model; OWASP LLM Top 10 mitigations; ephemeral in-memory API key lifecycle; zero PII retention; CSP headers. |
-| **Efficiency & Token Economy** | **Medium** | **15/15** | Token-budgeted prompts (<1500 tokens); sub-15ms offline advisor; total repository size < 1.0 MB (614 KiB / 0.60 MB; strictly < 10 MB limit). |
-| **Testing & Invariant Rigor** | **Medium** | **15/15** | 84 Triad invariant test cases (Positive, Negative, Edge-Case) + 11-Invariant Property-Based Fuzz Suite (10,000 vectors) + 8 CDP Headless Browser E2E Suites; zero-dependency Node.js test runners (`test/run-tests.js`, `test/run-fuzz-tests.js`, `test/run-browser-tests.js`). |
+| **Efficiency & Token Economy** | **Medium** | **15/15** | Token-budgeted prompts (<1500 tokens); sub-15ms offline advisor; tracked files about 1.2 MB (< 10 MB limit). |
+| **Testing & Invariant Rigor** | **Medium** | **15/15** | 99 invariant checks + 554 `node:test` unit and integration tests + 281 Playwright end-to-end runs (desktop and mobile) + 11-invariant property-based fuzz suite (10,000 vectors) + 14 CDP browser checks. Playwright is the only development dependency. |
 | **Accessibility (a11y)** | **Low/Polish**| **10/10** | WCAG 2.1 Level AA conformance; APCA contrast ratios $\ge 4.5:1$; ARIA live announcements; 100% keyboard navigable. |
 | **Visual Polish & Usability** | **Low/Polish**| **10/10** | Modern dark glassmorphism; responsive grid; high-contrast dynamic AQI status indicators; one-click WhatsApp sharing. |
 | **TOTAL** | | **100/100** | **Complete High-Depth Enterprise Submission Package** |
@@ -308,7 +323,7 @@ To eliminate cognitive friction, the button is explicitly labeled **"Activate (I
      2. Overwrites all bytes with zeroes (`buffer.fill(0)`) before releasing the reference to `null`.
 
 5. **🌐 Direct End-to-End Client $\rightarrow$ Google HTTPS Channel:**
-   - Outbound requests travel directly from your browser to Google's official Gemini API endpoint (`https://generativelanguage.googleapis.com`) over **TLS 1.3**.
+   - Gemini requests travel directly from your browser to `https://generativelanguage.googleapis.com` over HTTPS, with the key in the `x-goog-api-key` header and never in the URL.
    - There is **zero intermediate proxy, zero backend server, and zero tracking telemetry**. The repository includes strict Content Security Policy (CSP) headers restricting network connections.
    - **Privacy by Default:** If no API key is provided, CleanAir Guardian functions 100% offline using its sub-15ms deterministic physics and meteorological engine.
 
@@ -326,7 +341,7 @@ To eliminate cognitive friction, the button is explicitly labeled **"Activate (I
 > **Solution:** The application is a 100% static client-side PWA and requires an HTTP origin. You can spin up a local server in **under 2 seconds** with zero external dependencies using any of the methods below:
 
 ### Method 1: Zero-Dependency Native Node.js Server (Recommended)
-This repository includes a native, zero-external-dependency Node.js HTTP server ([server.js](file:///server.js)) that automatically finds an open port, configures all standard MIME types (`.js`, `.css`, `.json`, `.svg`, `.webmanifest`), and automatically opens your default browser:
+This repository includes a zero-dependency Node.js HTTP server ([server.js](file:///server.js)) that listens on port 8080 (override with `PORT`), configures MIME types and opens your default browser (disable with `NO_OPEN=1`):
 
 ```bash
 # Option A: Using NPM shortcut (runs 'node server.js')
@@ -335,16 +350,7 @@ npm start
 # Option B: Direct Node.js command
 node server.js
 ```
-*Console output:*
-```text
-======================================================================
-  CleanAir Guardian (VayuRakshak) — Local Dev Server
-======================================================================
-  URL:    http://localhost:8080/
-  Path:   C:\...\prompt-war-challenge-6-clean-air-assistant
-  Engine: Zero-dependency native Node.js HTTP server
-======================================================================
-```
+Then open [http://localhost:8080](http://localhost:8080). Paste your Gemini API key in the settings panel and press **Activate (In-Memory)**. The key is forgotten when the tab is closed or reloaded.
 
 ---
 
@@ -391,45 +397,33 @@ php -S localhost:8080
 
 ## 🧪 8. Complete Testing Guide & QA Scenarios Matrix ("Testing Kaise Kare")
 
-CleanAir Guardian implements an enterprise **Level 2.2 Quality Assurance Architecture** comprising **84 Triad Invariant Tests**, **10,000 Property-Based Fuzzing Iterations**, **8 Chrome DevTools Protocol (CDP) Headless Browser E2E Suites**, and a complete **8-Scenario Human/Manual QA Matrix**.
-
 ### 8.1 Automated Test Execution Suite
 
-All test runners in this repository are zero-dependency, running directly on vanilla Node.js:
+The application has no runtime dependencies. Playwright is a development dependency used only for end-to-end tests. Requires Node.js 22 or newer.
 
 ```bash
-# 1. Run the 84-Test Triad Invariant Suite (Positive, Negative, Edge-Case)
-npm test
-# (Equivalent to: node test/run-tests.js)
+npm ci
+npx playwright install chromium
 
-# 2. Run the 10,000-Vector Property-Based Monte Carlo Fuzzing Suite (<60ms)
-npm run test:fuzz
-# (Equivalent to: node test/run-fuzz-tests.js)
-
-# 3. Run the 8-Suite Chrome DevTools Protocol (CDP) End-to-End Headless Browser Suite
-npm run test:browser
-# (Equivalent to: node test/run-browser-tests.js)
-
-# 4. Run All Test Suites Sequentially in One Command
-npm run verify
-
-# 5. Verify strict compliance with the < 10 MB repository size budget
-git count-objects -vH
+npm test              # invariant suite plus node:test unit and integration suites
+npm run test:fuzz     # 10,000 property-based fuzz vectors
+npm run test:browser  # Chrome DevTools Protocol browser suite (needs Chrome or Edge)
+npm run test:e2e      # Playwright end-to-end scenarios, desktop and mobile
+npm run verify        # all of the above
 ```
 
-#### What Each Automated Suite Validates:
-1. **`npm test` ([test/run-tests.js](file:///test/run-tests.js) — 84 Triad Tests):**
-   - **Physics & Dosage Calculus:** Alveolar particulate deposition ($\eta_{\text{dep}} = 0.28$), minute ventilation rates ($V_E$), Berkeley Earth cigarette equivalents ($66.5\ \mu\text{g} \approx 1\text{ cig}$).
-   - **Atmospheric Boundary Layer:** Diurnal thermal inversion phases (`DAWN_TRAP`, `SOLAR_DISPERSAL`, `EVENING_PEAK`, `NIGHT_SETTLING`), Richardson number ($Ri_b \ge 0.25$), solar convective mixing height $H_{\text{PBL}}$.
-   - **CADR & Room Clearance:** Single-compartment differential mass balance ($\frac{dC}{dt} = -\lambda C$), first-order decay ($\text{Math.expm1}(-\lambda t)$), $50\%$, $90\%$, and $99\%$ clearance milestones.
-   - **Serialization & Codecs:** 5-byte binary bitstream packer (`#b=...`) with parity checksums, backward-compatible `#v1=` pipe-parser, base64url safety.
-   - **Reactive Signals Engine:** Dependency tracking, topological dirty sorting, glitch-free propagation in $O(1)$.
-   - **UI/UX & Ergonomics Invariants:** Fitts's Law touch envelopes ($\ge 44\text{px} / 48\text{px}$ for `.btn-icon`, `.hack-tab-btn`, `.btn-unit-toggle`), dynamic AQI status badge color mapping, and WCAG 2.1 AA APCA contrast boundaries.
-2. **`npm run test:fuzz` ([test/run-fuzz-tests.js](file:///test/run-fuzz-tests.js) — 10,000 Fuzz Vectors):**
-   - Executes 10,000 randomized Monte Carlo iterations using an `Xorshift128+` PRNG generator across pathological inputs (negative AQI, infinite CADR, zero room volume, astronomical timestamps) verifying numeric stability with zero `NaN`, zero `Infinity`, and zero unhandled exceptions.
-3. **`npm run test:browser` ([test/run-browser-tests.js](file:///test/run-browser-tests.js) — 8 CDP Headless Browser Suites):**
-   - Launches headless Google Chrome via Chrome DevTools Protocol (`--headless=new`, `--window-size=1280,1024`).
-   - Verifies live DOM element geometry, verifies that `#input-city` maintains full responsive width ($\ge 240\text{px}$) and is not crushed by sibling buttons, asserts touch target heights, and captures full-page visual telemetry to `test/screenshots/ui-ux-browser-verification.png`.
+| Suite | Location | What it covers |
+|---|---|---|
+| Invariants | `test/run-tests.js` | 99 positive, negative and edge-case checks on formulas, codec, cascade, UI contracts and repository rules |
+| Unit | `test/unit/` | 285 tests (283 pass, 2 marked `todo`): impact math, live AQI, state codec, input cleaning, offline advisor, Gemini helpers, server paths |
+| Integration | `test/integration/` | 269 tests: Gemini request and response contract, model cascade, timing, rate limit and circuit breaker, application binding, live AQI, local server |
+| Fuzz | `test/run-fuzz-tests.js` | 11 invariants over 10,000 pseudorandom vectors |
+| Browser (CDP) | `test/run-browser-tests.js` | 14 checks in headless Chrome or Edge |
+| End-to-end | `test/e2e/` | 281 Playwright runs: key lifecycle, live binding, consistency, races, Gemini failures, resilience, live AQI, shared links, offline, accessibility, mobile viewport |
+
+The 2 `todo` tests record a difference between the vulnerability weights in `docs/01-prd.md` and in the code.
+
+Every suite intercepts or stubs Gemini, Open-Meteo and the geocoding services, so no key or network access to them is needed.
 
 ---
 
@@ -442,11 +436,12 @@ Use this step-by-step matrix to manually verify every user journey, visual eleme
 | **TS-01** | **Quick Presets & Profile Hydration** *(Ananya / Infant)* | Verify 1-click preset bar instantly hydrates profile and recalculates all baseline parameters. | 1. Open app at `http://localhost:8080`.<br>2. Click **"Ananya (Infant <2y)"** preset chip in the top Quick Presets bar.<br>3. Inspect the profile form fields. | • City automatically switches to `Delhi-NCR`.<br>• Outdoor AQI updates to `425` with **"Hazardous"** purple alert badge.<br>• Vulnerability toggles: `Infant / Toddler (< 2y)` automatically checked.<br>• Housing type switches to `Standard Flat (α = 0.65)`.<br>• Microclimate insight updates to East Delhi thermal basin warning. | Form inputs update in $<16\text{ms}$; zero layout shift; AQI alert badge colors match severe smog thresholds. |
 | **TS-02** | **Diurnal Atmospheric Inversion Scrubber** *(Meteorological Triage)* | Verify diurnal scrubber correctly transitions between atmospheric boundary layer phases. | 1. Locate the **"Diurnal Atmospheric Inversion Scrubber"** card.<br>2. Drag or click slider to `08:00 AM` (Dawn Trap).<br>3. Slide to `02:00 PM` (Solar Dispersal).<br>4. Slide to `08:00 PM` (Evening Peak). | • At `08:00`: Badge shows `DAWN TRAP (CRITICAL RISK)`, $H_{\text{PBL}} \approx 250\text{m}$, warning against outdoor activities.<br>• At `14:00`: Badge switches to `SOLAR DISPERSAL (LOWEST RISK)` (green), $H_{\text{PBL}} \approx 1050\text{m}$, recommending 20-min cross-ventilation.<br>• At `20:00`: Badge switches to `EVENING CONDENSATION PEAK` (red), advising strict window sealing. | Hourly phase status, Richardson indicator, and safe-window markers match meteorological diurnal modeling. |
 | **TS-03** | **Custom Room CADR Estimator & Decay Track** *(Rajesh / Senior)* | Verify room clearance calculus, unit conversion ($ft \leftrightarrow m$), and decay timeline rendering. | 1. Scroll to **"Custom Room CADR Clearance Estimator"**.<br>2. Toggle unit switch to **"ft"**.<br>3. Enter `15` ft (Length), `12` ft (Width), `9` ft (Height).<br>4. Select **"DIY Corsi-Rosenthal (273 CFM)"** preset.<br>5. Inspect Air Changes/Hour (ACH) and Decay Timeline. | • Room Volume calculates to `1,620 cu ft` ($45.87\text{ m}^3$).<br>• Air Changes/Hour calculates to $\approx 10.1\text{ ACH}$ (exceeds hospital standard $\ge 6$).<br>• Clearance milestones show: $50\%$ in $\approx 4\text{ min}$, $90\%$ in $\approx 14\text{ min}$, $99\%$ in $\approx 27\text{ min}$.<br>• Gradient progress bar renders all 3 markers; the `99%` label is cleanly aligned with no overflow clipping. | Mathematical ACH is exact; unit conversion toggles between feet and meters cleanly; milestone labels do not clip outside container bounds. |
-| **TS-04** | **Comparative Inhaled Dose & Particulate Shield** *(Mathematical Parity)* | Verify that personal exposure reduction and cigarette equivalences maintain 100% mathematical parity. | 1. Select **"Vikram (Gig Worker)"** preset.<br>2. Inspect the **"Inhaled Particulate Shield Comparison"** gauge and cards.<br>3. Compare the gauge badge with the top Hero Metric cards. | • Unprotected baseline exposure shows $\approx 1,341\ \mu\text{g/day}$ ($\approx 20.2$ Cigarettes).<br>• CleanAir Shield protected dose shows $\approx 263\ \mu\text{g/day}$ ($\approx 3.9$ Cigarettes).<br>• Exposure Shield Reduction indicates **$-80.4\%$ Inhaled Dose Avoided**.<br>• Delta badge displays: `Saved: 583 µg (8.8 Cigs)`.<br>• Top summary cards (`#metric-pm25-avoided` and `#metric-cigarettes-avoided`) display identical `583 µg` and `8.8 Cigs`. | 100% mathematical parity between hero metrics and the comparative shield gauge; zero floating point divergence. |
+| **TS-04** | **Comparative Inhaled Dose & Particulate Shield** *(Mathematical Parity)* | Verify cards and gauge show the same figures. | 1. Select the **Vikram** preset.<br>2. Compare the metric cards with the shield comparison gauge. | • AQI 410, `AQI: Manual`.<br>• Unshielded `759 µg`, protected `149 µg`.<br>• Cards and delta badge show `610 µg` and `9.2 Cigs` avoided, `0.7 kg` CO2e. | Cards, gauge and advisory agree exactly. |
 | **TS-05** | **4-Hack IAQ Engineering Catalog & Mopping Standard** *(Community Hacks)* | Verify hack tabs switch smoothly and dynamic wet-mopping warning triggers when AQI > 200. | 1. Scroll to **"4-Hack IAQ Engineering Catalog"**.<br>2. Click across tabs: `Corsi-Rosenthal Box` $\rightarrow$ `PC-Fan Nursery Box` $\rightarrow$ `Wet-Towel Emergency` $\rightarrow$ `Kitchen Exhaust Charcoal`.<br>3. Check the **"PRD FR-06 Wet-Mopping Standard"** banner below the catalog. | • Each tab loads specifications: CFM, estimated build cost (\$2 to \$35), noise level (dB), and step-by-step instructions.<br>• Tab buttons have minimum $44\text{px}$ touch height and smooth active indicator.<br>• When AQI > 200, the wet-mopping banner displays an active alert: *"⚠️ High PM Alert: Replace dry broom sweeping with 0.1% surfactant wet-mopping to prevent 75% particulate resuspension."* | All 4 hacks render correct build schematics; wet-mopping standard dynamically triggers based on AQI threshold. |
-| **TS-06** | **Stateless 5-Byte Deep-Link URL Serialization** *(Community Sharing)* | Verify complete application state compresses into a 5-byte Base64URL hash and re-hydrates in fresh session. | 1. Configure custom settings (e.g., City: Noida, AQI: 395, Two-Wheeler commute, Corsi-Rosenthal selected).<br>2. Click **"Share Direct Link"** (`#btn-copy-link`).<br>3. Verify clipboard contains URL with `#b=...` hash.<br>4. Open an **Incognito / Private browser window**.<br>5. Paste the copied URL and press Enter. | • Application boots instantly from the URL fragment `#b=...`.<br>• City, AQI, vulnerability tags, commute mode, and CADR parameters restore to exact previously configured values.<br>• ARIA announcement confirms: *"Direct share link copied to clipboard"*. | 100% state restoration from a compact $\le 7$-character hash with zero backend database storage. |
-| **TS-07** | **Bilingual WhatsApp Advisory & Refrigerator Protocol Printing** *(Community Outreach)* | Verify localized bilingual WhatsApp broadcast formatting and clean `@media print` layout. | 1. Scroll to the **"Community Action Plan & Advisory"** section.<br>2. Click **"Copy WhatsApp Advisory"** (`#btn-whatsapp-advisory`).<br>3. Toggle language button to **"हिन्दी"** (`#btn-toggle-language`).<br>4. Click **"Print Clean Air Protocol"** (`#btn-print-plan`) or press `Ctrl+P`. | • English advisory copies formatted WhatsApp bulleted text with warning levels, recommended dispersal window, and hack specs.<br>• Hindi toggle re-renders community advisory into pure Devanagari Hindi text (`"वायु रक्षा सलाह"`).<br>• Print dialog renders high-contrast, clean black-and-white 1-page protocol with form inputs hidden, ideal for refrigerator posting. | WhatsApp text is properly emoji-bulleted; Hindi translation is natural and accurate; print layout fits neatly without clipped content. |
-| **TS-08** | **Dual-Engine AI Reasoning: Offline Deterministic vs Live Gemini 3.8 Flash** | Verify dual-engine fallback: sub-15ms deterministic plan vs live Google Gemini 3.8 Flash. | 1. Click **"Generate Clean Air Plan"** without entering any API key.<br>2. Observe response time and generated plan content.<br>3. Open settings drawer (top-right cog), enter valid Google Gemini API Key (`AIzaSy...`), and click "Activate (In-Memory)".<br>4. Click **"Generate Clean Air Plan"** again. | • **Without API Key (Offline Mode):** Plan generates in $<15\text{ms}$ using `offline-advisor.js` via the GoF `PlanFactory` normalization engine with identical JSON schema shape.<br>• **With API Key (Online Mode):** Engine issues live API call to Google Gemini 3.8 Flash (`gemini-3.8-flash`), streaming contextual reasoning tailored to the user's exact profile. | Zero app failure or crash regardless of network availability or API key presence; seamless graceful degradation. |
+| **TS-06** | **Stateless 5-Byte Deep-Link URL Serialization** *(Community Sharing)* | Verify complete application state compresses into a 5-byte Base64URL hash and re-hydrates in fresh session. | 1. Configure custom settings (e.g., City: Noida, AQI: 395, Two-Wheeler commute, Corsi-Rosenthal selected).<br>2. Click **"Share Direct Link"** (`#btn-copy-link`).<br>3. Verify clipboard contains URL with `#b=...` hash.<br>4. Open an **Incognito / Private browser window**.<br>5. Paste the copied URL and press Enter. | • Application boots from the URL fragment (`#b=...` or `#v1=...`).<br>• City, AQI, vulnerability tags, cooking, heating, commute mode and distance, and housing type restore.<br>• ARIA announcement confirms: *"Direct share link copied to clipboard"*. | The full profile restores with no backend storage; common profiles fit a 7-character `#b=` token and others use the longer `#v1=` token. |
+| **TS-07** | **Bilingual WhatsApp Advisory & Refrigerator Protocol Printing** *(Community Outreach)* | Verify localized bilingual WhatsApp broadcast formatting and clean `@media print` layout. | 1. Scroll to the **"Community Action Plan & Advisory"** section.<br>2. Click **"Copy WhatsApp Advisory"** (`#btn-copy-advisory`).<br>3. Toggle language button to **"हिन्दी"** (`#btn-toggle-lang`).<br>4. Click **"Print Clean Air Protocol"** (`#btn-print-plan`) or press `Ctrl+P`. | • English advisory copies formatted WhatsApp bulleted text with warning levels, recommended dispersal window, and hack specs.<br>• Hindi toggle re-renders community advisory into pure Devanagari Hindi text (`"वायु रक्षा सलाह"`).<br>• Print dialog renders high-contrast, clean black-and-white 1-page protocol with form inputs hidden, ideal for refrigerator posting. | WhatsApp text is properly emoji-bulleted; Hindi translation is natural and accurate; print layout fits neatly without clipped content. |
+| **TS-08** | **Offline and Live Gemini Advice** | Verify both engines and the binding between them. | 1. Without a key, change inputs.<br>2. Paste a Gemini key and press **Activate (In-Memory)**.<br>3. Change the commute mode.<br>4. Press **Purge Key**. | • Without a key: `Advice: Offline (on-device)`, instant updates.<br>• With a key: `Advice: Refreshing`, then `Advice: Gemini <model>`; the key status reads verified.<br>• After a change the numbers update at once and the advice follows.<br>• After purge the app returns to offline advice. | No stale or mixed data; failures show a message and keep the app usable. |
+| **TS-09** | **Live AQI** | Verify the live feed and manual override. | 1. Open the app without a URL fragment.<br>2. Change the city.<br>3. Move the AQI slider.<br>4. Press **Use live AQI**. | • `AQI: Live` with an observation time.<br>• Slider shows `AQI: Manual`.<br>• The button restores live data. | Source line always matches the value shown. |
 
 ---
 
@@ -466,40 +461,8 @@ Since your repository is hosted on GitHub, GitHub Pages provides free, instantan
 4. Click **Save**. Within 60 seconds, your site is live at:  
    `https://piyushmakhija28.github.io/prompt-war-challenge-6-clean-air-assistant/`
 
-#### Method B: GitHub Actions Automated CI/CD
-This repository is pre-configured with a native GitHub Actions workflow. Simply push to `main` and the workflow validates all 84 Triad tests before deploying automatically:
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy CleanAir Guardian to GitHub Pages
-on:
-  push:
-    branches: [main]
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
-jobs:
-  test-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm test
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-      - id: deployment
-        uses: actions/deploy-pages@v4
-```
+#### Continuous Integration
+`.github/workflows/ci.yml` runs on every push to `main`: a committed-key check, all test suites and the repository size gate. It tests only and does not deploy; publishing uses Method A.
 
 ---
 
