@@ -129,7 +129,7 @@ Winter smog events in Northern India and East Asia frequently coincide with powe
 - `manifest.webmanifest` (W3C Web App Manifest)
 
 ### 3.3 Offline Lifecycle & Cache Versioning
-- Cache storage key: `cleanair-guardian-v1`.
+- Cache storage key: `cleanair-guardian-v1.4`.
 - `install` event: `caches.open()` pre-allocates and caches all static assets via `cache.addAll()`, calling `self.skipWaiting()`.
 - `activate` event: Purges obsolete cache buckets whose keys differ from the active cache key, calling `self.clients.claim()`.
 - `fetch` event:

@@ -212,11 +212,30 @@ test.describe('keyboard operation', () => {
       'input-aqi-slider', 'btn-live-aqi', 'input-time-slider', 'select-housing-type', 'radio-cooking',
       'radio-heating', 'radio-commute', 'input-commute-km', 'btn-generate-plan', 'btn-copy-advisory',
       'btn-toggle-lang', 'btn-copy-link', 'btn-print-protocol', 'input-gemini-key', 'btn-save-key',
-      'btn-clear-key', 'corsi_rosenthal', 'pc_fan_stealth', 'wet_towel_emergency', 'kitchen_vent_scrub',
+      'btn-clear-key', 'corsi_rosenthal',
       'btn-unit-ft', 'btn-unit-m', 'input-room-l', 'input-room-w', 'input-room-h', 'select-cadr-device'
     ]) {
       expect([...reached], key).toContain(key);
     }
+  });
+
+  test('the hack tabs follow the arrow, Home and End keys with one tab stop', async ({ app, page }) => {
+    await app.open();
+    const tab = (id) => page.locator(`.hack-tab-btn[data-hack="${id}"]`);
+    await tab('corsi_rosenthal').focus();
+
+    for (const [key, id] of [
+      ['ArrowRight', 'pc_fan_stealth'], ['End', 'kitchen_vent_scrub'], ['ArrowRight', 'corsi_rosenthal'],
+      ['ArrowLeft', 'kitchen_vent_scrub'], ['Home', 'corsi_rosenthal'], ['ArrowRight', 'pc_fan_stealth']
+    ]) {
+      await page.keyboard.press(key);
+      await expect(tab(id), key).toBeFocused();
+      await expect(tab(id), key).toHaveAttribute('aria-selected', 'true');
+      await expect(page.locator('.hack-tab-btn[tabindex="-1"]'), key).toHaveCount(3);
+    }
+    await expect(page.locator('#iaq-hack-title')).toContainText('PC-Fan');
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement.classList.contains('hack-tab-btn'))).toBe(false);
   });
 
   test('a whole session works without a pointer', async ({ app, page }) => {
@@ -256,8 +275,8 @@ test.describe('keyboard operation', () => {
     await tabTo(page, app.langButton);
     await page.keyboard.press('Space');
     await expect(app.advisory).toContainText(`सामुदायिक सलाह ${tagFor(model)}`);
-    await tabTo(page, page.locator('.hack-tab-btn[data-hack="pc_fan_stealth"]'));
-    await page.keyboard.press('Enter');
+    await tabTo(page, page.locator('.hack-tab-btn[data-hack="corsi_rosenthal"]'));
+    await page.keyboard.press('ArrowRight');
     await expect(page.locator('#iaq-hack-title')).toContainText('PC-Fan');
     await page.locator('#btn-clear-key').focus();
     await page.keyboard.press('Enter');

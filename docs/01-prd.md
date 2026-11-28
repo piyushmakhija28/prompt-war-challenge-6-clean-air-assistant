@@ -29,7 +29,7 @@ Scenario: Ingest and sanitize nominal user context
   Given a user enters city "Delhi-NCR", AQI "395", and selects "Infant" and "Asthma"
   When the user submits the form or adjusts the slider
   Then the system normalizes the context into a validated UserContext object
-  And computes the vulnerability multiplier K_vuln = 2.25
+  And computes the vulnerability multiplier K_vuln = 1.90
 ```
 
 ### FR-02: Diurnal Atmospheric Inversion Tracking
@@ -37,16 +37,16 @@ Scenario: Ingest and sanitize nominal user context
 Scenario: Detect morning inversion trap window
   Given the local solar time is 07:30 AM
   When the atmospheric inversion engine evaluates the hour
-  Then it returns state "MORNING_TRAP" with ground multiplier 2.15x
+  Then it returns state "MORNING_TRAP" with ground multiplier 2.19x
   And sets ventilationAllowed to false
 ```
 
 ### FR-03: Vulnerability Weighting Index ($K_{\text{vuln}}$)
 ```gherkin
 Scenario: Compute composite vulnerability score for multi-risk home
-  Given a household with an infant (w=0.45) and a senior with asthma (w=0.35 + 0.80)
+  Given a household with an infant (w=0.40) and a senior with asthma (w=0.35 + 0.50)
   When calculateVulnerabilityMultiplier is evaluated
-  Then the composite multiplier K_vuln is exactly 2.60
+  Then the composite multiplier K_vuln is exactly 2.25
 ```
 
 ### FR-04: Dynamic Routine Rescheduling Engine
@@ -97,10 +97,10 @@ Scenario: Recommend clean transit shift for two-wheeler commuter
 ### FR-09: Inhaled PM2.5 Dosage Avoidance Calculation
 ```gherkin
 Scenario: Calculate micrograms and cigarette equivalents avoided
-  Given outdoor AQI is 400 (Cp = 380 µg/m³) and infant avoids 2 hours outdoor exposure
+  Given outdoor AQI is 400 (Cp = 250 µg/m³), filtered indoor air holds 45 µg/m³ and an infant (V_E = 0.30 m³/h) avoids 2 hours outdoor exposure
   When impact calculator evaluates dosage
-  Then it computes 42.2 µg of PM2.5 inhalation avoided
-  And converts to 0.63 equivalent cigarettes prevented from infant lungs
+  Then it computes 34.44 µg of PM2.5 inhalation avoided
+  And converts to 0.52 equivalent cigarettes prevented from infant lungs
 ```
 
 ### FR-10: Carbon Emissions & Fuel Savings Calculation

@@ -4,7 +4,7 @@
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
-const CACHE_NAME = 'cleanair-guardian-v1.3';
+const CACHE_NAME = 'cleanair-guardian-v1.4';
 
 const STATIC_ASSETS = [
   './',

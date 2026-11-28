@@ -11,10 +11,10 @@
     <mxCell id="3" value="NocturnalDormant (22:00 Radiation Cap)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
       <mxGeometry x="40" y="100" width="160" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="4" value="MorningTrap (06:00 Critical Hazard 2.15x)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
+    <mxCell id="4" value="MorningTrap (06:00 Critical Hazard 2.00-2.20x)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
       <mxGeometry x="280" y="100" width="160" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="5" value="SolarDispersal (12:30 20-min Aeration Window)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
+    <mxCell id="5" value="SolarDispersal (12:30 15-min Aeration Window)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
       <mxGeometry x="520" y="100" width="160" height="60" as="geometry" />
     </mxCell>
     <mxCell id="6" value="EveningTrap (18:00 Peak Condensation 1.95x)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">

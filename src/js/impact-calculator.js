@@ -22,6 +22,16 @@ export const DOSE_MODEL = Object.freeze({
 });
 
 /**
+ * Bounds of the protection score and the three-hour dose that earns half of its span.
+ * @readonly
+ */
+export const PROTECTION_SCORE = Object.freeze({
+  FLOOR: 65,
+  SPAN: 33,
+  HALF_DOSE_UG: 60
+});
+
+/**
  * Resolves the numeric building envelope particulate infiltration coefficient (alpha_inf)
  * based on structural housing airtightness characteristics.
  * Complexity: O(1) time, O(1) space.
@@ -238,8 +248,9 @@ export function calculateCarbonAvoidance(currentMode, alternativeMode, quantity)
  * Single source of truth for every impact number shown on screen, written into the
  * community advisory, and sent to Gemini as grounding facts.
  *
- * <p>The protection score keeps its original three-hour exposure basis so that it still
- * varies across the AQI range instead of saturating on the daily dose.
+ * <p>The protection score keeps its original three-hour exposure basis and maps that dose
+ * onto 65 to 98 through the saturating curve {@code 65 + 33 * d / (d + 60)}, which keeps
+ * severe profiles distinguishable instead of clipping them at the upper bound.
  *
  * @param {Object} ctx - Household context (aqi, vulnBits, housingType, commuteMode, commuteKm).
  * @returns {Readonly<{pm25UgM3: number, unshieldedDoseUg: number, protectedDoseUg: number,
@@ -275,7 +286,9 @@ export function computeImpact(ctx) {
 
   const filteredIndoor = pm25UgM3 * alphaInf * 0.22;
   const windowDose = calculateParticulateAvoidance(pm25UgM3, filteredIndoor, 3.0, 0.45 * vulnMult, DOSE_MODEL.DEPOSITION_FRACTION);
-  const protectionScorePercent = Math.min(98, Math.round(65 + (windowDose / 12) * 5));
+  const protectionScorePercent = Math.round(
+    PROTECTION_SCORE.FLOOR + PROTECTION_SCORE.SPAN * (windowDose / (windowDose + PROTECTION_SCORE.HALF_DOSE_UG))
+  );
 
   return Object.freeze({
     pm25UgM3,

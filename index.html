@@ -101,7 +101,7 @@
           <span>Simulated Time of Day</span>
           <div style="display:flex; align-items:center; gap:8px;">
             <span id="label-time-value" style="font-family:monospace; font-weight:700; color:#38bdf8;">07:30</span>
-            <span id="label-scrubber-telemetry" class="scrubber-telemetry-badge">AQI 849 (2.15x Trap)</span>
+            <span id="label-scrubber-telemetry" class="scrubber-telemetry-badge">AQI --</span>
           </div>
         </div>
         <input type="range" id="input-time-slider" class="range-slider" min="0" max="23.75" step="0.25" value="7.5" aria-label="Diurnal Time Scrubber">
@@ -361,9 +361,9 @@
       <div class="iaq-box">
         <div class="hack-tab-bar" role="tablist" aria-label="Selectable DIY Air Quality Hacks">
           <button type="button" class="hack-tab-btn active" data-hack="corsi_rosenthal" role="tab" aria-selected="true">CR Box (273 CFM)</button>
-          <button type="button" class="hack-tab-btn" data-hack="pc_fan_stealth" role="tab" aria-selected="false">PC Fan (85 CFM)</button>
-          <button type="button" class="hack-tab-btn" data-hack="wet_towel_emergency" role="tab" aria-selected="false">Wet Towel (30 CFM)</button>
-          <button type="button" class="hack-tab-btn" data-hack="kitchen_vent_scrub" role="tab" aria-selected="false">Vent Scrub (180 CFM)</button>
+          <button type="button" class="hack-tab-btn" data-hack="pc_fan_stealth" role="tab" aria-selected="false" tabindex="-1">PC Fan (85 CFM)</button>
+          <button type="button" class="hack-tab-btn" data-hack="wet_towel_emergency" role="tab" aria-selected="false" tabindex="-1">Wet Towel (30 CFM)</button>
+          <button type="button" class="hack-tab-btn" data-hack="kitchen_vent_scrub" role="tab" aria-selected="false" tabindex="-1">Vent Scrub (180 CFM)</button>
         </div>
         <div class="iaq-header" style="margin-top:12px;">
           <span id="iaq-hack-title" class="iaq-title">DIY Corsi-Rosenthal Box</span>

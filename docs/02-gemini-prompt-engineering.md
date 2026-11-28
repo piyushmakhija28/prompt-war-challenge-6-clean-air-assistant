@@ -148,7 +148,7 @@ Transform localized air pollution data into actionable, timestamped daily routin
       "category": "Daily Commute",
       "currentChoice": "Solo Two-Wheeler Commute (22 km)",
       "cleanAlternative": "Metro Transit Rail with N95 Mask",
-      "benefit": "Eliminates 78% of direct roadside diesel exhaust inhalation; avoids 1.4 kg CO2e emissions daily."
+      "benefit": "Eliminates 78% of direct roadside diesel exhaust inhalation; avoids 0.45 kg CO2e emissions daily."
     },
     {
       "category": "Household Cooking",
@@ -158,12 +158,12 @@ Transform localized air pollution data into actionable, timestamped daily routin
     }
   ],
   "quantifiedImpact": {
-    "pm25InhalationAvoidedMicrograms": 118.5,
-    "cigaretteEquivalentsAvoided": 1.78,
-    "co2eSavedKg": 1.4,
-    "protectionScorePercent": 88
+    "pm25InhalationAvoidedMicrograms": 1078,
+    "cigaretteEquivalentsAvoided": 16.22,
+    "co2eSavedKg": 0.45,
+    "protectionScorePercent": 89
   },
-  "communityAdvisory": "🚨 CleanAir Community Advisory for Delhi-NCR (AQI 395 - Severe):\n• Morning smog trap active until 9:30 AM: please keep children indoors and cancel outdoor assemblies.\n• Safe window for grocery runs and school outdoor breaks is 12:30 PM to 3:30 PM.\n• Community Hack: Build a Corsi-Rosenthal box fan filter for your classroom or apartment lounge ($35 total, CADR 273 CFM).\n• Together, our behavioral shifts today saved an estimated 118.5 µg of PM2.5 from entering vulnerable lungs!"
+  "communityAdvisory": "🚨 CleanAir Community Advisory for Delhi-NCR (AQI 395 - Severe):\n• Morning smog trap active until 9:30 AM: please keep children indoors and cancel outdoor assemblies.\n• Safe window for grocery runs and school outdoor breaks is 12:30 PM to 3:30 PM.\n• Community Hack: Build a Corsi-Rosenthal box fan filter for your classroom or apartment lounge ($35 total, CADR 273 CFM).\n• Together, our behavioral shifts today saved an estimated 1078 µg of PM2.5 from entering vulnerable lungs!"
 }
 ```
 

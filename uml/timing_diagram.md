@@ -4,28 +4,28 @@ flowchart LR
     subgraph Timeline24H ["24-Hour Diurnal Inversion & Protection Cycle"]
         direction TB
 
-        subgraph Morning ["06:00 - 10:00: Dawn Trap"]
-            T1["Phase: DAWN_TRAP<br/>Multiplier: 2.15x<br/>PBL Height: ~200m<br/>Exposure State: CRITICAL_HAZARD<br/>Outdoor Window: STRICTLY_CLOSED"]
+        subgraph Morning ["06:00 - 09:30: Morning Trap"]
+            T1["Phase: MORNING_TRAP<br/>Multiplier: 2.00x - 2.20x<br/>PBL Height: ~200m<br/>Exposure State: CRITICAL_HAZARD<br/>Outdoor Window: STRICTLY_CLOSED"]
         end
 
-        subgraph PreDispersal ["10:00 - 12:30: Transition"]
-            T2["Phase: PRE_DISPERSAL<br/>Multiplier: 1.45x<br/>PBL Height: ~550m<br/>Exposure State: ELEVATED<br/>Outdoor Window: SEALED"]
+        subgraph PreDispersal ["09:30 - 12:30: Transition"]
+            T2["Phase: PRE_DISPERSAL<br/>Multiplier: 1.90x - 0.95x<br/>PBL Height: ~550m<br/>Exposure State: ELEVATED<br/>Outdoor Window: SEALED"]
         end
 
         subgraph Solar ["12:30 - 15:30: Solar Dispersal Window"]
-            T3["Phase: SOLAR_DISPERSAL<br/>Multiplier: 0.90x<br/>PBL Height: ~1050m<br/>Exposure State: LOWEST_DAILY_RISK<br/>Outdoor Window: 20-MIN CROSS-VENTILATION SAFE"]
+            T3["Phase: SOLAR_DISPERSAL<br/>Multiplier: 0.85x - 0.90x<br/>PBL Height: ~1050m<br/>Exposure State: LOWEST_DAILY_RISK<br/>Outdoor Window: 15-MIN CROSS-VENTILATION SAFE"]
         end
 
-        subgraph AfternoonShift ["15:30 - 17:30: Cooling Transition"]
-            T4["Phase: AFTERNOON_SHIFT<br/>Multiplier: 1.25x<br/>PBL Height: ~700m<br/>Exposure State: MODERATE<br/>Outdoor Window: SEAL WINDOWS"]
+        subgraph AfternoonShift ["15:30 - 18:00: Cooling Transition"]
+            T4["Phase: AFTERNOON_SHIFT<br/>Multiplier: 0.95x - 1.80x<br/>PBL Height: ~700m<br/>Exposure State: MODERATE<br/>Outdoor Window: SEAL WINDOWS"]
         end
 
-        subgraph Evening ["17:30 - 22:00: Evening Trap"]
-            T5["Phase: EVENING_PEAK<br/>Multiplier: 1.95x<br/>PBL Height: ~350m<br/>Exposure State: HIGH_RISK<br/>Outdoor Window: ACTIVATE INDOOR FILTRATION"]
+        subgraph Evening ["18:00 - 22:00: Evening Trap"]
+            T5["Phase: EVENING_TRAP<br/>Multiplier: 1.80x - 1.95x<br/>PBL Height: ~350m<br/>Exposure State: HIGH_RISK<br/>Outdoor Window: ACTIVATE INDOOR FILTRATION"]
         end
 
-        subgraph Night ["22:00 - 06:00: Night Settling"]
-            T6["Phase: NIGHT_SETTLING<br/>Multiplier: 1.65x<br/>PBL Height: ~180m<br/>Exposure State: STABLE_INVERSION<br/>Outdoor Window: HEPA BEDROOM RUN"]
+        subgraph Night ["22:00 - 06:00: Night Inversion"]
+            T6["Phase: NIGHT_INVERSION<br/>Multiplier: 1.40x<br/>PBL Height: ~180m<br/>Exposure State: STABLE_INVERSION<br/>Outdoor Window: HEPA BEDROOM RUN"]
         end
 
         Morning --> PreDispersal --> Solar --> AfternoonShift --> Evening --> Night --> Morning

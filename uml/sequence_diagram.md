@@ -17,7 +17,7 @@ sequenceDiagram
     User->>UI: Adjusts AQI (395), Selects Infant, Two-Wheeler
     UI->>Signals: setAQI(395) & toggleVulnerability(0x01)
     UI->>AQE: determineInversionPhase(simulatedHour)
-    AQE-->>UI: DAWN_TRAP (Hazard Multiplier: 2.15x)
+    AQE-->>UI: MORNING_TRAP (Hazard Multiplier: 2.19x)
     UI->>CADR: evaluateCadrAdequacy(ach, 'residential')
     CADR-->>UI: CADR 273 CFM -> 10.1 ACH (High Protection)
 

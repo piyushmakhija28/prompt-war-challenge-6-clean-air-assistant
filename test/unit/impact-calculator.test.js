@@ -144,7 +144,7 @@ describe('computeImpact', () => {
     assert.equal(impact.cigarettesAvoided, 8.76);
     assert.ok(Math.abs(impact.reductionPct - 80.4137931) < 1e-6);
     assert.equal(impact.carbonSavedKg, 0.45);
-    assert.equal(impact.protectionScorePercent, 98);
+    assert.equal(impact.protectionScorePercent, 84);
   });
 
   test('test_computeImpact_aqi100_matchesHandWorkedFiguresBelowScoreCap', () => {
@@ -154,6 +154,24 @@ describe('computeImpact', () => {
     assert.equal(impact.pm25AvoidedUg, 140);
     assert.equal(impact.cigarettesAvoided, 2.11);
     assert.equal(impact.protectionScorePercent, 73);
+  });
+
+  test('test_computeImpact_severeBands_keepDistinctScores', () => {
+    const scores = [200, 300, 400, 500].map((aqi) => computeImpact(household({ aqi })).protectionScorePercent);
+    assert.deepEqual(scores, [76, 78, 84, 87]);
+  });
+
+  test('test_computeImpact_scoreSweep_neverFallsAsAqiOrVulnerabilityRises', () => {
+    let previousRow = new Array(1000).fill(0);
+    for (const vulnBits of [0, 4, 3, 31]) {
+      const row = [];
+      for (let aqi = 0; aqi <= 999; aqi++) {
+        row.push(computeImpact(household({ aqi, vulnBits })).protectionScorePercent);
+        assert.ok(aqi === 0 || row[aqi] >= row[aqi - 1], `aqi ${aqi} bits ${vulnBits}`);
+        assert.ok(row[aqi] >= previousRow[aqi], `vulnerability sweep at aqi ${aqi} bits ${vulnBits}`);
+      }
+      previousRow = row;
+    }
   });
 
   test('test_computeImpact_allVulnerabilities_scalesDoseBy3Point30', () => {
@@ -235,13 +253,13 @@ describe('computeImpact', () => {
 });
 
 describe('documented vulnerability weighting', () => {
-  test('test_getVulnerabilityMultiplier_prdFr01InfantAndAsthma_returns2Point25', { todo: 'docs/01-prd.md weights differ from the code; owner decision pending' }, () => {
-    assert.equal(getVulnerabilityMultiplier(VULN_FLAGS.INFANT | VULN_FLAGS.ASTHMA), 2.25);
+  test('test_getVulnerabilityMultiplier_prdFr01InfantAndAsthma_returns1Point90', () => {
+    assert.equal(getVulnerabilityMultiplier(VULN_FLAGS.INFANT | VULN_FLAGS.ASTHMA), 1.90);
   });
 
-  test('test_getVulnerabilityMultiplier_prdFr03InfantSeniorAsthma_returns2Point60', { todo: 'docs/01-prd.md weights differ from the code; owner decision pending' }, () => {
+  test('test_getVulnerabilityMultiplier_prdFr03InfantSeniorAsthma_returns2Point25', () => {
     const bits = VULN_FLAGS.INFANT | VULN_FLAGS.SENIOR | VULN_FLAGS.ASTHMA;
-    assert.equal(getVulnerabilityMultiplier(bits), 2.60);
+    assert.equal(getVulnerabilityMultiplier(bits), 2.25);
   });
 });
 

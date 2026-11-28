@@ -107,7 +107,7 @@ test('the service worker caches the shell and nothing sensitive', async ({ app, 
     return entries;
   });
 
-  expect([...new Set(cached.map((entry) => entry.name))]).toEqual(['cleanair-guardian-v1.3']);
+  expect([...new Set(cached.map((entry) => entry.name))]).toEqual(['cleanair-guardian-v1.4']);
   for (const file of [
     'index.html', 'manifest.webmanifest', 'src/css/style.css', 'src/js/app.js', 'src/js/live-aqi.js',
     'src/js/gemini-service.js', 'src/js/impact-calculator.js', 'src/js/offline-advisor.js'

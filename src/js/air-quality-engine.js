@@ -122,6 +122,33 @@ export function getDiurnalInversion(hourDecimal, baseAQI) {
 }
 
 /**
+ * Projects a reading observed at a known hour onto another hour of the day. The reading
+ * already contains the atmospheric effect of its own hour, so only the ratio between the
+ * two diurnal multipliers is applied.
+ *
+ * @param {number} hourDecimal - Hour to project onto.
+ * @param {number} observedAQI - AQI measured or modelled at the observation time.
+ * @param {string} observedAt - Local observation time, 'YYYY-MM-DDTHH:mm'.
+ * @returns {{phase: string, ratio: number, effectiveAQI: number, observedClock: string}|null}
+ *   Projection, or null when the observation time cannot be read.
+ */
+export function projectDiurnalReading(hourDecimal, observedAQI, observedAt) {
+  const clock = /T([01]\d|2[0-3]):([0-5]\d)/.exec(String(observedAt || ''));
+  if (!clock) return null;
+  const observedHour = Number(clock[1]) + Number(clock[2]) / 60;
+  const target = getDiurnalInversion(hourDecimal, observedAQI);
+  const ratio = target.multiplier / getDiurnalInversion(observedHour, observedAQI).multiplier;
+  const safeAQI = Math.max(0, Math.min(999, Math.round(Number(observedAQI) || 0)));
+
+  return {
+    phase: target.phase,
+    ratio: Math.round(ratio * 100) / 100,
+    effectiveAQI: Math.min(999, Math.round(safeAQI * ratio)),
+    observedClock: `${clock[1]}:${clock[2]}`
+  };
+}
+
+/**
  * Generates continuous 24-hour Diurnal Inversion Spline coordinates and SVG path data.
  * Samples at 15-minute intervals (N = 96 points) across the astronomical cycle.
  * ViewBox domain: width = 240, height = 40.

@@ -310,6 +310,23 @@ test.describe('live reading races', () => {
     await expect(app.heroAqi).toHaveText('410');
   });
 
+  test('advice waits for a slow reading before describing the new city', async ({ app, mocks }) => {
+    await app.open();
+    await app.activate();
+    const pending = mocks.air.hold(airReply(pm25ForCity('Lahore')));
+    await app.freeze();
+    await app.citySelect.selectOption('Lahore');
+    await app.advance(2500);
+    expect(mocks.gemini.calls).toHaveLength(1);
+
+    await pending.release();
+    await app.advanceUntilCalls(mocks.gemini, 2);
+
+    expect(mocks.gemini.calls[1].facts.city).toBe('Lahore');
+    expect(mocks.gemini.calls[1].facts.aqi).toBe(liveAqiFor('Lahore'));
+    await app.settleAdvice(defaultModel({ city: 'Lahore', aqi: liveAqiFor('Lahore') }));
+  });
+
   test('advice never pairs a new city with an old reply after the city changes', async ({ app, mocks }) => {
     await app.open();
     const delhi = mocks.gemini.hold();

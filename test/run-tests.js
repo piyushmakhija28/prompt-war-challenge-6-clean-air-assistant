@@ -503,14 +503,14 @@ assert(isSchemaValid && isInvalidRejected, 'TC-FAC-002', 'PlanFactory.validateSc
 const swPromise = registerServiceWorker('sw.js');
 assert(swPromise instanceof Promise, 'TC-SW-001', 'registerServiceWorker returns a Promise adhering to W3C Service Worker API');
 
-// TC-SW-002: Service Worker v1.3 Network-First cache policy contract
+// TC-SW-002: Service Worker v1.4 Network-First cache policy contract
 const swContent = fs.readFileSync(path.resolve(__dirname, '../sw.js'), 'utf-8');
 assert(
-  swContent.includes('cleanair-guardian-v1.3') &&
+  swContent.includes('cleanair-guardian-v1.4') &&
   swContent.includes('fetch(event.request)') &&
   swContent.includes('caches.open(CACHE_NAME)'),
   'TC-SW-002',
-  'sw.js implements Network-First v1.3 cache synchronization and purge'
+  'sw.js implements Network-First v1.4 cache synchronization and purge'
 );
 
 // TC-CTRL-001: AppController C4 Model contract and dependency injection (HLD 02 §2.4)

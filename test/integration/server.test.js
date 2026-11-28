@@ -138,9 +138,6 @@ describe('static assets', () => {
     ['/src/css/style.css', 'src/css/style.css', 'text/css; charset=UTF-8'],
     ['/src/js/app.js?v=3.0.0', 'src/js/app.js', 'application/javascript; charset=UTF-8'],
     ['/manifest.webmanifest', 'manifest.webmanifest', 'application/manifest+json; charset=UTF-8'],
-    ['/package.json', 'package.json', 'application/json; charset=UTF-8'],
-    ['/test/screenshots/ui-ux-browser-verification.png', 'test/screenshots/ui-ux-browser-verification.png', 'image/png'],
-    ['/VERSION', 'VERSION', 'application/octet-stream'],
     ['/src/%6As/config.js', 'src/js/config.js', 'application/javascript; charset=UTF-8']
   ];
 
@@ -190,7 +187,12 @@ describe('static assets', () => {
     }
   });
 
-  for (const target of ['/no/such/page', '/src', '/src/js/', '/shared/link']) {
+  const projectOnly = [
+    '/package.json', '/package-lock.json', '/server.js', '/playwright.config.js', '/VERSION', '/README.md',
+    '/docs/01-prd.md', '/test/run-tests.js', '/test/screenshots/ui-ux-browser-verification.png', '/PACKAGE.JSON'
+  ];
+
+  for (const target of ['/no/such/page', '/src', '/src/js/', '/shared/link', ...projectOnly]) {
     it(`falls back to the app shell for ${target}`, async () => {
       const response = await rawRequest(target);
 

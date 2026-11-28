@@ -5,8 +5,8 @@
  */
 
 import { contextToHashToken } from '../../src/js/state-codec.js';
-import { getDiurnalInversion } from '../../src/js/air-quality-engine.js';
-import { test, expect, defaultModel, computeImpact } from './fixtures.js';
+import { getDiurnalInversion, projectDiurnalReading } from '../../src/js/air-quality-engine.js';
+import { test, expect, defaultModel, computeImpact, liveAqiFor, OBSERVED_AT } from './fixtures.js';
 
 const CONTEXTS = [
   { label: 'default household', aqi: 395 },
@@ -41,7 +41,7 @@ test.describe('on-device consistency', () => {
       avoided: '1078 µg',
       cigarettes: '16.2 Cigs',
       carbon: '0.45 kg',
-      score: '98%',
+      score: '89%',
       unshielded: '1341 µg (20.2 Cigs)',
       shielded: '263 µg (4.0 Cigs)',
       delta: 'Saved: 1078 µg (16.2 Cigs)'
@@ -77,6 +77,23 @@ test.describe('on-device consistency', () => {
       await app.aqiSlider.fill(String(aqi));
       await app.expectFigures(defaultModel({ aqi, aqiSource: 'manual' }));
     }
+  });
+
+  test('a live reading is scaled from its own hour and a manual value from the daily baseline', async ({ app, page }) => {
+    await app.open();
+    const badge = page.locator('#label-scrubber-telemetry');
+    const live = liveAqiFor('Delhi NCR');
+    const projected = projectDiurnalReading(7.5, live, OBSERVED_AT);
+    await expect(badge).toHaveText(
+      `AQI ${projected.effectiveAQI} (${projected.ratio.toFixed(2)}x vs 10:00, Trap)`
+    );
+
+    await app.timeSlider.fill('10');
+    await expect(badge).toHaveText(`AQI ${live} (1.00x vs 10:00, Trap)`);
+
+    await app.aqiSlider.fill('200');
+    const manual = getDiurnalInversion(10, 200);
+    await expect(badge).toHaveText(`AQI ${manual.effectiveAQI} (${manual.multiplier.toFixed(2)}x Trap)`);
   });
 
   test('the severity badge, scrubber telemetry and curve follow the AQI', async ({ app, page }) => {

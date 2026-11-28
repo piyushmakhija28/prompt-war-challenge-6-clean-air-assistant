@@ -9,7 +9,7 @@ flowchart TD
     VULN["Vulnerability Profile<br/>[Infant, Asthma]"]:::input
     COMMUTE["Commute Distance & Mode<br/>[15 km, Two-Wheeler]"]:::input
 
-    CONC["Outdoor Concentration C_out<br/>[C_out ≈ 380 µg/m³]"]:::process
+    CONC["Outdoor Concentration C_out<br/>[C_out ≈ 243 µg/m³]"]:::process
     VENT["Minute Ventilation V_E<br/>[Child: 0.30 m³/h, Adult: 0.45 m³/h]"]:::process
     DEPO["Alveolar Deposition Fraction<br/>[η_dep ≈ 0.28 for PM2.5]"]:::process
     INDOOR["Indoor Filtered Baseline C_in<br/>[C_in ≈ 45 µg/m³ via Corsi-Rosenthal]"]:::process
@@ -18,10 +18,10 @@ flowchart TD
     CIG_MATH["Cigarette Equivalence<br/>Cigs = ΔD / 66.5 µg"]:::process
     CO2_MATH["Carbon Accounting<br/>ΔCO2 = d × (EF_base - EF_alt)"]:::process
 
-    UG_OUT["Micrograms PM2.5 Inhalation Avoided<br/>[e.g. 112.5 µg]"]:::output
-    CIG_OUT["Cigarettes Avoided Equivalent<br/>[e.g. 1.69 cigarettes]"]:::output
-    CO2_OUT["CO2e Greenhouse Gas Avoided<br/>[e.g. 0.65 kg CO2e]"]:::output
-    SCORE_OUT["Community Protection Index<br/>[88% Lung Shield Score]"]:::output
+    UG_OUT["Micrograms PM2.5 Inhalation Avoided<br/>[e.g. 33.3 µg]"]:::output
+    CIG_OUT["Cigarettes Avoided Equivalent<br/>[e.g. 0.50 cigarettes]"]:::output
+    CO2_OUT["CO2e Greenhouse Gas Avoided<br/>[e.g. 0.48 kg CO2e]"]:::output
+    SCORE_OUT["Community Protection Index<br/>[89% Lung Shield Score]"]:::output
 
     AQI --> CONC
     VULN --> VENT

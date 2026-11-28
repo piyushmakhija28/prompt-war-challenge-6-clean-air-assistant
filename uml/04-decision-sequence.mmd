@@ -11,9 +11,9 @@ sequenceDiagram
 
     User->>UI: Input AQI 395, Infant & Asthma, LPG, Two-Wheeler
     UI->>Engine: getDiurnalInversionState(currentHour)
-    Engine-->>UI: MORNING_TRAP (Peak Hazard, Factor 2.15x)
+    Engine-->>UI: MORNING_TRAP (Peak Hazard, Factor 2.19x)
     UI->>Engine: calculateVulnerabilityMultiplier(['infant', 'asthma'])
-    Engine-->>UI: K_vuln = 2.25
+    Engine-->>UI: K_vuln = 1.90
 
     UI->>Router: routePlanRequest(context)
     alt Gemini API Key Available & Online

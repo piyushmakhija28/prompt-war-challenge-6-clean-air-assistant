@@ -64,24 +64,24 @@ h_{\text{max}} - (h_{\text{max}} - h_{\text{min}}) \cdot \left(\frac{t - t_{\tex
 +-------------------+---------------+--------------------+-------------------------------------------+
 | State Identifier  | Time Interval | Ground PM2.5 Multi | Operational Protective Protocol           |
 +-------------------+---------------+--------------------+-------------------------------------------+
-| **STATE 1:**      | 06:00 - 09:30 | **1.85x - 2.50x**  | **CRITICAL HAZARD:** Shift outdoor runs/  |
+| **STATE 1:**      | 06:00 - 09:30 | **2.00x - 2.20x**  | **CRITICAL HAZARD:** Shift outdoor runs/  |
 | *Morning Trap*    |               | (Peak Spike)       | walks indoors; keep school buses sealed;  |
 |                   |               |                    | run Corsi-Rosenthal box continuously.     |
 +-------------------+---------------+--------------------+-------------------------------------------+
-| **STATE 2:**      | 09:30 - 12:30 | 1.20x - 1.50x      | **TRANSITION:** Commutes finish; kitchen   |
+| **STATE 2:**      | 09:30 - 12:30 | 0.95x - 1.90x      | **TRANSITION:** Commutes finish; kitchen   |
 | *Pre-Dispersal*   |               |                    | exhaust fans sealed; indoor air clean.    |
 +-------------------+---------------+--------------------+-------------------------------------------+
-| **STATE 3:**      | 12:30 - 15:30 | **0.45x - 0.60x**  | **SOLAR DISPERSAL WINDOW:** Controlled    |
+| **STATE 3:**      | 12:30 - 15:30 | **0.85x - 0.90x**  | **SOLAR DISPERSAL WINDOW:** Controlled    |
 | *Convective Vent* |               | (Diurnal Minimum)  | 15-min cross-ventilation; essential outdoor|
 |                   |               |                    | chores; infant short sun exposure.        |
 +-------------------+---------------+--------------------+-------------------------------------------+
-| **STATE 4:**      | 15:30 - 18:00 | 1.10x - 1.35x      | **PRE-CONDENSATION:** Windows re-sealed;  |
+| **STATE 4:**      | 15:30 - 18:00 | 0.95x - 1.80x      | **PRE-CONDENSATION:** Windows re-sealed;  |
 | *Afternoon Shift* |               |                    | air purifiers pre-conditioned.            |
 +-------------------+---------------+--------------------+-------------------------------------------+
-| **STATE 5:**      | 18:00 - 22:00 | **1.70x - 2.20x**  | **EVENING TRAP:** Traffic exhaust trapped;|
+| **STATE 5:**      | 18:00 - 22:00 | **1.80x - 1.95x**  | **EVENING TRAP:** Traffic exhaust trapped;|
 | *Evening Peak*    |               | (Traffic Peak)     | zero outdoor recreation; induction cooking|
 +-------------------+---------------+--------------------+-------------------------------------------+
-| **STATE 6:**      | 22:00 - 06:00 | 1.30x - 1.60x      | **NOCTURNAL DORMANT:** Bedroom sealing;   |
+| **STATE 6:**      | 22:00 - 06:00 | 1.40x              | **NOCTURNAL DORMANT:** Bedroom sealing;   |
 | *Night Inversion* |               |                    | Snake plant oxygenation; low fan speed.   |
 +-------------------+---------------+--------------------+-------------------------------------------+
 ```
@@ -157,19 +157,19 @@ $$K_{\text{vuln}} = 1.0 + \sum_{m \in \text{Vulnerabilities}} w_m$$
 +-----------------------+----------+-----------------------------------------------------------------+
 | Vulnerability Group   | Weight   | Physiological & Epidemiological Rationale                       |
 +-----------------------+----------+-----------------------------------------------------------------+
-| **Infant (<2 years)** | **0.45** | $V_E/\text{body weight}$ is 2.5x higher than adults; immature   |
+| **Infant (<2 years)** | **0.40** | $V_E/\text{body weight}$ is 2.5x higher than adults; immature   |
 |                       |          | alveolar blood-gas barrier; lifelong pulmonary remodeling risk. |
 +-----------------------+----------+-----------------------------------------------------------------+
-| **Asthma / COPD**     | **0.80** | Chronic baseline airway inflammation; hyperreactive bronchospasm|
+| **Asthma / COPD**     | **0.50** | Chronic baseline airway inflammation; hyperreactive bronchospasm|
 |                       |          | triggered at threshold $PM_{2.5} > 75\ \mu\text{g/m}^3$.        |
 +-----------------------+----------+-----------------------------------------------------------------+
 | **Senior (>65 years)**| **0.35** | Reduced mucociliary clearance; cardiovascular systemic plaque   |
 |                       |          | rupture risk under fine particulate translocation.             |
 +-----------------------+----------+-----------------------------------------------------------------+
-| **Pregnant Women**    | **0.40** | Placental translocation of ultrafine particles; maternal blood  |
+| **Pregnant Women**    | **0.45** | Placental translocation of ultrafine particles; maternal blood  |
 |                       |          | hypercoagulability and pre-term birth risk.                     |
 +-----------------------+----------+-----------------------------------------------------------------+
-| **Outdoor Worker**    | **0.30** | Sustained high ventilation exposure ($V_E \approx 1.2\text{ m}^3/\text{h}$) |
+| **Outdoor Worker**    | **0.60** | Sustained high ventilation exposure ($V_E \approx 1.2\text{ m}^3/\text{h}$) |
 |                       |          | for 8 to 10 hours continuously without structural protection.  |
 +-----------------------+----------+-----------------------------------------------------------------+
 ```

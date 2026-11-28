@@ -7,7 +7,7 @@
  */
 
 import { VULN_FLAGS, DEFAULT_PRESET, TARGET_PERSONAS, METRO_BASIN_PRESETS, METRO_BASIN_COORDINATES, sanitizeCityInput } from './config.js';
-import { getDiurnalInversion, DiurnalRingBuffer, generateDiurnalCurve } from './air-quality-engine.js';
+import { getDiurnalInversion, projectDiurnalReading, DiurnalRingBuffer, generateDiurnalCurve } from './air-quality-engine.js';
 import { SecureKeyStore, GeminiPlanProvider, buildAdviceContext, composeAdvicePlan } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
 import { globalEventBus } from './event-bus.js';
@@ -262,6 +262,11 @@ const KEY_STATUS = Object.freeze({
 });
 
 /**
+ * Notice for a feed failure while the value on screen did not come from the feed.
+ */
+const NOT_LIVE_NOTICE = 'Live air quality is unreachable. The value on screen is not live.';
+
+/**
  * Live air quality feed bound to the selected location.
  */
 export const liveAqi = new LiveAqiController({
@@ -406,13 +411,20 @@ export function hideStatusBanner() {
 
 /**
  * Updates live scrubber telemetry badge with effective AQI and trap/dispersal status.
+ * A manual AQI is a daily baseline and is multiplied by the hour's factor. A feed reading
+ * belongs to its observation hour, so it is scaled relative to that hour, which is named
+ * in the badge.
  * @param {number|null} [hour] - Hour decimal.
  */
 export function updateScrubberTelemetry(hour) {
   const h = hour !== null && hour !== undefined ? Number(hour) : 7.5;
-  const inv = getDiurnalInversion(h, state.aqi);
+  const projected = projectDiurnalReading(h, state.aqi, state.aqiObservedAt);
+  const inv = projected || getDiurnalInversion(h, state.aqi);
   const phaseText = inv.phase === 'SOLAR_DISPERSAL' ? 'Safe' : 'Trap';
-  setSafeText('label-scrubber-telemetry', `AQI ${inv.effectiveAQI} (${inv.multiplier.toFixed(2)}x ${phaseText})`);
+  const factor = projected
+    ? `${projected.ratio.toFixed(2)}x vs ${projected.observedClock}, `
+    : `${inv.multiplier.toFixed(2)}x `;
+  setSafeText('label-scrubber-telemetry', `AQI ${inv.effectiveAQI} (${factor}${phaseText})`);
 }
 
 /**
@@ -487,6 +499,7 @@ function refreshAfterAqiChange() {
 export function applyManualAqi(value, origin = null) {
   liveAqi.setManual();
   state.aqiSource = 'manual';
+  state.aqiObservedAt = '';
   setAqiValue(Math.max(0, Math.min(999, Math.round(Number(value) || 0))), origin);
   refreshAfterAqiChange();
 }
@@ -519,7 +532,11 @@ export function renderLiveStatus({ mode, status, reading, message }) {
     state.aqiNotice = '';
   } else {
     if (!reading || reading.city !== state.city) state.aqiSource = 'manual';
-    state.aqiNotice = message;
+    state.aqiNotice = status === 'error' && state.aqiSource !== 'live' ? NOT_LIVE_NOTICE : message;
+  }
+  if (isAdviceHeldForLive && status !== 'loading') {
+    isAdviceHeldForLive = false;
+    schedulePlanGeneration();
   }
   if (typeof document === 'undefined') return;
   setSafeText('btn-live-aqi', mode === 'live' ? 'Refresh live AQI' : 'Use live AQI');
@@ -719,6 +736,7 @@ let debounceTimer = null;
 let resumeTimer = null;
 let resumeCount = 0;
 let inFlightAdvice = null;
+let isAdviceHeldForLive = false;
 let generationSequenceId = 0;
 let locationEpoch = 0;
 let optimisticRafId = null;
@@ -1124,8 +1142,32 @@ export function schedulePlanGeneration(delayMs = ADVICE_DEBOUNCE_MS, options = {
 
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
-    triggerPlanGeneration(null, options);
+    dispatchWhenAqiIsBound(options);
   }, delayMs);
+}
+
+/**
+ * Reports whether the feed is still fetching the first reading for the selected city, so
+ * that the AQI on screen belongs to somewhere else.
+ *
+ * @returns {boolean}
+ */
+function isAwaitingLiveCity() {
+  return liveAqi.mode === 'live' && Boolean(liveAqi.inFlight) && liveAqi.lastReading?.city !== state.city;
+}
+
+/**
+ * Sends an automatic advice request, or holds it until the feed settles for the selected
+ * city. Forced requests are never held.
+ *
+ * @param {{force?: boolean}} [options] - Request options.
+ */
+function dispatchWhenAqiIsBound(options = {}) {
+  if (!options.force && keyStore.hasKey() && isAwaitingLiveCity()) {
+    isAdviceHeldForLive = true;
+    return;
+  }
+  triggerPlanGeneration(null, options);
 }
 
 /**
@@ -1142,6 +1184,7 @@ export async function triggerPlanGeneration(overrideContext = null, { force = fa
     debounceTimer = null;
   }
   cancelResume();
+  isAdviceHeldForLive = false;
   if (!isResume) resumeCount = 0;
 
   const ctx = { ...(overrideContext || state), hackId: state.activeHackId, lang: state.advisoryLang };
@@ -1327,6 +1370,7 @@ function applyProfile(profile) {
   for (const key of ['city', 'aqi', 'vulnBits', 'housingType', 'cookingMethod', 'heatingMethod', 'commuteMode', 'commuteKm']) {
     state[key] = profile[key];
   }
+  state.aqiObservedAt = '';
   setAqiSignal(state.aqi);
   selectCityOption(state.city);
 
@@ -1372,6 +1416,22 @@ function showSimulatedHour(hour) {
     needle.setAttribute('x1', String((hour / 24) * 240));
     needle.setAttribute('x2', String((hour / 24) * 240));
   }
+}
+
+/**
+ * Resolves the tab that a navigation key moves to, following the WAI-ARIA tabs pattern.
+ *
+ * @param {string} key - Pressed key.
+ * @param {number} current - Index of the focused tab.
+ * @param {number} count - Number of tabs.
+ * @returns {number|null} Target index, or null when the key does not navigate.
+ */
+export function nextTabIndex(key, current, count) {
+  if (key === 'ArrowRight') return (current + 1) % count;
+  if (key === 'ArrowLeft') return (current - 1 + count) % count;
+  if (key === 'Home') return 0;
+  if (key === 'End') return count - 1;
+  return null;
 }
 
 /**
@@ -1713,6 +1773,7 @@ export function initApp() {
         const isActive = t === tab;
         t.classList.toggle('active', isActive);
         t.setAttribute('aria-selected', String(isActive));
+        t.setAttribute('tabindex', isActive ? '0' : '-1');
       });
 
       const cadrSelect = document.getElementById('select-cadr-device');
@@ -1723,6 +1784,14 @@ export function initApp() {
       }
 
       schedulePlanGeneration();
+    });
+
+    tab.addEventListener('keydown', (e) => {
+      const target = nextTabIndex(e.key, Array.prototype.indexOf.call(hackTabs, tab), hackTabs.length);
+      if (target === null) return;
+      e.preventDefault();
+      hackTabs[target].focus();
+      hackTabs[target].click();
     });
   });
 
@@ -1892,7 +1961,7 @@ export function initApp() {
 
   window.addEventListener('online', () => {
     liveAqi.refresh();
-    if (keyStore.hasKey()) triggerPlanGeneration();
+    if (keyStore.hasKey()) dispatchWhenAqiIsBound();
   });
 
   if (wantsLive) liveAqi.enableLive();

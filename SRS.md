@@ -92,6 +92,8 @@ For the exhaustive engineering specifications, reference the authoritative docum
 - **AC-15:** After any input change the advice source reads "Refreshing" and then matches the latest inputs; a slower older response changes nothing.
 - **AC-16:** For HTTP 429, 5xx, timeout, network loss and malformed replies the app stays usable; a rejected key causes exactly one request and a visible message.
 - **AC-17:** Encoding then decoding a shared link returns the same profile.
+- **AC-13 (Updated 2026-11-28):** A failure while the value on screen is not from the feed says it is not live. The time scrubber scales a live reading from its observation hour.
+- **AC-15 (Updated 2026-11-28):** While a newly chosen city's live reading is loading, automatic advice waits for it or for the failure; Recalculate is never held.
 
 ## 6. Out of Scope
 
@@ -105,3 +107,4 @@ For the exhaustive engineering specifications, reference the authoritative docum
 | Date | Version | Task | Change Summary | Status |
 |------|---------|------|----------------|--------|
 | 2026-11-28 | 1.2.0 | Live data binding, live AQI, resilience, scenario testing | Added FR-13 to FR-17, NFR-11 to NFR-13 and AC-13 to AC-17 | Done |
+| 2026-11-28 | 1.2.1 | Fix known limitations (#14) | Updated AC-13 and AC-15; revised protection score curve, keyboard tabs and served files | Done |

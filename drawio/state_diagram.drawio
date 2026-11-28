@@ -11,10 +11,10 @@
     <mxCell id="3" value="NightSettling (22:00)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
       <mxGeometry x="40" y="100" width="160" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="4" value="DawnTrap (06:00, 2.15x Hazard)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
+    <mxCell id="4" value="DawnTrap (06:00, 2.00-2.20x Hazard)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
       <mxGeometry x="280" y="100" width="160" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="5" value="PreDispersal (10:00, Transition)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
+    <mxCell id="5" value="PreDispersal (09:30, Transition)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
       <mxGeometry x="520" y="100" width="160" height="60" as="geometry" />
     </mxCell>
     <mxCell id="6" value="SolarDispersal (12:30, Safe Aeration)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
@@ -23,7 +23,7 @@
     <mxCell id="7" value="AfternoonShift (15:30, Cap Reforms)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
       <mxGeometry x="280" y="240" width="160" height="60" as="geometry" />
     </mxCell>
-    <mxCell id="8" value="EveningPeak (17:30, 1.95x Peak)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
+    <mxCell id="8" value="EveningPeak (18:00, 1.95x Peak)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
       <mxGeometry x="520" y="240" width="160" height="60" as="geometry" />
     </mxCell>
     <mxCell id="9" value="CircuitBreakerClosed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;arcSize=25;" vertex="1" parent="1">
@@ -41,7 +41,7 @@
     <mxCell id="13" value="06:00 Radiation Cap" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" source="3" target="4" parent="1">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="14" value="10:00 Solar Warm" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" source="4" target="5" parent="1">
+    <mxCell id="14" value="09:30 Solar Warm" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" source="4" target="5" parent="1">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
     <mxCell id="15" value="12:30 Convection" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" source="5" target="6" parent="1">
@@ -50,7 +50,7 @@
     <mxCell id="16" value="15:30 Solar Dies" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" source="6" target="7" parent="1">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="17" value="17:30 Dusk Traffic" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" source="7" target="8" parent="1">
+    <mxCell id="17" value="18:00 Dusk Traffic" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" source="7" target="8" parent="1">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
     <mxCell id="18" value="22:00 Surface Chill" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;" edge="1" source="8" target="3" parent="1">

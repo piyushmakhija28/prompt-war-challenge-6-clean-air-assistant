@@ -10,8 +10,8 @@ graph TD
             DOM_CONTAINER["DOM Tree & Glassmorphic View<br/>[index.html, style.css]"]:::client
             JS_MODULES["Client Application Runtime<br/>[ES6 Modules: app.js, config.js, engines]"]:::client
             RAM_STORE["Volatile Closure RAM<br/>[SecureKeyStore: Uint8Array]"]:::client
-            PWA_WORKER["ServiceWorker v1.2 Runtime<br/>[sw.js: Network-First Cache Policy]"]:::client
-            CACHE_STORAGE["Browser CacheStorage<br/>[cleanair-guardian-v1.2]"]:::client
+            PWA_WORKER["ServiceWorker v1.4 Runtime<br/>[sw.js: Network-First Cache Policy]"]:::client
+            CACHE_STORAGE["Browser CacheStorage<br/>[cleanair-guardian-v1.4]"]:::client
         end
     end
 

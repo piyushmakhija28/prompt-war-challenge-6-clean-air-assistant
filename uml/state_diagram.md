@@ -8,21 +8,21 @@ stateDiagram-v2
     state "Diurnal Inversion Lifecycle" as InversionCycle {
         NightSettling --> DawnTrap : 06:00 (Radiation Cooling + Morning Rush)
         note right of DawnTrap
-            • Multiplier: 2.0x - 2.5x
+            • Multiplier: 2.00x - 2.20x
             • H_PBL: ~200m
             • Protocol: Zero Outdoor Activity
         end note
 
         DawnTrap --> SolarDispersal : 12:30 (Solar Thermal Convection)
         note right of SolarDispersal
-            • Multiplier: 0.85x - 0.95x
+            • Multiplier: 0.85x - 0.90x
             • H_PBL: ~1050m
-            • Protocol: 20-min Cross-Ventilation
+            • Protocol: 15-min Cross-Ventilation
         end note
 
-        SolarDispersal --> EveningPeak : 17:30 (Solar Radiation Dies + Evening Traffic)
+        SolarDispersal --> EveningPeak : 18:00 (Solar Radiation Dies + Evening Traffic)
         note right of EveningPeak
-            • Multiplier: 1.8x - 2.2x
+            • Multiplier: 1.80x - 1.95x
             • H_PBL: ~350m
             • Protocol: Strict Window Sealing
         end note

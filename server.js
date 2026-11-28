@@ -14,6 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 8080;
 const ROOT = fs.realpathSync.native(__dirname);
+const PUBLIC_FILES = new Set(['index.html', 'manifest.webmanifest', 'sw.js']);
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=UTF-8',
@@ -63,6 +64,18 @@ export function resolveRequestPath(url) {
   return isServable(realPath) ? realPath : null;
 }
 
+/**
+ * Reports whether a file belongs to the web application. Project files such as
+ * package.json, tests and documents are never sent to the browser.
+ *
+ * @param {string} filePath - Absolute path inside the project root.
+ * @returns {boolean}
+ */
+function isPublicAsset(filePath) {
+  const relative = path.relative(ROOT, filePath).split(path.sep).join('/');
+  return PUBLIC_FILES.has(relative) || relative.startsWith('src/');
+}
+
 const server = http.createServer((req, res) => {
   let filePath = resolveRequestPath(req.url);
   if (!filePath) {
@@ -71,7 +84,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+  if (!isPublicAsset(filePath) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     filePath = path.join(ROOT, 'index.html');
   }
 

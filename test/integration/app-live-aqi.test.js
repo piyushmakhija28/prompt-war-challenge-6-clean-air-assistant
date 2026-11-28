@@ -8,7 +8,8 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  state, liveAqi, applyManualAqi, describeAqiSource, describeAdviceSource, ADVICE_DEBOUNCE_MS
+  state, liveAqi, applyManualAqi, describeAqiSource, describeAdviceSource, schedulePlanGeneration,
+  ADVICE_DEBOUNCE_MS
 } from '../../src/js/app.js';
 import { LIVE_AQI_REFRESH_MS, LIVE_AQI_TIMEOUT_MS } from '../../src/js/live-aqi.js';
 import { GEMINI_MODELS_CASCADE } from '../../src/js/gemini-service.js';
@@ -273,6 +274,104 @@ describe('feed failures', () => {
     assert.equal(session.meteo.calls.length, 0);
     assert.equal(state.aqiSource, 'manual');
     assert.match(describeAqiSource(), /^AQI: Not live · No live feed/);
+  });
+});
+
+describe('advice after a city change', () => {
+  /**
+   * Shows Delhi advice, then selects Lahore while its reading is still pending.
+   *
+   * @param {Function} [unanswered] - Transport behaviour for the Lahore request; by default
+   *   the test releases it.
+   * @returns {Promise<{release: Function|null, pending: Promise<boolean>}>} Feed controls.
+   */
+  async function chooseLahoreWithSlowFeed(unanswered) {
+    holdKey();
+    session.gemini.otherwise(reply.ok('advice'));
+    session.meteo.push(meteoReading(80));
+    await goLive();
+    await advance(ADVICE_DEBOUNCE_MS);
+    assert.equal(session.gemini.calls.length, 1);
+
+    let release = null;
+    if (unanswered) session.meteo.push(unanswered);
+    else release = session.meteo.defer();
+    state.city = 'Lahore';
+    const pending = liveAqi.enableLive();
+    schedulePlanGeneration();
+    await advance(ADVICE_DEBOUNCE_MS * 3);
+    return { release, pending };
+  }
+
+  it('waits for the new reading instead of sending the old value', async () => {
+    const { release, pending } = await chooseLahoreWithSlowFeed();
+    assert.equal(session.gemini.calls.length, 1);
+
+    release(meteoReading(210));
+    await pending;
+    await advance(ADVICE_DEBOUNCE_MS);
+
+    assert.equal(session.gemini.calls.length, 2);
+    const facts = factsOf(session.gemini.calls[1]);
+    assert.equal(facts.city, 'Lahore');
+    assert.equal(facts.aqi, massConcentrationToAqi(210));
+  });
+
+  it('sends the held request once the new city fails, labelled manual', async () => {
+    const { release, pending } = await chooseLahoreWithSlowFeed();
+
+    release(() => jsonResponse(500, {}));
+    await pending;
+    await advance(ADVICE_DEBOUNCE_MS);
+
+    assert.equal(session.gemini.calls.length, 2);
+    assert.equal(factsOf(session.gemini.calls[1]).aqiSource, 'manual');
+  });
+
+  it('sends the held request when the feed times out', async () => {
+    const { pending } = await chooseLahoreWithSlowFeed(reply.hang());
+    assert.equal(session.gemini.calls.length, 1);
+
+    await advance(LIVE_AQI_TIMEOUT_MS);
+    await pending;
+    await advance(ADVICE_DEBOUNCE_MS);
+
+    assert.equal(session.gemini.calls.length, 2);
+  });
+
+  it('never holds a forced request', async () => {
+    await chooseLahoreWithSlowFeed();
+
+    schedulePlanGeneration(ADVICE_DEBOUNCE_MS, { force: true });
+    await advance(ADVICE_DEBOUNCE_MS);
+
+    assert.equal(session.gemini.calls.length, 2);
+  });
+
+  it('does not hold a change while the same city is refreshing', async () => {
+    holdKey();
+    session.gemini.otherwise(reply.ok('advice'));
+    session.meteo.push(meteoReading(80), reply.hang());
+    await goLive();
+    await advance(ADVICE_DEBOUNCE_MS);
+    liveAqi.refresh();
+
+    state.commuteMode = 'private_car';
+    schedulePlanGeneration();
+    await advance(ADVICE_DEBOUNCE_MS);
+
+    assert.equal(session.gemini.calls.length, 2);
+  });
+
+  it('says the value on screen is not live when returning to live fails', async () => {
+    session.meteo.push(meteoReading(80), () => jsonResponse(500, {}));
+    await goLive();
+    applyManualAqi(12);
+
+    await goLive();
+
+    assert.equal(state.aqi, 12);
+    assert.equal(describeAqiSource(), 'AQI: Not live · Live air quality is unreachable. The value on screen is not live.');
   });
 });
 

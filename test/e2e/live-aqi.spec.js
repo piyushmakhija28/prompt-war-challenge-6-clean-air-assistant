@@ -14,6 +14,7 @@ import {
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const KOLKATA_FIX = Object.freeze({ latitude: 22.6512, longitude: 88.4487 });
 const UNREACHABLE = 'Live air quality is unreachable. Showing the last known value.';
+const NOT_LIVE = 'Live air quality is unreachable. The value on screen is not live.';
 
 test.describe('live feed', () => {
   test('startup fetches once and labels the value as a live estimate', async ({ app, page, mocks }) => {
@@ -85,7 +86,7 @@ test.describe('bad replies and outage', () => {
       mocks.air.always(reply);
       await app.open('', { awaitLive: false });
 
-      await expect(app.sourceAqi).toHaveText(`AQI: Not live · ${UNREACHABLE}`);
+      await expect(app.sourceAqi).toHaveText(`AQI: Not live · ${NOT_LIVE}`);
       await app.expectFigures(defaultModel({ aqi: 395, aqiSource: 'manual' }));
 
       mocks.air.reset();
@@ -117,7 +118,7 @@ test.describe('bad replies and outage', () => {
     mocks.air.next({ status: 500, json: {} });
     await app.citySelect.selectOption('Lahore');
 
-    await expect(app.sourceAqi).toHaveText(`AQI: Not live · ${UNREACHABLE}`);
+    await expect(app.sourceAqi).toHaveText(`AQI: Not live · ${NOT_LIVE}`);
     await app.expectFigures(defaultModel({ city: 'Lahore', aqiSource: 'manual' }));
   });
 
@@ -129,7 +130,7 @@ test.describe('bad replies and outage', () => {
     await expect(app.sourceAqi).toContainText('fetching live value');
     await app.advance(8100);
 
-    await expect(app.sourceAqi).toHaveText(`AQI: Not live · ${UNREACHABLE}`);
+    await expect(app.sourceAqi).toHaveText(`AQI: Not live · ${NOT_LIVE}`);
   });
 
   test('model requests label a value that is not live as manual', async ({ app, mocks }) => {
@@ -182,7 +183,7 @@ test.describe('manual mode and timed refresh', () => {
     mocks.air.always({ status: 500, json: {} });
     await app.liveButton.click();
 
-    await expect(app.sourceAqi).toContainText('Not live');
+    await expect(app.sourceAqi).toHaveText(`AQI: Not live · ${NOT_LIVE}`);
     await expect(app.heroAqi).toHaveText('12');
   });
 

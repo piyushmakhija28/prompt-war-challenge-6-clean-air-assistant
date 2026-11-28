@@ -27,8 +27,8 @@ classDiagram
 
     object inversionState {
         hour = 7.5
-        phase = "DAWN_TRAP"
-        multiplier = 2.15
+        phase = "MORNING_TRAP"
+        multiplier = 2.19
         mixingHeightM = 220
         ventilationSafe = false
         richardsonNumber = 0.32
@@ -41,9 +41,9 @@ classDiagram
         volumeCuFt = 1620
         cadrCfm = 273
         ach = 10.1
-        milestone50Min = 4.1
-        milestone90Min = 13.6
-        milestone99Min = 27.2
+        milestone50Min = 3.9
+        milestone90Min = 13.0
+        milestone99Min = 26.0
     }
 
     object corsiRosenthalBox {
@@ -56,12 +56,12 @@ classDiagram
     }
 
     object impactMetrics {
-        unprotectedDoseUg = 1341
-        protectedDoseUg = 263
-        avoidedDoseUg = 583
-        cigarettesAvoided = 8.8
-        co2eSavedKg = 0.65
-        protectionScore = 88
+        unprotectedDoseUg = 1143
+        protectedDoseUg = 224
+        avoidedDoseUg = 919
+        cigarettesAvoided = 13.8
+        co2eSavedKg = 0.26
+        protectionScore = 87
     }
 
     object secureKeyStore {

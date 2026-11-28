@@ -3,7 +3,7 @@
 graph TD
     subgraph ClientRoot ["CleanAir Guardian Client (Root)"]
         HTML["index.html (Semantic Accessible Shell)"]
-        SW["sw.js (ServiceWorker v1.2 Network-First)"]
+        SW["sw.js (ServiceWorker v1.4 Network-First)"]
         SERVER["server.js (Zero-Dependency Local Dev Server)"]
     end
 

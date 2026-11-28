@@ -5,6 +5,19 @@ All notable changes to the **CleanAir Assistant** (Prompt War Challenge No. 6) w
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-11-28
+
+### Changed
+- The protection score follows a saturating curve, so severe air no longer reads 98% for almost every household. The default household shows 89% (#14).
+- With a live reading, the time scrubber scales it from its observation hour and names that hour; a manual AQI is still multiplied by the hour's factor (#14).
+- The hack tabs are one tab stop, with Left, Right, Home and End keys (#14).
+- The local server sends only the application files; every other path returns the app shell (#14).
+- Design documents and diagrams state the multipliers, vulnerability weights, dose figures and cache version used by the code (#14).
+
+### Fixed
+- Advice could be requested with the previous city's AQI while the new city's live reading was still loading (#14).
+- A failed return to live data said "last known value" while the manual value was on screen (#14).
+
 ## [1.2.0] - 2026-11-28
 
 ### Added
