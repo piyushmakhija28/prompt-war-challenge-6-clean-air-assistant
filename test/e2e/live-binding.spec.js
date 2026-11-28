@@ -5,7 +5,7 @@
  */
 
 import {
-  test, expect, FAKE_KEY, defaultModel, personaModel, liveAqiFor, tagFor, computeImpact
+  test, expect, FAKE_KEY, DEFAULT_HACK, defaultModel, personaModel, liveAqiFor, tagFor, computeImpact
 } from './fixtures.js';
 
 /**
@@ -52,6 +52,11 @@ const CHANGES = [
     act: (app) => app.kmSlider.fill('41'),
     patch: { commuteKm: 41 }
   },
+  ...['pc_fan_stealth', 'wet_towel_emergency', 'kitchen_vent_scrub'].map((value) => ({
+    name: `DIY hack ${value}`,
+    act: (app) => app.hack(value),
+    patch: { hackId: value }
+  })),
   ...[[4, true], [8, true], [16, true], [1, false], [2, false]].map(([bit, checked]) => ({
     name: `vulnerability bit ${bit} ${checked ? 'added' : 'removed'}`,
     act: (app) => app.setVulnerability(bit, checked),
@@ -97,6 +102,8 @@ async function expectControls(app, model) {
     await expect(app.page.locator(`.input-vuln-checkbox[data-bit="${bit}"]`))
       .toBeChecked({ checked: Boolean(model.vulnBits & bit) });
   }
+  await expect(app.page.locator('.hack-tab-btn[aria-selected="true"]'))
+    .toHaveAttribute('data-hack', model.hackId ?? DEFAULT_HACK);
   await expect(app.page.locator('#label-unshielded-desc')).toHaveText(
     `🔴 Unshielded Exposure (${model.housingType.replace(/_/g, ' ')} / ${model.commuteMode.replace(/_/g, ' ')})`
   );
@@ -152,6 +159,36 @@ test.describe('each input after a live plan', () => {
   });
 });
 
+test.describe('hack tabs', () => {
+  test('each tab swaps the DIY hack, clearance times and figures, and asks for advice on it', async ({ app, page, mocks }) => {
+    await app.open();
+    await app.activate();
+    const clearanceTimes = new Set();
+    const hacks = [
+      ['pc_fan_stealth', 'PC-Fan', '85 CFM', '85'],
+      ['wet_towel_emergency', 'Wet-Towel', 'Stopgap', '30'],
+      ['kitchen_vent_scrub', 'Kitchen Exhaust', '180 CFM', '180'],
+      ['corsi_rosenthal', 'Corsi-Rosenthal', '273 CFM', '273']
+    ];
+    for (const [index, [id, title, rating, cadr]] of hacks.entries()) {
+      await app.refill();
+      await app.hack(id);
+      const model = defaultModel({ hackId: id });
+
+      await expect(page.locator('#iaq-hack-title')).toContainText(title);
+      await expect(page.locator('#iaq-hack-cadr')).toContainText(rating);
+      await expect(page.locator('#select-cadr-device')).toHaveValue(cadr);
+      await expect(page.locator(`.hack-tab-btn[data-hack="${id}"]`)).toHaveAttribute('aria-selected', 'true');
+      await expect(page.locator('.hack-tab-btn[aria-selected="true"]')).toHaveCount(1);
+      await app.expectFigures(model);
+      await app.expectAdvice(model);
+      clearanceTimes.add(await page.locator('#cadr-t90').textContent());
+      expect(mocks.gemini.calls).toHaveLength(index + 2);
+    }
+    expect(clearanceTimes.size).toBe(4);
+  });
+});
+
 test.describe('inputs that must not call Gemini', () => {
   test('time scrubbing updates notice, clock and telemetry locally', async ({ app, page, mocks }) => {
     await app.open();
@@ -173,30 +210,6 @@ test.describe('inputs that must not call Gemini', () => {
     }
     await app.refill();
     await app.expectIdle();
-    expect(mocks.gemini.calls).toHaveLength(1);
-  });
-
-  test('hack tabs swap the DIY hack and clearance times without a new call', async ({ app, page, mocks }) => {
-    await app.open();
-    await app.activate();
-    const seen = new Set();
-    for (const [id, title, cadr] of [
-      ['pc_fan_stealth', 'PC-Fan', '85'],
-      ['wet_towel_emergency', 'Wet-Towel', '30'],
-      ['kitchen_vent_scrub', 'Kitchen Exhaust', '180'],
-      ['corsi_rosenthal', 'Corsi-Rosenthal', '273']
-    ]) {
-      await app.hack(id);
-      await expect(page.locator('#iaq-hack-title')).toContainText(title);
-      await expect(page.locator('#iaq-hack-cadr')).toContainText(`${cadr} CFM`);
-      await expect(page.locator('#select-cadr-device')).toHaveValue(cadr);
-      await expect(page.locator(`.hack-tab-btn[data-hack="${id}"]`)).toHaveAttribute('aria-selected', 'true');
-      await expect(page.locator('.hack-tab-btn[aria-selected="true"]')).toHaveCount(1);
-      seen.add(await page.locator('#cadr-t90').textContent());
-      await app.refill();
-      await app.expectAdvice(defaultModel());
-    }
-    expect(seen.size).toBe(4);
     expect(mocks.gemini.calls).toHaveLength(1);
   });
 

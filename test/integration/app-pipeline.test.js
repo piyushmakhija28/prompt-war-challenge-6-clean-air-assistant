@@ -14,7 +14,7 @@ import {
 import { GEMINI_MODELS_CASCADE } from '../../src/js/gemini-service.js';
 import { computeImpact } from '../../src/js/impact-calculator.js';
 import { generateOfflineCleanAirPlan } from '../../src/js/offline-advisor.js';
-import { FAKE_KEY, factsOf, settle, reply } from './helpers/fakes.js';
+import { FAKE_KEY, factsOf, modelPlan, settle, reply } from './helpers/fakes.js';
 import {
   startSession, endSession, advance, holdKey, saveKey, clearKey, generate, installStatusElements
 } from './helpers/app-harness.js';
@@ -266,7 +266,7 @@ describe('identical input dedupe and cache reuse', () => {
     await settle();
 
     state.simulatedHour = 19;
-    state.activeHackId = 'pc_fan_stealth';
+    state.advisoryLang = 'hi';
     schedulePlanGeneration();
     await advance(ADVICE_DEBOUNCE_MS);
     assert.equal(state.advicePhase, 'fetching');
@@ -275,14 +275,50 @@ describe('identical input dedupe and cache reuse', () => {
 
     assert.equal(session.gemini.calls.length, 1);
     assert.equal(session.gemini.calls[0].init.signal.aborted, false);
-    assert.equal(state.activePlan.iaqHack.cadrEstimate.startsWith('85 CFM'), true);
     assert.equal(firstActivity(), 'Morning shield kept');
+  });
+
+  it('replaces the running request when the indoor air hack is switched mid-flight', async () => {
+    holdKey();
+    session.gemini.push(reply.hang());
+    session.gemini.otherwise(reply.ok('hack'));
+    triggerPlanGeneration();
+    await settle();
+
+    state.activeHackId = 'pc_fan_stealth';
+    schedulePlanGeneration();
+
+    assert.equal(session.gemini.calls[0].init.signal.aborted, true);
+    assert.equal(state.advicePhase, 'debounce');
+    await advance(ADVICE_DEBOUNCE_MS);
+
+    assert.equal(session.gemini.calls.length, 2);
+    const hack = factsOf(session.gemini.calls[1]).choices.find((c) => c.choice === 'iaq_hack');
+    assert.equal(hack.current, 'pc_fan_stealth');
+    assert.equal(state.activePlan.iaqHack.id, 'pc_fan_stealth');
+    assert.equal(firstActivity(), 'Morning shield hack');
+  });
+
+  it('drops a model insight at once when the choice it was written for changes', async () => {
+    holdKey();
+    state.commuteMode = 'two_wheeler';
+    const insight = { choice: 'commute', alternative: 'Ride the metro', whyItMatters: 'Cleaner air on the way.' };
+    session.gemini.push(reply.text(JSON.stringify({ ...modelPlan('insight'), choiceInsights: [insight] })));
+    await generate();
+    const shown = () => JSON.stringify(state.activePlan.sustainableAlternatives).includes('Ride the metro');
+    assert.equal(shown(), true);
+
+    state.commuteMode = 'private_car';
+    executeOptimisticRecalculation();
+
+    assert.equal(shown(), false);
+    assert.equal(firstActivity(), 'Morning shield insight');
   });
 
   const localOnly = [
     ['repeating the same inputs', () => {}],
     ['moving the simulated time', () => { state.simulatedHour = 19.5; }],
-    ['switching the hack tab', () => { state.activeHackId = 'wet_towel_emergency'; }],
+    ['re-selecting the current hack', () => { state.activeHackId = 'corsi_rosenthal'; }],
     ['switching language', () => { state.advisoryLang = 'hi'; }],
     ['re-entering the same AQI', () => { applyManualAqi(state.aqi); }]
   ];
@@ -328,6 +364,22 @@ describe('identical input dedupe and cache reuse', () => {
     ['commute mode', () => { state.commuteMode = 'private_car'; }, 'commuteMode', 'private_car'],
     ['commute distance', () => { state.commuteKm = 33; }, 'commuteKm', 33]
   ];
+
+  it('makes exactly one grounded call when the indoor air hack changes', async () => {
+    holdKey();
+    session.gemini.push(reply.ok('before'), reply.ok('after'));
+    await generate();
+
+    state.activeHackId = 'wet_towel_emergency';
+    schedulePlanGeneration();
+    await advance(ADVICE_DEBOUNCE_MS);
+
+    assert.equal(session.gemini.calls.length, 2);
+    const facts = factsOf(session.gemini.calls[1]);
+    assert.equal(facts.choices.find((c) => c.choice === 'iaq_hack').current, 'wet_towel_emergency');
+    assert.equal(facts.computed.pm25AvoidedUg, computeImpact({ ...state, hackId: state.activeHackId }).pm25AvoidedUg);
+    assert.equal(firstActivity(), 'Morning shield after');
+  });
 
   for (const [label, change, field, expected] of adviceInputs) {
     it(`makes exactly one grounded call when ${label} changes`, async () => {

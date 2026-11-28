@@ -1,122 +1,56 @@
 /**
- * @fileoverview FastDOM Frame Scheduler, Result Monad, and Zero-XSS UI Controller.
- * Coordinates user input events, micro-reactive signal bindings, URL hash state synchronization,
- * and pure text-node DOM hydration with zero innerHTML usage.
+ * @fileoverview FastDOM write scheduler and Zero-XSS UI controller.
+ * Coordinates user input events, URL hash state synchronization, and pure text-node
+ * DOM hydration with zero innerHTML usage.
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  * @module app
  */
 
 import { VULN_FLAGS, DEFAULT_PRESET, TARGET_PERSONAS, METRO_BASIN_PRESETS, METRO_BASIN_COORDINATES, sanitizeCityInput } from './config.js';
-import { getDiurnalInversion, projectDiurnalReading, DiurnalRingBuffer, generateDiurnalCurve } from './air-quality-engine.js';
+import { getDiurnalInversion, projectDiurnalReading, generateDiurnalCurve } from './air-quality-engine.js';
 import { SecureKeyStore, GeminiPlanProvider, buildAdviceContext, composeAdvicePlan } from './gemini-service.js';
 import { contextToHashToken, hashTokenToContext } from './state-codec.js';
 import { globalEventBus } from './event-bus.js';
 import { calculateRoomClearance, findNearestBasin, getCadrAdequacyRating, UNIT_CONVERSIONS } from './cadr-calculator.js';
-import { aqiToMassConcentration, computeImpact } from './impact-calculator.js';
+import { computeImpact, listProtectionMeasures } from './impact-calculator.js';
 import { LiveAqiController } from './live-aqi.js';
 import { IAQ_HACKS_CATALOG, generateOfflineCleanAirPlan } from './offline-advisor.js';
-import { createSignal, createComputed, createEffect } from './signals.js';
 
 /**
- * Algebraic Result Monad representing either Success (Ok) or Failure (Err).
- */
-export class Result {
-  /**
-   * Constructs an Ok result.
-   * @param {*} value
-   * @returns {Result}
-   */
-  static ok(value) {
-    return new Result(true, value, null);
-  }
-
-  /**
-   * Constructs an Err result.
-   * @param {*} error
-   * @returns {Result}
-   */
-  static err(error) {
-    return new Result(false, null, error);
-  }
-
-  constructor(isSuccess, value, error) {
-    this.isSuccess = isSuccess;
-    this.value = value;
-    this.error = error;
-    Object.freeze(this);
-  }
-
-  /**
-   * Transforms value if Ok.
-   * @param {Function} fn
-   * @returns {Result}
-   */
-  map(fn) {
-    if (!this.isSuccess) return this;
-    try {
-      return Result.ok(fn(this.value));
-    } catch (e) {
-      return Result.err(e);
-    }
-  }
-
-  /**
-   * Chains next Result (bind).
-   * @param {Function} fn
-   * @returns {Result}
-   */
-  andThen(fn) {
-    if (!this.isSuccess) return this;
-    return fn(this.value);
-  }
-
-  /**
-   * Pattern matches over Ok and Err branches.
-   * @param {{ok: Function, err: Function}} branches
-   * @returns {*}
-   */
-  match(branches) {
-    return this.isSuccess ? branches.ok(this.value) : branches.err(this.error);
-  }
-}
-
-/**
- * FastDOM Scheduler: Partitions DOM operations into isolated Read and Write phases inside requestAnimationFrame.
+ * Batches DOM writes into a single animation frame.
  */
 export class FastDOMScheduler {
   constructor() {
-    this.reads = [];
     this.writes = [];
     this.scheduled = false;
   }
 
-  measure(task) {
-    this.reads.push(task);
-    this.scheduleFlush();
-  }
-
+  /**
+   * Queues a DOM write for the next frame.
+   *
+   * @param {Function} task - Write to run.
+   */
   mutate(task) {
     this.writes.push(task);
     this.scheduleFlush();
   }
 
+  /**
+   * Requests one flush of the queued writes. Writes queued during a flush run in the next one.
+   */
   scheduleFlush() {
     if (this.scheduled) return;
     this.scheduled = true;
 
     const flush = () => {
       try {
-        const currentReads = this.reads.splice(0);
-        for (let i = 0; i < currentReads.length; i++) {
-          currentReads[i]();
-        }
         const currentWrites = this.writes.splice(0);
         for (let i = 0; i < currentWrites.length; i++) {
           currentWrites[i]();
         }
       } finally {
         this.scheduled = false;
-        if (this.reads.length || this.writes.length) this.scheduleFlush();
+        if (this.writes.length) this.scheduleFlush();
       }
     };
 
@@ -133,93 +67,14 @@ export const keyStore = new SecureKeyStore();
 export const planProvider = new GeminiPlanProvider(keyStore);
 
 if (typeof window !== 'undefined') {
-  window.planProvider = planProvider;
-  window.keyStore = keyStore;
-  window.__cleanAirTestUtils = {
-    get triggerPlanGeneration() { return triggerPlanGeneration; },
-    get showStatusBanner() { return showStatusBanner; },
-    get hideStatusBanner() { return hideStatusBanner; },
-    get liveAqi() { return liveAqi; },
-    get state() { return state; }
-  };
-}
-
-/**
- * Initial canonical application state (Immutable).
- * Conforms to LLD 05 §1.
- */
-export const INITIAL_STATE = Object.freeze({
-  city: 'Delhi NCR',
-  aqi: 395,
-  simulatedHour: null,
-  vulnerabilities: 0,
-  cookingMethod: 'lpg',
-  heatingMethod: 'space_heater',
-  commuteMode: 'two_wheeler',
-  commuteKm: 14,
-  planStatus: 'IDLE',
-  activePlan: null,
-  activeStrategy: 'OFFLINE_DETERMINISTIC',
-  lastError: null
-});
-
-/**
- * Pure state reducer function for unidirectional data flow.
- * Free of side effects; returns a new frozen state object.
- * Conforms to LLD 05 §1.
- *
- * @param {Object} currentState - Current immutable state.
- * @param {{type: string, payload: any}} action - Action descriptor.
- * @returns {Readonly<Object>} New immutable state.
- */
-export function appReducer(currentState, action) {
-  if (!action || !action.type) return currentState;
-  switch (action.type) {
-    case 'SET_AQI':
-      return Object.freeze({
-        ...currentState,
-        aqi: Math.max(0, Math.min(999, Math.round(Number(action.payload) || 0)))
-      });
-    case 'SET_SIMULATED_HOUR':
-      return Object.freeze({
-        ...currentState,
-        simulatedHour: action.payload === null ? null : Math.max(0, Math.min(23.99, Number(action.payload)))
-      });
-    case 'TOGGLE_VULNERABILITY': {
-      const flag = Number(action.payload);
-      return Object.freeze({
-        ...currentState,
-        vulnerabilities: (currentState.vulnerabilities || 0) ^ flag
-      });
-    }
-    case 'SET_LIFESTYLE_FIELD':
-      return Object.freeze({
-        ...currentState,
-        [action.payload.field]: action.payload.value
-      });
-    case 'PLAN_REQUEST_INITIATED':
-      return Object.freeze({
-        ...currentState,
-        planStatus: 'FETCHING',
-        lastError: null
-      });
-    case 'PLAN_REQUEST_SUCCEEDED':
-      return Object.freeze({
-        ...currentState,
-        planStatus: 'SUCCESS',
-        activePlan: action.payload.plan,
-        activeStrategy: action.payload.strategy,
-        lastError: null
-      });
-    case 'PLAN_REQUEST_FAILED':
-      return Object.freeze({
-        ...currentState,
-        planStatus: 'ERROR',
-        lastError: action.payload.error
-      });
-    default:
-      return currentState;
-  }
+  /**
+   * Handles used by the browser test suites. The API key is not reachable through them.
+   */
+  window.__cleanAirTestUtils = Object.freeze({
+    get state() { return state; },
+    get circuitBreaker() { return planProvider.circuitBreaker; },
+    hasApiKey: () => keyStore.hasKey()
+  });
 }
 
 /**
@@ -250,6 +105,11 @@ export const state = {
 export const ADVICE_DEBOUNCE_MS = 800;
 export const MAX_AUTO_RESUMES = 3;
 
+const PROTECTION_LABELS = Object.freeze({
+  mask: 'N95 outdoors',
+  recirculation: 'car air recirculation',
+  airing: 'timed airing'
+});
 const GENERATE_LABEL = 'Recalculate Clean Air Plan';
 const GENERATE_BUSY_LABEL = 'Refining AI Plan... ✨';
 const KEY_STATUS = Object.freeze({
@@ -274,18 +134,6 @@ export const liveAqi = new LiveAqiController({
   onReading: (reading) => applyLiveReading(reading),
   onStatus: (status) => renderLiveStatus(status)
 });
-
-/**
- * 24-Hour Diurnal Telemetry Ring Buffer pre-allocated in Float64Array.
- */
-export const diurnalHistory = new DiurnalRingBuffer(24);
-
-/**
- * Micro-reactive state signals for fine-grained dependency tracking.
- */
-export const [aqiSignal, setAqiSignal] = createSignal(DEFAULT_PRESET.aqi);
-export const [timeSignal, setTimeSignal] = createSignal(7.5);
-export const activeInversionSignal = createComputed(() => getDiurnalInversion(timeSignal(), aqiSignal()));
 
 /**
  * Renders the analytical continuous 24-hour diurnal spline curve.
@@ -472,7 +320,6 @@ function renderSourceLabels() {
  */
 function setAqiValue(value, origin = null) {
   state.aqi = value;
-  setAqiSignal(value);
   if (typeof document === 'undefined') return;
   for (const id of ['input-aqi-slider', 'input-aqi-number']) {
     const el = document.getElementById(id);
@@ -558,6 +405,41 @@ function replaceChildrenSafe(parent, children) {
 }
 
 /**
+ * Labels the protected dose with the measures the exposure model applied to it.
+ *
+ * @param {Object} household - Current household context.
+ * @returns {string} Label of the protected dose bar.
+ */
+function describeProtection(household) {
+  const names = listProtectionMeasures(household).map((measure) => (
+    measure === 'filter' ? IAQ_HACKS_CATALOG[household.activeHackId].title : PROTECTION_LABELS[measure]
+  ));
+  return `🟢 With CleanAir Plan (${names.join(' / ') || 'no extra protection needed today'})`;
+}
+
+/**
+ * Shows where the avoided dose comes from and what switching each choice would change.
+ *
+ * @param {Object} impact - Result of computeImpact.
+ */
+function renderImpactBreakdown(impact) {
+  const { indoorAirUg, airingUg, travelUg } = impact.contributions;
+  setSafeText(
+    'impact-contributions',
+    `Avoided today: indoor air ${indoorAirUg} µg · window timing ${airingUg} µg · travel ${travelUg} µg`
+  );
+
+  const list = document.getElementById('impact-breakdown-container');
+  if (!list) return;
+  replaceChildrenSafe(list, impact.choices.map((choice) => {
+    const item = document.createElement('li');
+    item.setAttribute('data-choice', choice.choice);
+    item.textContent = choice.explanation;
+    return item;
+  }));
+}
+
+/**
  * Updates UI view based on current state and active CleanAir plan.
  * Conforms to Zero-XSS policy using textContent and createElement exclusively.
  */
@@ -596,6 +478,8 @@ export function renderActivePlan() {
     const housingLabel = (state.housingType || 'standard_flat').replace(/_/g, ' ');
     const commuteLabel = (state.commuteMode || 'two_wheeler').replace(/_/g, ' ');
     setSafeText('label-unshielded-desc', `🔴 Unshielded Exposure (${housingLabel} / ${commuteLabel})`);
+    setSafeText('label-protected-desc', describeProtection(state));
+    renderImpactBreakdown(impact);
 
     // 3. Hourly Schedule List
     const scheduleContainer = document.getElementById('hourly-schedule-container');
@@ -1046,7 +930,6 @@ function hasCurrentAdvice(fingerprint) {
 export function executeOptimisticRecalculation() {
   state.hackId = state.activeHackId;
   state.lang = state.advisoryLang;
-  diurnalHistory.push(aqiToMassConcentration(state.aqi));
 
   const cache = state.adviceCache;
   if (cache && keyStore.hasKey() && cache.keyVersion === keyStore.version) {
@@ -1371,7 +1254,6 @@ function applyProfile(profile) {
     state[key] = profile[key];
   }
   state.aqiObservedAt = '';
-  setAqiSignal(state.aqi);
   selectCityOption(state.city);
 
   const setValue = (id, value) => {
@@ -1407,7 +1289,6 @@ function applyProfile(profile) {
 function showSimulatedHour(hour) {
   const timeSlider = document.getElementById('input-time-slider');
   if (timeSlider) timeSlider.value = String(hour);
-  setTimeSignal(hour);
   const wholeHours = Math.floor(hour);
   const minutes = Math.floor((hour - wholeHours) * 60);
   setSafeText('label-time-value', `${String(wholeHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
@@ -1488,7 +1369,6 @@ export function initApp() {
     state.simulatedHour = hydrated.simulatedHour;
     state.housingType = hydrated.housingType;
   }
-  setAqiSignal(state.aqi);
   if (!wantsLive) liveAqi.setManual();
 
   const citySelect = document.getElementById('input-city');
@@ -1567,7 +1447,6 @@ export function initApp() {
     timeSlider.addEventListener('input', (e) => {
       const val = Number(e.target.value);
       state.simulatedHour = val;
-      setTimeSignal(val);
       const hours = Math.floor(val);
       const mins = Math.floor((val - hours) * 60);
       const timeStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
@@ -1999,50 +1878,6 @@ export async function registerServiceWorker(swPath = 'sw.js') {
   }
   return null;
 }
-
-/**
- * Master UI Controller coordinating EventBus, PlanProvider, and DOM reconciliation.
- * Conforms to HLD 02 §2.4 C4 Class Model.
- */
-export class AppController {
-  /**
-   * Initializes AppController with injected dependencies.
-   * @param {EventBus} bus - Event bus instance.
-   * @param {IPlanProvider} provider - Plan provider instance.
-   */
-  constructor(bus, provider) {
-    this.eventBus = bus;
-    this.planProvider = provider;
-    this.state = state;
-  }
-
-  /**
-   * Initializes DOM bindings, event listeners, and default state hydration.
-   */
-  init() {
-    initApp();
-  }
-
-  /**
-   * Handles user context change events.
-   * @param {Event} [e] - DOM event.
-   */
-  onContextChange(e) {
-    syncUrlHash();
-    triggerPlanGeneration();
-  }
-
-  /**
-   * Triggers active plan view reconciliation.
-   * @param {Object} [plan] - Action plan to render.
-   */
-  renderView(plan) {
-    if (plan) state.activePlan = plan;
-    renderActivePlan();
-  }
-}
-
-export const appController = new AppController(globalEventBus, planProvider);
 
 if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') {

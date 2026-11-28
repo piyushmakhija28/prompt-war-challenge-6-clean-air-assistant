@@ -1,4 +1,6 @@
 # Component Design & JavaScript Module Interfaces (LLD)
+
+> Design record. Parts of this document describe components that were removed or replaced in version 1.3.0, such as the application controller class, the reducer, the time engine, the signals and error modules and the fixed protection efficiency. The source code is authoritative.
 ## CleanAir Guardian (VayuRakshak) — SOLID Principles, GoF Patterns & V8 Internals
 
 **Document Identifier:** LLD-COMPONENTS-PW-CHALLENGE-6-V1.0  
@@ -174,10 +176,10 @@ To prevent Forced Synchronous Layouts:
 ## 5. Foundational Coding Rigor Cross-References
 
 For deep algorithmic, memory, and type-system specifications, reference the companion LLD modules:
-- [LLD-04: Data Structures, Algorithms & Computational Complexity](file:///docs/lld/04-data-structures-and-algorithms.md) — Asymptotic Big-O complexity matrices, vulnerability bitmask algebra, and `Float64Array` ring buffers.
-- [LLD-05: State Management, Event Loop & Memory Model](file:///docs/lld/05-state-management-and-event-loop.md) — Elm/Redux unidirectional data flow, FastDOM scheduler, and V8 Scavenge GC churn mitigation.
-- [LLD-06: Error Handling, Algebraic Types & Branded Primitives](file:///docs/lld/06-error-handling-and-algebraic-types.md) — Dimensional unit safety (`AQIScalar`, `PM25Concentration`), Railway-Oriented Programming (ROP), and `Result<T, E>` monad.
-- [LLD-07: Room CADR Physics, PWA Offline Service Worker & Geolocation](file:///docs/lld/07-room-cadr-and-pwa-offline-architecture.md) — Exponential clearance decay, Cache-First service worker, and Haversine great-circle matching.
+- [LLD-04: Data Structures, Algorithms & Computational Complexity](04-data-structures-and-algorithms.md) — Asymptotic Big-O complexity matrices, vulnerability bitmask algebra, and `Float64Array` ring buffers.
+- [LLD-05: State Management, Event Loop & Memory Model](05-state-management-and-event-loop.md) — Elm/Redux unidirectional data flow, FastDOM scheduler, and V8 Scavenge GC churn mitigation.
+- [LLD-06: Error Handling, Algebraic Types & Branded Primitives](06-error-handling-and-algebraic-types.md) — Dimensional unit safety (`AQIScalar`, `PM25Concentration`), Railway-Oriented Programming (ROP), and `Result<T, E>` monad.
+- [LLD-07: Room CADR Physics, PWA Offline Service Worker & Geolocation](07-room-cadr-and-pwa-offline-architecture.md) — Exponential clearance decay, Cache-First service worker, and Haversine great-circle matching.
 
 ---
 

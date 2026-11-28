@@ -176,7 +176,8 @@ test.describe('model cascade', () => {
       const name = call.url.match(/models\/(.+):generateContent/)[1];
       const config = call.payload.generationConfig;
       expect(config.responseMimeType).toBe('application/json');
-      expect(config.responseSchema.required).toEqual(['hourlyRoutines', 'communityAdvisory']);
+      expect(config.responseSchema.required)
+        .toEqual(['hourlyRoutines', 'communityAdvisory', 'choiceInsights']);
       expect(Boolean(config.thinkingConfig), name).toBe(name.startsWith('gemini-3'));
     }
   });

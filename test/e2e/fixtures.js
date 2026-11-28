@@ -14,6 +14,7 @@ export { expect, computeImpact, massConcentrationToAqi, TARGET_PERSONAS, METRO_B
 
 export const FAKE_KEY = 'test-key-123';
 export const PRIMARY_MODEL = 'gemini-3.5-flash-lite';
+export const DEFAULT_HACK = 'corsi_rosenthal';
 export const START_TIME = new Date('2026-11-28T08:00:00Z');
 export const OBSERVED_AT = '2026-11-28T10:00';
 
@@ -105,9 +106,10 @@ export function personaModel(id) {
  * @returns {string} Tag.
  */
 export function echoTag(facts) {
+  const hack = facts.choices.find((item) => item.choice === 'iaq_hack')?.current;
   return `[city=${facts.city}; air=${facts.aqi}; src=${facts.aqiSource}; ` +
     `vuln=${facts.vulnerabilities.join(' + ') || 'none'}; home=${facts.housingType}; ` +
-    `cook=${facts.cookingMethod}; heat=${facts.heatingMethod}; ride=${facts.commuteMode}; km=${facts.commuteKm}]`;
+    `cook=${facts.cookingMethod}; heat=${facts.heatingMethod}; ride=${facts.commuteMode}; km=${facts.commuteKm}; hack=${hack}]`;
 }
 
 /**
@@ -118,7 +120,8 @@ export function echoTag(facts) {
  */
 export function tagFor(model) {
   const vulnerabilities = VULN_LABELS.filter(([bit]) => model.vulnBits & bit).map(([, label]) => label);
-  return echoTag({ ...model, vulnerabilities });
+  const choices = [{ choice: 'iaq_hack', current: model.hackId ?? DEFAULT_HACK }];
+  return echoTag({ ...model, vulnerabilities, choices });
 }
 
 /**
@@ -418,6 +421,21 @@ export class CleanAirPage {
     this.copyLinkButton = page.locator('#btn-copy-link');
     this.copyAdvisoryButton = page.locator('#btn-copy-advisory');
     this.heroAqi = page.locator('#hero-aqi-number');
+    this.avoidedMetric = page.locator('#metric-pm25-avoided');
+    this.protectedLabel = page.locator('#label-protected-desc');
+    this.contributions = page.locator('#impact-contributions');
+    this.breakdownItems = page.locator('#impact-breakdown-container li');
+    this.alternatives = page.locator('#alternatives-container');
+  }
+
+  /**
+   * Breakdown line of one household choice.
+   *
+   * @param {string} choice - Choice id.
+   * @returns {import('@playwright/test').Locator} List item.
+   */
+  choiceLine(choice) {
+    return this.page.locator(`#impact-breakdown-container li[data-choice="${choice}"]`);
   }
 
   /**
@@ -563,14 +581,17 @@ export class CleanAirPage {
         shielded: text('text-protected-dose'),
         delta: text('badge-shield-delta'),
         reduction: text('badge-shield-reduction'),
-        barWidth: parseFloat(document.getElementById('bar-protected-dose').style.width)
+        barWidth: parseFloat(document.getElementById('bar-protected-dose').style.width),
+        contributions: text('impact-contributions'),
+        breakdown: [...document.querySelectorAll('#impact-breakdown-container li')]
+          .map((item) => `${item.dataset.choice} | ${item.textContent.trim()}`)
       };
     });
   }
 
   /**
-   * Asserts that cards, bars, inputs and the advisory frame all show the numbers computed for
-   * the expected context.
+   * Asserts that cards, bars, inputs, the breakdown card and the advisory frame all show the
+   * numbers computed for the expected context.
    *
    * @param {Object} model - Expected context.
    */
@@ -647,11 +668,12 @@ export class CleanAirPage {
 /**
  * Figures the screen must show for a context.
  *
- * @param {Object} model - Expected context.
+ * @param {Object} model - Expected context, with `hackId` when the DIY hack is not the default.
  * @returns {Object} Values in the shape of {@link CleanAirPage#figures}.
  */
 export function expectedFigures(model) {
-  const impact = computeImpact(model);
+  const impact = computeImpact({ ...model, hackId: model.hackId ?? DEFAULT_HACK });
+  const { indoorAirUg, airingUg, travelUg } = impact.contributions;
   const avoidedCigarettes = impact.cigarettesAvoided.toFixed(1);
   const width = Math.max(4, Math.min(100, (impact.protectedDoseUg / (impact.unshieldedDoseUg || 1)) * 100));
   return {
@@ -666,7 +688,9 @@ export function expectedFigures(model) {
     shielded: `${impact.protectedDoseUg} µg (${impact.protectedCigarettes.toFixed(1)} Cigs)`,
     delta: `Saved: ${impact.pm25AvoidedUg} µg (${avoidedCigarettes} Cigs)`,
     reduction: `-${impact.reductionPct.toFixed(1)}% Inhaled Dose`,
-    barWidth: Number(width.toFixed(1))
+    barWidth: Number(width.toFixed(1)),
+    contributions: `Avoided today: indoor air ${indoorAirUg} µg · window timing ${airingUg} µg · travel ${travelUg} µg`,
+    breakdown: impact.choices.map((item) => `${item.choice} | ${item.explanation}`)
   };
 }
 

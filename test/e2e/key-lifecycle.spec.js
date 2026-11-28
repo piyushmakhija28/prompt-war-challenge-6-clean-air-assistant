@@ -34,7 +34,7 @@ test.describe('no key and unusable input', () => {
       await app.saveKey(value);
 
       await expect(app.keyStatus).toHaveText('Paste your Gemini API key first.');
-      expect(await page.evaluate(() => window.keyStore.hasKey())).toBe(false);
+      expect(await page.evaluate(() => window.__cleanAirTestUtils.hasApiKey())).toBe(false);
       await app.expectOffline();
       expect(mocks.gemini.calls).toHaveLength(0);
     });
@@ -47,7 +47,7 @@ test.describe('no key and unusable input', () => {
     await app.saveKey('   ');
 
     await expect(app.keyStatus).toHaveText(status);
-    expect(await page.evaluate(() => window.keyStore.hasKey())).toBe(true);
+    expect(await page.evaluate(() => window.__cleanAirTestUtils.hasApiKey())).toBe(true);
     await app.expectAdvice(defaultModel());
     expect(mocks.gemini.calls).toHaveLength(1);
   });
@@ -64,7 +64,7 @@ test.describe('no key and unusable input', () => {
 
       await expect(app.keyStatus).toHaveText('That value is not a valid API key. Operating in Offline Mode');
       await expect(app.keyInput).toHaveValue('');
-      expect(await page.evaluate(() => window.keyStore.hasKey())).toBe(false);
+      expect(await page.evaluate(() => window.__cleanAirTestUtils.hasApiKey())).toBe(false);
       await app.expectOffline();
       await app.expectIdle();
       expect(mocks.gemini.calls).toHaveLength(0);
@@ -78,7 +78,7 @@ test.describe('no key and unusable input', () => {
 
     await app.expectOffline();
     await expect(app.keyStatus).toContainText('not a valid API key');
-    expect(await page.evaluate(() => window.keyStore.hasKey())).toBe(false);
+    expect(await page.evaluate(() => window.__cleanAirTestUtils.hasApiKey())).toBe(false);
     expect(mocks.gemini.calls).toHaveLength(1);
   });
 });
@@ -207,7 +207,7 @@ test.describe('purge and re-entry', () => {
     await app.expectOffline();
     await app.expectIdle();
     await app.expectFigures(defaultModel());
-    expect(await page.evaluate(() => window.keyStore.getKey())).toBe('');
+    expect(await page.evaluate(() => window.__cleanAirTestUtils.hasApiKey())).toBe(false);
 
     await app.choose('commute', 'walk_cycle');
     await app.generateButton.click();
@@ -278,6 +278,29 @@ test.describe('purge and re-entry', () => {
   });
 });
 
+test.describe('page surface', () => {
+  test('no global exposes the key store or the plan provider, before or after a key is saved', async ({ app, page }) => {
+    const readSurface = () => page.evaluate(() => ({
+      keyStore: typeof window.keyStore,
+      planProvider: typeof window.planProvider,
+      utilities: Object.keys(window.__cleanAirTestUtils).sort(),
+      isFrozen: Object.isFrozen(window.__cleanAirTestUtils),
+      hasApiKey: window.__cleanAirTestUtils.hasApiKey()
+    }));
+    const closed = {
+      keyStore: 'undefined',
+      planProvider: 'undefined',
+      utilities: ['circuitBreaker', 'hasApiKey', 'state'],
+      isFrozen: true
+    };
+    await app.open();
+    expect(await readSurface()).toEqual({ ...closed, hasApiKey: false });
+
+    await app.activate();
+    expect(await readSurface()).toEqual({ ...closed, hasApiKey: true });
+  });
+});
+
 test.describe('persistence', () => {
   test('the key never reaches storage, caches, URL, DOM, telemetry or console', async ({ app, page, mocks, health, context }) => {
     const secret = 'test-secret-key-7f3a9c';
@@ -335,7 +358,7 @@ test.describe('persistence', () => {
     await expect(app.keyStatus).toHaveText(DEFAULT_STATUS);
     await expect(app.keyInput).toHaveValue('');
     await app.expectOffline();
-    expect(await page.evaluate(() => window.keyStore.hasKey())).toBe(false);
+    expect(await page.evaluate(() => window.__cleanAirTestUtils.hasApiKey())).toBe(false);
     expect(mocks.gemini.calls).toHaveLength(1);
   });
 });

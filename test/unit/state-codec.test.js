@@ -10,11 +10,22 @@ import {
   decodeBase64URL,
   packContextTo5Bytes,
   contextToHashToken,
-  hashTokenToContext,
-  hashTokenToContextStrict
+  unpackContextFrom5Bytes,
+  hashTokenToContext
 } from '../../src/js/state-codec.js';
 import { METRO_BASIN_PRESETS } from '../../src/js/config.js';
-import { InvalidStateHashError } from '../../src/js/errors.js';
+
+const PRESET_CONTEXT = Object.freeze({
+  city: 'Delhi NCR',
+  aqi: 395,
+  vulnBits: 3,
+  cookingMethod: 'lpg',
+  heatingMethod: 'space_heater',
+  commuteMode: 'two_wheeler',
+  commuteKm: 14,
+  housingType: 'standard_flat',
+  simulatedHour: null
+});
 
 const BASE = Object.freeze({
   city: 'Delhi NCR',
@@ -191,25 +202,31 @@ describe('hostile and corrupted links', () => {
   });
 });
 
-describe('hashTokenToContextStrict', () => {
-  test('test_hashTokenToContextStrict_validToken_returnsSameAsLenient', () => {
-    const token = contextToHashToken(BASE);
-    assert.deepEqual(hashTokenToContextStrict(`#${token}`), hashTokenToContext(token));
-  });
-
-  test('test_hashTokenToContextStrict_wrongLength_throws', () => {
-    for (const bytes of [[1, 2, 3, 4], [1, 2, 3, 4, 5, 6], []]) {
-      assert.throws(() => hashTokenToContextStrict(compactHash(bytes)), InvalidStateHashError);
+describe('compact decoder leniency', () => {
+  test('test_unpackContextFrom5Bytes_missingOrShortInput_returnsThePreset', () => {
+    for (const bytes of [null, undefined, new Uint8Array(0), Uint8Array.from([1, 2, 3, 4])]) {
+      assert.deepEqual(unpackContextFrom5Bytes(bytes), PRESET_CONTEXT);
     }
   });
 
-  test('test_hashTokenToContextStrict_parityFlipped_throws', () => {
-    const bytes = packContextTo5Bytes(BASE);
-    bytes[0] ^= 0x01;
-    assert.throws(() => hashTokenToContextStrict(compactHash(bytes)), { code: 'ERR_HASH_CORRUPT' });
+  test('test_hashTokenToContext_shortCompactHash_returnsThePreset', () => {
+    for (const bytes of [[], [100], [100, 0, 0, 0]]) {
+      assert.deepEqual(hashTokenToContext(compactHash(bytes)), PRESET_CONTEXT, bytes.join(','));
+    }
   });
 
-  test('test_hashTokenToContextStrict_invalidBase64_throws', () => {
-    assert.throws(() => hashTokenToContextStrict('#b=@@@@@@@'), InvalidStateHashError);
+  test('test_hashTokenToContext_invalidBase64_returnsThePreset', () => {
+    assert.deepEqual(hashTokenToContext('#b=@@@@@@@'), PRESET_CONTEXT);
+  });
+
+  test('test_hashTokenToContext_extraTrailingByte_decodesTheFirstFiveBytes', () => {
+    const bytes = [...packContextTo5Bytes({ ...BASE, aqi: 123 }), 0xFF];
+    assert.equal(hashTokenToContext(compactHash(bytes)).aqi, 123);
+  });
+
+  test('test_hashTokenToContext_parityFlipped_stillDecodesTheFields', () => {
+    const bytes = packContextTo5Bytes(BASE);
+    bytes[4] ^= 0x40;
+    assert.deepEqual(hashTokenToContext(compactHash(bytes)), hashTokenToContext(contextToHashToken(BASE)));
   });
 });

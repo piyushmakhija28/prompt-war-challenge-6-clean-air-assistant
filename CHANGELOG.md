@@ -5,6 +5,28 @@ All notable changes to the **CleanAir Assistant** (Prompt War Challenge No. 6) w
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-11-28
+
+### Added
+- A daily exposure model in which the indoor air hack, cooking, heating, commute, housing and vulnerability choices change the figures, with one explanation per choice and a split of the avoided dose (#15).
+- Gemini receives the app's finding for each choice and returns an alternative and a reason, validated before display (#15).
+- A heat pump emission factor (#15).
+
+### Changed
+- The on-device advisor tailors routines, advisory and alternatives to the air quality band, vulnerabilities, housing, cooking, heating, commute and hack; clean-air days carry no sealing or N95 advice (#15).
+- The protection score is the share of the unprotected dose that the plan removes, replacing a fixed efficiency (#15).
+- The Corsi-Rosenthal cost matches its parts list (about $48) and the wet-towel option is described as a stopgap (#15).
+- Browser tests use a read-only `window.__cleanAirTestUtils` handle; the key store and plan provider are no longer on `window` (#15).
+- README and project documents describe the code as it is; links work on GitHub; self-assigned scores are removed (#15).
+
+### Fixed
+- Homes burning solid fuel are no longer told to seal gaps, wet towels earn no credit there, and open-fire homes get vent advice on clean-air days too (#15).
+- The early-afternoon notice no longer contradicts the schedule on hazardous days (#15).
+- Model insights that spell out a multiple, such as "triples" or "halving", are rejected (#15).
+
+### Removed
+- Unused code, including the signals and error modules, the reducer, the controller class and the Bulk Richardson calculation (#15).
+
 ## [1.2.1] - 2026-11-28
 
 ### Changed

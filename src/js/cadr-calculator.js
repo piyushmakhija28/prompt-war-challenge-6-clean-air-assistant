@@ -7,20 +7,6 @@
  */
 
 /**
- * Standard Clean Air Delivery Rate (CADR) presets in Cubic Feet per Minute (CFM).
- * @readonly
- * @enum {number}
- */
-export const CADR_PRESETS = Object.freeze({
-  CORSI_ROSENTHAL_BOX: 273,
-  HEPA_PURIFIER_STANDARD: 120,
-  PC_FAN_MINI_BOX: 85,
-  COMMERCIAL_LARGE_HEPA: 450,
-  WET_TOWEL_EMERGENCY: 30,
-  KITCHEN_VENT_SCRUB: 180
-});
-
-/**
  * Dimensional unit conversion scalar factors.
  * @readonly
  */

@@ -12,13 +12,14 @@ import {
   GeminiPlanProvider,
   GEMINI_MODELS_CASCADE,
   GEMINI_RESPONSE_SCHEMA,
-  GEMINI_SYSTEM_INSTRUCTION
+  GEMINI_SYSTEM_INSTRUCTION,
+  composeAdvicePlan
 } from '../../src/js/gemini-service.js';
 import { computeImpact } from '../../src/js/impact-calculator.js';
 import { TARGET_PERSONAS, DEFAULT_PRESET } from '../../src/js/config.js';
 import {
   FAKE_KEY, GEMINI_HOST, installNetworkGuard, captureConsole, createClock,
-  createFakeFetch, factsOf, reply
+  createFakeFetch, factsOf, modelPlan, reply
 } from './helpers/fakes.js';
 
 const escaped = installNetworkGuard();
@@ -141,8 +142,10 @@ describe('Gemini request contract', () => {
 
     const schema = JSON.parse(fake.calls[0].init.body).generationConfig.responseSchema;
     assert.deepEqual(schema, JSON.parse(JSON.stringify(GEMINI_RESPONSE_SCHEMA)));
-    assert.deepEqual(schema.required, ['hourlyRoutines', 'communityAdvisory']);
-    assert.deepEqual(Object.keys(schema.properties), ['hourlyRoutines', 'communityAdvisory', 'communityAdvisoryHi']);
+    assert.deepEqual(schema.required, ['hourlyRoutines', 'communityAdvisory', 'choiceInsights']);
+    assert.deepEqual(Object.keys(schema.properties),
+      ['hourlyRoutines', 'communityAdvisory', 'communityAdvisoryHi', 'choiceInsights']);
+    assert.deepEqual(schema.properties.choiceInsights.items.required, ['choice', 'alternative', 'whyItMatters']);
     assert.deepEqual(schema.properties.hourlyRoutines.items.required, ['timeSlot', 'activity', 'recommendation', 'actionType']);
     assert.deepEqual(schema.properties.hourlyRoutines.items.properties.actionType.enum,
       ['SHIFT_INDOORS', 'SAFE_VENTILATION', 'SEAL_HOME', 'COMMUTE_SHIELD']);
@@ -185,8 +188,8 @@ describe('Gemini request contract', () => {
     }
     const facts = factsOf(fake.calls[0]);
     assert.deepEqual(Object.keys(facts).sort(), [
-      'aqi', 'aqiSource', 'city', 'commuteKm', 'commuteMode', 'computed', 'cookingMethod',
-      'heatingMethod', 'housingType', 'vulnerabilities'
+      'aqi', 'aqiBand', 'aqiSource', 'choices', 'city', 'commuteKm', 'commuteMode', 'computed',
+      'cookingMethod', 'heatingMethod', 'housingType', 'vulnerabilities'
     ]);
     assert.deepEqual(Object.keys(facts.computed).sort(), [
       'carbonSavedKg', 'cigarettesAvoided', 'pm25AvoidedUg', 'pm25UgM3', 'protectedDoseUg',
@@ -206,6 +209,21 @@ describe('Gemini request contract', () => {
     assert.equal(prompt.includes('<script>'), false);
     const facts = factsOf(fake.calls[0]);
     assert.match(facts.city, /^[\p{L}\p{M}\p{N} ,.-]{1,50}$/u);
+  });
+
+  it('stamps a reply insight with the choice it was written for and shows it only while that holds', async () => {
+    const household = { ...CONTEXT, commuteMode: 'two_wheeler' };
+    const insight = { choice: 'commute', alternative: 'Ride the metro', whyItMatters: 'Cleaner air on the way.' };
+    const fake = createFakeFetch(reply.text(JSON.stringify({ ...modelPlan('insight'), choiceInsights: [insight] })));
+    const result = await keyedProvider(fake).provider.getPlan(household);
+
+    assert.deepEqual(result.advice.choiceInsights, [{ ...insight, current: 'two_wheeler' }]);
+    const cardFor = (plan) => plan.sustainableAlternatives.find((card) => card.category === 'Urban Transit');
+    assert.equal(cardFor(result.plan).cleanAlternative, 'Ride the metro');
+    assert.match(cardFor(result.plan).benefit, /^Cleaner air on the way\. App estimate: /);
+
+    const moved = composeAdvicePlan({ ...household, commuteMode: 'private_car' }, result.advice);
+    assert.equal(JSON.stringify(moved).includes('Ride the metro'), false);
   });
 
   const households = [

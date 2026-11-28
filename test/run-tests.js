@@ -1,6 +1,6 @@
 /**
  * @fileoverview Zero-dependency Triad Unit Test Runner for CleanAir Guardian.
- * Verifies all 75 Triad Invariant test cases (Positive, Negative, Edge-Case) adhering to axiomatic Hoare Logic Triples {P} C {Q}.
+ * Verifies all 82 Triad Invariant checks (Positive, Negative, Edge-Case) adhering to axiomatic Hoare Logic Triples {P} C {Q}.
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
@@ -11,53 +11,38 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import { VULN_FLAGS, METRO_BASIN_COORDINATES, TARGET_PERSONAS, createContext } from '../src/js/config.js';
+import { VULN_FLAGS, METRO_BASIN_COORDINATES, TARGET_PERSONAS } from '../src/js/config.js';
 import {
-  calculateBulkRichardson,
   getDiurnalInversion,
   getVulnerabilityMultiplier,
-  countActiveVulnerabilities,
-  DiurnalRingBuffer,
-  generateDiurnalCurve,
-  TimeMode,
-  TimeEngine
+  generateDiurnalCurve
 } from '../src/js/air-quality-engine.js';
-import { createSignal, createComputed, createEffect } from '../src/js/signals.js';
 import {
   calculateRoomClearance as calculateFullCadrRoomClearance,
   haversineDistanceKm,
   findNearestBasin,
   getCadrAdequacyRating,
-  CADR_PRESETS,
   UNIT_CONVERSIONS
 } from '../src/js/cadr-calculator.js';
 import {
   aqiToMassConcentration,
-  calculateRoomClearance,
   calculateParticulateAvoidance,
   kahanNeumaierSum,
-  calculate24HourCumulativeDosage,
   dosageToCigarettes,
   calculateCarbonAvoidance,
   getHousingInfiltrationCoefficient
 } from '../src/js/impact-calculator.js';
-import { NetworkTimeoutError, RateLimitExceededError, InvalidStateHashError, makeAQI, makeConcentration, makeHour, assertNever } from '../src/js/errors.js';
 import { EventBus } from '../src/js/event-bus.js';
 import {
   packContextTo5Bytes,
   unpackContextFrom5Bytes,
   contextToHashToken,
   hashTokenToContext,
-  hashTokenToContextStrict,
   encodeBase64URL,
   decodeBase64URL
 } from '../src/js/state-codec.js';
 import {
-  INITIAL_STATE,
-  appReducer,
   registerServiceWorker,
-  AppController,
-  appController,
   showStatusBanner,
   hideStatusBanner,
   safeSessionGet,
@@ -71,7 +56,7 @@ import {
   state
 } from '../src/js/app.js';
 import { generateOfflineCleanAirPlan, IAQ_HACKS_CATALOG, generateCommunityAdvisory, getCleaningProtocol, PlanFactory } from '../src/js/offline-advisor.js';
-import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, repairTruncatedJSON, IPlanProvider, OfflinePlanProvider, GeminiPlanProvider, SecureKeyStore, fetchWithRetry, sanitizeCityInput, GEMINI_MODELS_CASCADE, GEMINI_MODEL_TIMEOUTS } from '../src/js/gemini-service.js';
+import { TokenBucketLimiter, CircuitBreaker, sanitizeGeminiJSON, repairTruncatedJSON, IPlanProvider, GeminiPlanProvider, SecureKeyStore, sanitizeCityInput, GEMINI_MODELS_CASCADE, GEMINI_MODEL_TIMEOUTS } from '../src/js/gemini-service.js';
 
 let passed = 0;
 let failed = 0;
@@ -87,7 +72,7 @@ function assert(condition, testName, message = '') {
 }
 
 console.log('\n======================================================');
-console.log(' CleanAir Guardian — 99 Triad Invariant Test Suite');
+console.log(' CleanAir Guardian — 82 Triad Invariant Test Suite');
 console.log('======================================================\n');
 
 // ---------------------------------------------------------------------------
@@ -134,10 +119,6 @@ assert(hashToken.startsWith('b=') && hashToken.length <= 16, 'TC-POS-008', `Hash
 const decodedCtx = hashTokenToContext(hashToken);
 assert(decodedCtx.city === ctxNominal.city && decodedCtx.aqi === ctxNominal.aqi && decodedCtx.vulnBits === ctxNominal.vulnBits, 'TC-POS-009', 'Context roundtrip isomorphism');
 
-// TC-POS-010
-const ri_b = calculateBulkRichardson(3.0, 100, 1.5);
-assert(ri_b >= 0.25, 'TC-POS-010', `Bulk Richardson number is ${ri_b} >= 0.25`);
-
 // ---------------------------------------------------------------------------
 // 2. Negative Tests (Error Handling & Sanitization)
 // ---------------------------------------------------------------------------
@@ -182,9 +163,6 @@ assert(calculateParticulateAvoidance(300, 50, 0) === 0, 'TC-NEG-008', 'Zero dura
 // TC-NEG-009: Infiltration lower bound
 assert(aqiToMassConcentration(0) === 0, 'TC-NEG-009', 'Zero AQI yields 0 concentration');
 
-// TC-NEG-010: Brian Kernighan bitcount constraint
-assert(countActiveVulnerabilities(0xFF) === 5, 'TC-NEG-010', 'Mask constrained to 5 bits maximum');
-
 // ---------------------------------------------------------------------------
 // 3. Edge-Case Tests (Boundary Invariants)
 // ---------------------------------------------------------------------------
@@ -213,22 +191,10 @@ assert(multAll === 3.30, 'TC-EDG-004', `All 5 vulnerabilities scale to 3.30 (got
 const cExtreme = aqiToMassConcentration(600);
 assert(cExtreme === 460.0, 'TC-EDG-005', `AQI 600 extrapolates to 460 ug/m3 (got ${cExtreme})`);
 
-// TC-EDG-006: Numerical expm1 stability for small time
-const clearanceTiny = calculateRoomClearance(270, 54, 0.001);
-assert(clearanceTiny > 0 && clearanceTiny < 0.05, 'TC-EDG-006', `expm1 clearance is non-zero: ${clearanceTiny}`);
-
 // TC-EDG-007: Kahan-Neumaier summation exact precision
 const floatValues = [100.0, 0.0000001, -100.0, 0.0000001];
 const kahanSum = kahanNeumaierSum(floatValues);
 assert(kahanSum === 0.0, 'TC-EDG-007', `Kahan summation handled float cancellation cleanly: ${kahanSum}`);
-
-// TC-EDG-008: Ring buffer continuous wraparound
-const ring = new DiurnalRingBuffer(3);
-ring.push(10);
-ring.push(20);
-ring.push(30);
-ring.push(40); // wraps over 10
-assert(ring.get(0) === 40 && ring.get(1) === 30 && ring.get(2) === 20, 'TC-EDG-008', 'Ring buffer overwrites modulo head cleanly');
 
 // TC-EDG-009: 5-Byte binary packing exact bit preservation
 const originalCtx = { aqi: 485, vulnBits: 19, cookingMethod: 'induction', heatingMethod: 'heat_pump', commuteMode: 'walk_cycle', commuteKm: 75, city: 'Lahore', simulatedHour: 18 };
@@ -246,10 +212,6 @@ const alphaSealed = getHousingInfiltrationCoefficient('sealed_apartment');
 const alphaStandard = getHousingInfiltrationCoefficient('standard_flat');
 const alphaDrafty = getHousingInfiltrationCoefficient('drafty_home');
 assert(alphaSealed === 0.40 && alphaStandard === 0.65 && alphaDrafty === 0.85, 'TC-INF-001', 'Housing infiltration coefficients resolve correctly');
-
-// TC-ERR-001: Typed domain error hierarchy
-const netErr = new NetworkTimeoutError(8000);
-assert(netErr.code === 'ERR_NET_TIMEOUT' && netErr.isTransient === true, 'TC-ERR-001', 'NetworkTimeoutError domain code and retry eligibility');
 
 // TC-ERR-002: Gemini multi-model cascade & resilient 503 fallback invariant
 assert(
@@ -292,47 +254,6 @@ const advEn = generateCommunityAdvisory({ city: 'Delhi NCR', aqi: 395 }, { sever
 const advHi = generateCommunityAdvisory({ city: 'Delhi NCR', aqi: 395 }, { severityLevel: 'SEVERE', quantifiedImpact: { pm25InhalationAvoidedMicrograms: 140 } }, 'hi');
 assert(advEn.includes('CleanAir Community Advisory') && advHi.includes('स्वच्छ वायु समुदाय परामर्श'), 'TC-LANG-001', 'Bilingual community advisory produces localized bulletins in English and Hindi');
 
-// TC-SUM-001: 24-hour diurnal exposure summation via Kahan-Neumaier
-const hourlyConc = new Float64Array(24).fill(120.0);
-const totalDosage = calculate24HourCumulativeDosage(hourlyConc, 0.45, 0.28);
-assert(Math.abs(totalDosage - (120.0 * 0.45 * 0.28 * 24)) < 0.05, 'TC-SUM-001', 'calculate24HourCumulativeDosage accurately sums diurnal dosage via Kahan-Neumaier');
-
-// TC-STRICT-001: Strict hash decoder throws InvalidStateHashError on corrupted bitstream
-let strictThrew = false;
-try {
-  hashTokenToContextStrict('b=corruptHashToken');
-} catch (e) {
-  if (e instanceof InvalidStateHashError) strictThrew = true;
-}
-assert(strictThrew === true, 'TC-STRICT-001', 'hashTokenToContextStrict throws InvalidStateHashError on corrupted hash bitstream');
-
-// TC-RING-001: DiurnalRingBuffer circular FIFO capacity invariant
-const diurnalRing24 = new DiurnalRingBuffer(24);
-for (let i = 0; i < 50; i++) {
-  diurnalRing24.push(i);
-}
-const snapshot = diurnalRing24.toChronologicalArray();
-assert(snapshot.length === 24 && snapshot[0] === 26 && snapshot[23] === 49, 'TC-RING-001', 'DiurnalRingBuffer maintains 24-hour circular FIFO invariant');
-
-// TC-SIG-001: createSignal reactive getter, setter and subscriber notification
-const [testSig, setTestSig] = createSignal(100);
-let effectRuns = 0;
-let observedVal = 0;
-createEffect(() => {
-  effectRuns++;
-  observedVal = testSig();
-});
-assert(observedVal === 100 && effectRuns === 1, 'TC-SIG-001a', 'createSignal registers and triggers initial effect');
-setTestSig(250);
-assert(observedVal === 250 && effectRuns === 2, 'TC-SIG-001b', 'createSignal synchronously propagates value update to subscriber');
-
-// TC-SIG-002: createComputed fine-grained derived signal reactivity
-const [baseVal, setBaseVal] = createSignal(50);
-const doubled = createComputed(() => baseVal() * 2);
-assert(doubled() === 100, 'TC-SIG-002a', 'createComputed computes derived value correctly');
-setBaseVal(75);
-assert(doubled() === 150, 'TC-SIG-002b', 'createComputed automatically updates when upstream signal changes');
-
 // TC-TAILOR-001: Context-tailored routine advice for cooking and transit
 const tailoredPlan = generateOfflineCleanAirPlan({
   aqi: 350,
@@ -342,7 +263,7 @@ const tailoredPlan = generateOfflineCleanAirPlan({
 });
 const morningRec = tailoredPlan.hourlyRoutines[0].recommendation;
 const eveningRec = tailoredPlan.hourlyRoutines[3].recommendation;
-assert(morningRec.includes('Two-wheeler riders inhale') && eveningRec.includes('Biomass fuel produces toxic'), 'TC-TAILOR-001', 'Lifestyle routines tailor advice specifically to biomass cooking and two-wheeler transit');
+assert(morningRec.includes('Two-wheeler: close the helmet visor') && eveningRec.includes('Biomass smoke is a major indoor source'), 'TC-TAILOR-001', 'Lifestyle routines tailor advice specifically to biomass cooking and two-wheeler transit');
 
 // TC-CURVE-001: Analytical 24-hour diurnal spline curve continuity
 const diurnalCurve = generateDiurnalCurve(250);
@@ -360,18 +281,15 @@ assert(minMultiplier <= 0.90 && maxMultiplier >= 2.0, 'TC-CURVE-002', 'Diurnal i
 
 // TC-CLN-001: Wet-mopping vs dry-sweeping protocol enforcement (AQI > 200)
 const cleanSevere = getCleaningProtocol(350);
-assert(cleanSevere.isTriggered === true && cleanSevere.severity === 'WARNING' && cleanSevere.recommendation.includes('damp microfiber') && cleanSevere.warning.includes('Traditional broom dry-sweeping'), 'TC-CLN-001', 'AQI > 200 enforces damp mopping and prohibits dry sweeping per PRD FR-06');
+assert(cleanSevere.isTriggered === true && cleanSevere.severity === 'WARNING' && cleanSevere.recommendation.includes('damp microfiber') && cleanSevere.warning.includes('Dry broom sweeping throws settled PM10'), 'TC-CLN-001', 'AQI > 200 enforces damp mopping and prohibits dry sweeping per PRD FR-06');
 
 // TC-CLN-002: Relaxed cleaning protocol for low ambient pollution (AQI <= 200)
 const cleanGood = getCleaningProtocol(85);
 assert(cleanGood.isTriggered === false && cleanGood.severity === 'SAFE' && cleanGood.statusBadge === 'STANDARD DAMP DUSTING', 'TC-CLN-002', 'AQI <= 200 reports standard damp cleaning with low resuspension risk');
 
 // TC-LSP-001: Liskov Substitution Principle and Strategy Pattern inheritance
-const offlineProv = new OfflinePlanProvider();
 const geminiProv = new GeminiPlanProvider(new SecureKeyStore());
-const lspOfflineCheck = offlineProv instanceof IPlanProvider && typeof offlineProv.getPlan === 'function';
-const lspGeminiCheck = geminiProv instanceof IPlanProvider && typeof geminiProv.getPlan === 'function';
-assert(lspOfflineCheck && lspGeminiCheck, 'TC-LSP-001', 'Both GeminiPlanProvider and OfflinePlanProvider satisfy IPlanProvider Liskov contract');
+assert(geminiProv instanceof IPlanProvider && typeof geminiProv.getPlan === 'function', 'TC-LSP-001', 'GeminiPlanProvider satisfies the IPlanProvider Liskov contract');
 
 // TC-SCH-001: Offline plan schema conformity matching Gemini responseSchema
 const schemaPlan = generateOfflineCleanAirPlan({ aqi: 300 });
@@ -398,32 +316,10 @@ const allPersonasValid = ananyaPlan.severityLevel === 'HAZARDOUS' &&
   rameshPlan.severityLevel === 'HAZARDOUS';
 assert(allPersonasValid, 'TC-PER-001', 'All 4 quantitative target personas (Ananya, Rajesh, Vikram, Ramesh) resolve valid plans');
 
-// TC-RES-001: fetchWithRetry resilience function export and signature contract
-assert(typeof fetchWithRetry === 'function' && fetchWithRetry.length >= 2, 'TC-RES-001', 'fetchWithRetry conforms to Resilience backoff contract');
-
-// TC-TIME-001: TimeEngine operating modes and hour resolution (LLD 01 §4)
-const engineLive = new TimeEngine(TimeMode.SYSTEM_LIVE);
-const currentLiveHour = engineLive.getCurrentHour();
-const engineSim = new TimeEngine(TimeMode.SIMULATED, 13.5);
-assert(currentLiveHour >= 0.0 && currentLiveHour < 24.0 && engineSim.getCurrentHour() === 13.5, 'TC-TIME-001', 'TimeEngine resolves real-time live clock and simulated scrubber hour');
-
 // TC-FAC-001: PlanFactory action plan normalization and freezing (LLD 03 §3.4)
 const rawPlan = { severityLevel: 'SEVERE', hourlyRoutines: [{ timeSlot: '07:30', activity: 'Walk', recommendation: 'Stay indoors', actionType: 'SHIFT_INDOORS' }] };
 const createdPlan = PlanFactory.createPlan(rawPlan);
 assert(Object.isFrozen(createdPlan) && createdPlan.severityLevel === 'SEVERE' && Object.isFrozen(createdPlan.quantifiedImpact), 'TC-FAC-001', 'PlanFactory normalizes, defaults, and freezes plan structure');
-
-// TC-RED-001: appReducer unidirectional state transitions (LLD 05 §1)
-const s0 = INITIAL_STATE;
-const s1 = appReducer(s0, { type: 'SET_AQI', payload: 420 });
-const s2 = appReducer(s1, { type: 'TOGGLE_VULNERABILITY', payload: 1 });
-const s3 = appReducer(s2, { type: 'PLAN_REQUEST_INITIATED' });
-assert(s1.aqi === 420 && s2.vulnerabilities === 1 && s3.planStatus === 'FETCHING', 'TC-RED-001', 'appReducer computes predictable immutable state transitions');
-
-// TC-BRAND-001: Branded type constructors and physical boundaries (LLD 06 §1)
-const aqiClamped = makeAQI(1250);
-const concPos = makeConcentration(-15.5);
-const hourCyclic = makeHour(27.5);
-assert(aqiClamped === 999 && concPos === 0 && Math.abs(hourCyclic - 3.5) < 0.001, 'TC-BRAND-001', 'Branded unit constructors makeAQI, makeConcentration, and makeHour enforce boundary constraints');
 
 // TC-SAN-001: sanitizeCityInput whitelist regex security (Security 01 §4)
 const dirtyCity = "Delhi<script>alert('xss')</script> NCR; DROP TABLE--";
@@ -503,22 +399,15 @@ assert(isSchemaValid && isInvalidRejected, 'TC-FAC-002', 'PlanFactory.validateSc
 const swPromise = registerServiceWorker('sw.js');
 assert(swPromise instanceof Promise, 'TC-SW-001', 'registerServiceWorker returns a Promise adhering to W3C Service Worker API');
 
-// TC-SW-002: Service Worker v1.4 Network-First cache policy contract
+// TC-SW-002: Service Worker v1.5 Network-First cache policy contract
 const swContent = fs.readFileSync(path.resolve(__dirname, '../sw.js'), 'utf-8');
 assert(
-  swContent.includes('cleanair-guardian-v1.4') &&
+  swContent.includes('cleanair-guardian-v1.5') &&
   swContent.includes('fetch(event.request)') &&
   swContent.includes('caches.open(CACHE_NAME)'),
   'TC-SW-002',
-  'sw.js implements Network-First v1.4 cache synchronization and purge'
+  'sw.js implements Network-First v1.5 cache synchronization and purge'
 );
-
-// TC-CTRL-001: AppController C4 Model contract and dependency injection (HLD 02 §2.4)
-const isControllerValid = appController instanceof AppController &&
-  typeof appController.init === 'function' &&
-  typeof appController.onContextChange === 'function' &&
-  typeof appController.renderView === 'function';
-assert(isControllerValid, 'TC-CTRL-001', 'AppController conforms to C4 Model class diagram with injected dependencies');
 
 // TC-A11Y-001: WCAG 2.1 AA APCA contrast ratio verification (ADR-008 & UI-UX 02)
 const lumWhite = 0.95;
@@ -832,7 +721,16 @@ assert(
 );
 
 // TC-CODEC-003: Dynamic City Lossless URL Round-Trip
-const dynamicCtx = createContext('Indirapuram, Ghaziabad', 425, 3, 2, 1, 1, null);
+const dynamicCtx = {
+  city: 'Indirapuram, Ghaziabad',
+  aqi: 425,
+  vulnBits: 3,
+  cookingMethod: 'lpg',
+  heatingMethod: 'space_heater',
+  commuteMode: 'two_wheeler',
+  commuteKm: 14,
+  simulatedHour: null
+};
 dynamicCtx.nearestBasin = { name: 'Delhi NCR', distanceKm: 18 };
 const token = contextToHashToken(dynamicCtx);
 const decoded = hashTokenToContext(token);

@@ -1,4 +1,6 @@
 # Triad Testing Strategy & Invariant Verification Suite
+
+> Design record. Parts of this document describe components that were removed or replaced in version 1.3.0, such as the application controller class, the reducer, the time engine, the signals and error modules and the fixed protection efficiency. The source code is authoritative.
 ## CleanAir Guardian (VayuRakshak) — Positive, Negative & Edge-Case Architecture
 
 **Document Identifier:** TEST-TRIAD-PW-CHALLENGE-6-V1.0  

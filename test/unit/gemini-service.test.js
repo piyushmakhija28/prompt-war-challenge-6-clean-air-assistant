@@ -12,7 +12,9 @@ import {
   CircuitBreaker,
   GeminiPlanProvider,
   GEMINI_RESPONSE_SCHEMA,
+  CHOICE_IDS,
   buildAdviceContext,
+  buildChoiceFacts,
   buildGeminiPrompt,
   validateAdvice,
   composeAdvicePlan,
@@ -310,7 +312,8 @@ describe('buildAdviceContext', () => {
       adviceCache: {}
     });
     assert.deepEqual(Object.keys(context).sort(), [
-      'aqi', 'aqiSource', 'city', 'commuteKm', 'commuteMode', 'cookingMethod', 'heatingMethod', 'housingType', 'vulnBits'
+      'aqi', 'aqiSource', 'city', 'commuteKm', 'commuteMode', 'cookingMethod', 'hackId', 'heatingMethod',
+      'housingType', 'vulnBits'
     ]);
   });
 
@@ -335,7 +338,8 @@ describe('buildAdviceContext', () => {
       cookingMethod: null,
       heatingMethod: null,
       commuteMode: null,
-      commuteKm: 0
+      commuteKm: 0,
+      hackId: 'corsi_rosenthal'
     });
   });
 
@@ -349,9 +353,25 @@ describe('buildAdviceContext', () => {
 
   test('test_buildAdviceContext_simulatedTimeAndLanguage_doNotAffectFingerprint', () => {
     assert.deepEqual(
-      buildAdviceContext({ ...BASE, simulatedHour: 3, lang: 'hi', activeHackId: 'x' }),
+      buildAdviceContext({ ...BASE, simulatedHour: 3, lang: 'hi' }),
       buildAdviceContext(BASE)
     );
+  });
+
+  test('test_buildAdviceContext_selectedHack_changesTheFingerprint', () => {
+    assert.notDeepEqual(
+      buildAdviceContext({ ...BASE, activeHackId: 'pc_fan_stealth' }),
+      buildAdviceContext({ ...BASE, activeHackId: 'corsi_rosenthal' })
+    );
+  });
+
+  test('test_buildAdviceContext_hackSources_preferActiveHackAndRejectUnknownIds', () => {
+    const hack = (overrides) => buildAdviceContext({ ...BASE, ...overrides }).hackId;
+    assert.equal(hack({ hackId: 'wet_towel_emergency' }), 'wet_towel_emergency');
+    assert.equal(hack({ hackId: 'wet_towel_emergency', activeHackId: 'pc_fan_stealth' }), 'pc_fan_stealth');
+    for (const value of ['ignore rules', 'toString', '__proto__', 7]) {
+      assert.equal(hack({ activeHackId: value }), 'corsi_rosenthal', String(value));
+    }
   });
 });
 
@@ -413,12 +433,210 @@ describe('buildGeminiPrompt', () => {
     assert.doesNotMatch(JSON.stringify(payload), /test-key-123/);
   });
 
+  test('test_buildGeminiPrompt_selectedHack_appearsOnlyAsTheCurrentIndoorAirChoice', () => {
+    const facts = factsOf(buildGeminiPrompt({ ...BASE, activeHackId: 'pc_fan_stealth' }));
+    assert.equal(facts.choices.find((c) => c.choice === 'iaq_hack').current, 'pc_fan_stealth');
+    assert.equal('hackId' in facts, false);
+  });
+
+  for (const [aqi, band] of [[30, 'good'], [150, 'poor'], [250, 'very poor'], [401, 'hazardous']]) {
+    test(`test_buildGeminiPrompt_aqi${aqi}_namesTheBandInWords`, () => {
+      assert.equal(factsOf(buildGeminiPrompt({ ...BASE, aqi })).aqiBand, band);
+    });
+  }
+
+  test('test_buildGeminiPrompt_choices_equalTheNumberFreeChoiceFacts', () => {
+    assert.deepEqual(factsOf(buildGeminiPrompt(BASE)).choices, buildChoiceFacts(BASE));
+  });
+
   test('test_responseSchema_requiredFields_matchContract', () => {
-    assert.deepEqual(GEMINI_RESPONSE_SCHEMA.required, ['hourlyRoutines', 'communityAdvisory']);
+    assert.deepEqual(GEMINI_RESPONSE_SCHEMA.required, ['hourlyRoutines', 'communityAdvisory', 'choiceInsights']);
+    assert.deepEqual(GEMINI_RESPONSE_SCHEMA.properties.choiceInsights.items.required, [
+      'choice', 'alternative', 'whyItMatters'
+    ]);
+    assert.deepEqual(GEMINI_RESPONSE_SCHEMA.properties.choiceInsights.items.properties.choice.enum, [
+      'iaq_hack', 'cooking', 'heating', 'commute', 'housing'
+    ]);
     assert.deepEqual(
       GEMINI_RESPONSE_SCHEMA.properties.hourlyRoutines.items.required,
       ['timeSlot', 'activity', 'recommendation', 'actionType']
     );
+  });
+});
+
+/**
+ * Findings of the choice facts keyed by choice id.
+ *
+ * @param {Object} overrides - Fields to replace in the base household.
+ * @returns {Object<string, string[]>} Particle and emissions findings per choice.
+ */
+function findingsOf(overrides) {
+  return Object.fromEntries(
+    buildChoiceFacts({ ...BASE, ...overrides }).map((f) => [f.choice, [f.inhaledPm25, f.co2e]])
+  );
+}
+
+describe('buildChoiceFacts', () => {
+  test('test_buildChoiceFacts_anyProfile_carriesWordsOnlyAndNoFigures', () => {
+    for (const aqi of [0, 100, 395, 999]) {
+      for (const commuteMode of ['walk_cycle', 'two_wheeler', 'public_transit', 'private_car']) {
+        const facts = buildChoiceFacts({ ...BASE, aqi, commuteMode });
+        assert.deepEqual(facts.map((f) => f.choice), CHOICE_IDS);
+        for (const fact of facts) {
+          assert.deepEqual(Object.keys(fact), ['choice', 'current', 'inhaledPm25', 'co2e']);
+          for (const finding of [fact.inhaledPm25, fact.co2e]) {
+            assert.match(finding, /^(can_improve|already_best|not_modelled)$/);
+          }
+          assert.doesNotMatch(Object.values(fact).join(' '), /\d/);
+        }
+      }
+    }
+  });
+
+  test('test_buildChoiceFacts_pollutingTwoWheelerHome_marksImprovableChoices', () => {
+    assert.deepEqual(findingsOf({}), {
+      iaq_hack: ['already_best', 'not_modelled'],
+      cooking: ['can_improve', 'not_modelled'],
+      heating: ['can_improve', 'not_modelled'],
+      commute: ['can_improve', 'can_improve'],
+      housing: ['can_improve', 'not_modelled']
+    });
+  });
+
+  test('test_buildChoiceFacts_cleanHomeWithCar_offersOnlyTheEmissionsGainOfTheCar', () => {
+    assert.deepEqual(findingsOf({
+      aqi: 100, vulnBits: 0, housingType: 'sealed_apartment', cookingMethod: 'induction',
+      heatingMethod: 'heat_pump', commuteMode: 'private_car'
+    }), {
+      iaq_hack: ['already_best', 'not_modelled'],
+      cooking: ['already_best', 'not_modelled'],
+      heating: ['already_best', 'already_best'],
+      commute: ['already_best', 'can_improve'],
+      housing: ['already_best', 'not_modelled']
+    });
+  });
+
+  for (const [label, fuel] of [
+    ['biomassCooking', { cookingMethod: 'biomass' }],
+    ['openFireHeating', { heatingMethod: 'open_fire' }]
+  ]) {
+    test(`test_buildChoiceFacts_${label}Home_neverSaysTheHomeCanBeTightened`, () => {
+      for (const housingType of ['standard_flat', 'drafty_home', 'sealed_apartment']) {
+        assert.deepEqual(findingsOf({ ...fuel, housingType }).housing, ['not_modelled', 'not_modelled']);
+      }
+    });
+  }
+});
+
+/**
+ * Validates a reply holding the given insights beside one usable routine.
+ *
+ * @param {*} choiceInsights - Candidate insight list.
+ * @returns {Object} Validated advice.
+ */
+function withInsights(choiceInsights) {
+  return validateAdvice({ hourlyRoutines: [ROUTINE], choiceInsights });
+}
+
+const INSIGHT = Object.freeze({
+  choice: 'cooking',
+  alternative: 'Cook on an induction plate',
+  whyItMatters: 'A flame adds particles to the kitchen air.'
+});
+
+describe('validateAdvice choice insights', () => {
+  test('test_validateAdvice_cleanInsight_isKeptWithItsThreeFields', () => {
+    const advice = withInsights([{ ...INSIGHT, alternative: `  ${INSIGHT.alternative}  `, current: 'x', extra: 1 }]);
+    assert.deepEqual(advice.choiceInsights, [{ ...INSIGHT }]);
+  });
+
+  for (const [name, text] of Object.entries({
+    latinDigit: 'Cook for 5 minutes less',
+    devanagariDigit: 'Cook \u096B minutes less',
+    fullWidthDigit: 'Cook \uFF15 minutes less',
+    embeddedDigit: 'Use plan B2',
+    longerName: 'Wear an N950 mask',
+    unlistedName: 'Wear an N99 mask',
+    unlistedFilter: 'Fit a MERV 14 filter',
+    spelledHalf: 'This cuts smoke in half',
+    spelledHalves: 'This halves the smoke',
+    spelledTwice: 'It is twice as clean',
+    spelledDoubles: 'Frying doubles the smoke',
+    spelledTripled: 'Smoke tripled indoors',
+    spelledTenfold: 'It is tenfold cleaner',
+    spelledPercent: 'Ten per cent cleaner',
+    spelledTimes: 'It is five times cleaner',
+    spelledFold: 'A two-fold gain',
+    spelledMass: 'Saves fifty micrograms',
+    spelledCigarettes: 'Like five cigarettes',
+    markup: 'Use <b>induction</b>',
+    link: 'Read www.example.com'
+  })) {
+    for (const field of ['alternative', 'whyItMatters']) {
+      test(`test_validateAdvice_${name}In_${field}_dropsTheInsightButKeepsRoutines`, () => {
+        const advice = withInsights([{ ...INSIGHT, [field]: text }]);
+        assert.equal('choiceInsights' in advice, false);
+        assert.equal(advice.hourlyRoutines.length, 1);
+      });
+    }
+  }
+
+  for (const text of [
+    'Wear an N95 outdoors', 'Wear an n95 outdoors', 'Less PM2.5 indoors', 'Less PM 2.5 indoors',
+    'Less PM10 indoors', 'Lower CO2 output', 'Lower CO2e output', 'Less NO2 from the stove',
+    'Fit a MERV 13 filter', 'Fit a MERV-13 filter', 'A walk of half an hour is enough',
+    'Fewer trips several times a week'
+  ]) {
+    test(`test_validateAdvice_allowedWording "${text}" _keepsTheInsight`, () => {
+      assert.equal(withInsights([{ ...INSIGHT, alternative: text }]).choiceInsights[0].alternative, text);
+    });
+  }
+
+  test(
+    'test_validateAdvice_otherInflectionsOfSpelledMultiples_dropTheInsight',
+    () => {
+      const accepted = [
+        'It triples the smoke', 'Halving the smoke', 'Doubling the smoke', 'Tripling the smoke',
+        'It quadruples the smoke', 'Eleven times cleaner'
+      ].filter((text) => withInsights([{ ...INSIGHT, alternative: text }]).choiceInsights);
+      assert.deepEqual(accepted, []);
+    }
+  );
+
+  for (const [field, limit] of [['alternative', 120], ['whyItMatters', 280]]) {
+    test(`test_validateAdvice_insight_${field}LengthBoundary_acceptsLimitRejectsLimitPlusOne`, () => {
+      assert.ok(withInsights([{ ...INSIGHT, [field]: 'a'.repeat(limit) }]).choiceInsights);
+      assert.equal(withInsights([{ ...INSIGHT, [field]: 'a'.repeat(limit + 1) }]).choiceInsights, undefined);
+    });
+  }
+
+  for (const field of ['choice', 'alternative', 'whyItMatters']) {
+    test(`test_validateAdvice_insightWithout_${field}_isDropped`, () => {
+      assert.equal(withInsights([{ ...INSIGHT, [field]: undefined }]).choiceInsights, undefined);
+    });
+  }
+
+  test('test_validateAdvice_unknownChoiceIds_areDroppedWhileKnownOnesStay', () => {
+    const advice = withInsights([
+      { ...INSIGHT, choice: 'water' }, { ...INSIGHT, choice: 'COOKING' }, { ...INSIGHT, choice: 'toString' },
+      { ...INSIGHT, choice: 'heating' }
+    ]);
+    assert.deepEqual(advice.choiceInsights.map((i) => i.choice), ['heating']);
+  });
+
+  test('test_validateAdvice_duplicateChoice_keepsTheFirstUsableEntry', () => {
+    const advice = withInsights([
+      { ...INSIGHT, alternative: 'Cuts it in half' },
+      { ...INSIGHT, alternative: 'First usable' },
+      { ...INSIGHT, alternative: 'Second usable' }
+    ]);
+    assert.deepEqual(advice.choiceInsights.map((i) => i.alternative), ['First usable']);
+  });
+
+  test('test_validateAdvice_nonListOrEmptyInsights_omitsTheKey', () => {
+    for (const value of [undefined, null, 'text', {}, [], [null, 4]]) {
+      assert.equal('choiceInsights' in withInsights(value), false, JSON.stringify(value));
+    }
   });
 });
 
@@ -631,5 +849,102 @@ describe('repair helpers', () => {
   test('test_repairTruncatedJSON_commaBracketInsideString_preservesStringContent', () => {
     const repaired = repairTruncatedJSON('{"a":"slots [1, ]","b":"tail');
     assert.equal(JSON.parse(repaired).a, 'slots [1, ]');
+  });
+});
+
+/**
+ * Builds an insight as the provider stamps it after a reply.
+ *
+ * @param {string} choice - Choice id.
+ * @param {string} current - Choice value the insight was written for.
+ * @returns {Object} Stamped insight.
+ */
+function stamped(choice, current) {
+  return {
+    choice,
+    current,
+    alternative: `Model idea for ${choice}`,
+    whyItMatters: `Model reason for ${choice}.`
+  };
+}
+
+/**
+ * Composes a plan for a household from model insights and returns its alternative cards.
+ *
+ * @param {Object} context - Household context.
+ * @param {...Object} choiceInsights - Stamped insights.
+ * @returns {Object[]} Alternative cards.
+ */
+function cardsFor(context, ...choiceInsights) {
+  return composeAdvicePlan(context, {
+    hourlyRoutines: [ROUTINE], advisoryEn: '', advisoryHi: '', choiceInsights
+  }).sustainableAlternatives;
+}
+
+describe('composeAdvicePlan choice insights', () => {
+  /**
+   * Alternative cards of the offline plan.
+   *
+   * @param {Object} context - Household context.
+   * @returns {Object[]} Local cards.
+   */
+  const localCards = (context) => generateOfflineCleanAirPlan(context).sustainableAlternatives;
+
+  test('test_composeAdvicePlan_currentImprovableInsight_replacesTheSameCategoryCard', () => {
+    const cards = cardsFor(BASE, stamped('commute', 'two_wheeler'));
+    const estimate = computeImpact(BASE).choices.find((c) => c.choice === 'commute').explanation;
+    assert.deepEqual({ ...cards[0] }, {
+      category: 'Urban Transit',
+      currentChoice: 'Two-wheeler',
+      cleanAlternative: 'Model idea for commute',
+      benefit: `Model reason for commute. App estimate: ${estimate}`
+    });
+    assert.deepEqual(cards.slice(1), localCards(BASE).slice(1));
+  });
+
+  test('test_composeAdvicePlan_insightsForExtraCategories_areAppended', () => {
+    const context = { ...BASE, activeHackId: 'pc_fan_stealth' };
+    const cards = cardsFor(context, stamped('housing', 'standard_flat'), stamped('iaq_hack', 'pc_fan_stealth'));
+    assert.deepEqual(cards.map((c) => c.category), [
+      'Urban Transit', 'Cooking', 'Home Heating', 'Home Sealing', 'Indoor Air'
+    ]);
+    assert.equal(cards[4].currentChoice, 'PC-fan purifier');
+  });
+
+  test('test_composeAdvicePlan_staleInsight_keepsTheLocalCards', () => {
+    assert.deepEqual(cardsFor(BASE, stamped('commute', 'private_car')), localCards(BASE));
+  });
+
+  test('test_composeAdvicePlan_insightWrittenForAnotherHack_isNotShown', () => {
+    assert.deepEqual(cardsFor(BASE, stamped('iaq_hack', 'pc_fan_stealth')), localCards(BASE));
+  });
+
+  test('test_composeAdvicePlan_unstampedInsight_keepsTheLocalCards', () => {
+    assert.deepEqual(cardsFor(BASE, stamped('commute', undefined)), localCards(BASE));
+  });
+
+  for (const [label, choice, current, overrides] of [
+    ['metroRider', 'commute', 'public_transit', { commuteMode: 'public_transit' }],
+    ['heatPumpHome', 'heating', 'heat_pump', { heatingMethod: 'heat_pump' }],
+    ['inductionHome', 'cooking', 'induction', { cookingMethod: 'induction' }],
+    ['strongestHack', 'iaq_hack', 'corsi_rosenthal', {}],
+    ['biomassHousing', 'housing', 'standard_flat', { cookingMethod: 'biomass' }],
+    ['openFireHousing', 'housing', 'standard_flat', { heatingMethod: 'open_fire' }]
+  ]) {
+    test(`test_composeAdvicePlan_${label}WithNothingToImprove_isNotOverridden`, () => {
+      const context = { ...BASE, ...overrides };
+      assert.deepEqual(cardsFor(context, stamped(choice, current)), localCards(context));
+    });
+  }
+
+  test('test_composeAdvicePlan_activeHack_drivesThePlanAndItsFigures', () => {
+    const plan = composeAdvicePlan({ ...BASE, activeHackId: 'pc_fan_stealth' }, {
+      hourlyRoutines: [ROUTINE], advisoryEn: '', advisoryHi: ''
+    });
+    assert.equal(plan.iaqHack.id, 'pc_fan_stealth');
+    assert.equal(
+      plan.quantifiedImpact.pm25InhalationAvoidedMicrograms,
+      computeImpact({ ...BASE, hackId: 'pc_fan_stealth' }).pm25AvoidedUg
+    );
   });
 });

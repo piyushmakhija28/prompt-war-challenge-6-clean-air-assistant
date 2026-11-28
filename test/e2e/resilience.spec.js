@@ -15,7 +15,7 @@ import {
  * @returns {Promise<string>} State name.
  */
 function breakerState(page) {
-  return page.evaluate(() => window.planProvider.circuitBreaker.getState());
+  return page.evaluate(() => window.__cleanAirTestUtils.circuitBreaker.getState());
 }
 
 /**

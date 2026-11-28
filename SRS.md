@@ -3,9 +3,9 @@
 
 **Document Identifier:** SRS-PW-CHALLENGE-6-V1.0  
 **Standard:** IEEE 29148-2018 Standard for Software Requirements Engineering  
-**Version:** 1.1.0  
+**Version:** 1.3.0  
 **Status:** Approved by Anti-Hallucination Gate 2  
-**Target Platform:** Google Gemini 3.8 Flash / Pure Web Runtime  
+**Target Platform:** Google Gemini API / Pure Web Runtime  
 
 ---
 
@@ -26,62 +26,67 @@ CleanAir Guardian ingests real-time localized environmental data (AQI, PM2.5, PM
 ## 3. Requirements Overview & Deep Architecture Cross-References
 
 ### 3.1 Functional Requirements (FR-01 to FR-12)
-- **FR-01 (Context Ingestion & Normalization):** Accepted and validated context parameters. *Details in [docs/01-prd.md](file:///docs/01-prd.md#fr-01-context-ingestion--normalization).*
-- **FR-02 (Diurnal Inversion Tracking):** Computes atmospheric boundary layer height and peak hazard hours. *Details in [docs/lld/01-meteorological-inversion-engine.md](file:///docs/lld/01-meteorological-inversion-engine.md).*
-- **FR-03 (Vulnerability Index Math):** Computes $K_{\text{vuln}}$ biological susceptibility factor. *Details in [docs/lld/01-meteorological-inversion-engine.md](file:///docs/lld/01-meteorological-inversion-engine.md).*
-- **FR-04 (Dynamic Routine Rescheduling):** Generates hour-by-hour schedules avoiding peak morning/evening traps. *Details in [docs/01-prd.md](file:///docs/01-prd.md#fr-04-dynamic-routine-rescheduling-engine).*
-- **FR-05 (Corsi-Rosenthal DIY Hack):** Delivers verified CADR $\ge 270\text{ CFM}$ filter build plans. *Details in [ADR-006](file:///docs/06-adr/ADR-006-diy-iaq-corsi-rosenthal-hack.md).*
-- **FR-06 (Wet-Mopping IAQ Protocol):** Prescribes damp microfiber cleaning and bans dry sweeping. *Details in [agent.md](file:///agent.md) and [docs/01-prd.md](file:///docs/01-prd.md#fr-06-indoor-air-quality-iaq-and-wet-mopping-protocol).*
-- **FR-07 (Solar Ventilation Alerts):** Identifies 12:30–15:30 safe convective aeration window. *Details in [docs/lld/01-meteorological-inversion-engine.md](file:///docs/lld/01-meteorological-inversion-engine.md).*
-- **FR-08 (Sustainable Commute Optimizer):** Prescribes transit alternatives and carpool clusters. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](file:///docs/lld/02-direct-impact-mathematical-spec.md).*
-- **FR-09 (PM2.5 Inhaled Dosage Calculus):** Computes micrograms and cigarette equivalents avoided. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](file:///docs/lld/02-direct-impact-mathematical-spec.md).*
-- **FR-10 (Carbon Emissions Avoidance):** Calculates kilograms of $CO_2e$ prevented. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](file:///docs/lld/02-direct-impact-mathematical-spec.md).*
-- **FR-11 (Community Bulletin Generator):** Generates one-click WhatsApp/RWA advisories. *Details in [docs/03-api-contract.md](file:///docs/03-api-contract.md).*
-- **FR-12 (Stateless URL Hash Codec):** Encodes context into `#v1=...` string under 128 bytes. *Details in [ADR-007](file:///docs/06-adr/ADR-007-state-management-and-url-serialization.md).*
+- **FR-01 (Context Ingestion & Normalization):** Accepted and validated context parameters. *Details in [docs/01-prd.md](docs/01-prd.md#fr-01-context-ingestion--normalization).*
+- **FR-02 (Diurnal Inversion Tracking):** Computes atmospheric boundary layer height and peak hazard hours. *Details in [docs/lld/01-meteorological-inversion-engine.md](docs/lld/01-meteorological-inversion-engine.md).*
+- **FR-03 (Vulnerability Index Math):** Computes $K_{\text{vuln}}$ biological susceptibility factor. *Details in [docs/lld/01-meteorological-inversion-engine.md](docs/lld/01-meteorological-inversion-engine.md).*
+- **FR-04 (Dynamic Routine Rescheduling):** Generates hour-by-hour schedules avoiding peak morning/evening traps. *Details in [docs/01-prd.md](docs/01-prd.md#fr-04-dynamic-routine-rescheduling-engine).*
+- **FR-05 (Corsi-Rosenthal DIY Hack):** Delivers verified CADR $\ge 270\text{ CFM}$ filter build plans. *Details in [ADR-006](docs/06-adr/ADR-006-diy-iaq-corsi-rosenthal-hack.md).*
+- **FR-06 (Wet-Mopping IAQ Protocol):** Prescribes damp microfiber cleaning and bans dry sweeping. *Details in [agent.md](agent.md) and [docs/01-prd.md](docs/01-prd.md#fr-06-indoor-air-quality-iaq-and-wet-mopping-protocol).*
+- **FR-07 (Solar Ventilation Alerts):** Identifies 12:30–15:30 safe convective aeration window. *Details in [docs/lld/01-meteorological-inversion-engine.md](docs/lld/01-meteorological-inversion-engine.md).*
+- **FR-08 (Sustainable Commute Optimizer):** Prescribes transit alternatives and carpool clusters. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](docs/lld/02-direct-impact-mathematical-spec.md).*
+- **FR-09 (PM2.5 Inhaled Dosage Calculus):** Computes micrograms and cigarette equivalents avoided. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](docs/lld/02-direct-impact-mathematical-spec.md).*
+- **FR-10 (Carbon Emissions Avoidance):** Calculates kilograms of $CO_2e$ prevented. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](docs/lld/02-direct-impact-mathematical-spec.md).*
+- **FR-11 (Community Bulletin Generator):** Generates one-click WhatsApp/RWA advisories. *Details in [docs/03-api-contract.md](docs/03-api-contract.md).*
+- **FR-12 (Stateless URL Hash Codec):** Encodes context into `#v1=...` string under 128 bytes. *Details in [ADR-007](docs/06-adr/ADR-007-state-management-and-url-serialization.md).*
 - **FR-13 (Live Air Quality):** The system SHALL show a current modelled PM2.5 based AQI for the selected or detected location, refresh it every 15 minutes, and let the user override it manually and return to live data. Priority: High. Source: GitHub Issue #11. Added: 2026-11-28.
 - **FR-14 (Single Source of Figures):** The system SHALL derive every displayed, shared and AI-prompted impact figure from one calculation, recalculated immediately on any input change. Priority: High. Source: GitHub Issue #9. Added: 2026-11-28.
 - **FR-15 (Advice Binding):** The system SHALL keep generated advice consistent with the latest inputs, label its source and refresh state, and never let an older response replace a newer one. Priority: High. Source: GitHub Issue #9. Added: 2026-11-28.
 - **FR-16 (Failure Recovery):** The system SHALL fall back to on-device advice on any Gemini failure, retry temporary failures at most three times automatically, and stop calling with a rejected key. Priority: High. Source: GitHub Issue #10. Added: 2026-11-28.
 - **FR-17 (Complete Shared State):** A shared link SHALL restore location, AQI, household profile, commute distance and housing type. Priority: Medium. Source: GitHub Issue #12. Added: 2026-11-28.
+- **FR-18 (Choice Impact):** The system SHALL change the estimated impact when the indoor air hack, cooking, heating, commute, housing or vulnerability choices change it in the exposure model, and SHALL explain for each choice what switching would change. Priority: High. Source: GitHub Issue #15. Added: 2026-11-28.
+- **FR-19 (Tailored Offline Advice):** The system SHALL vary on-device routines and advisories by air quality band, vulnerability, housing, cooking, heating, commute and hack, and SHALL NOT advise sealing windows or wearing an N95 on a clean-air day. Priority: High. Source: GitHub Issue #15. Added: 2026-11-28.
+- **FR-20 (Choice Insights):** The system SHALL tell Gemini whether each choice can be improved and SHALL show only per-choice insights that pass validation. Priority: High. Source: GitHub Issue #15. Added: 2026-11-28.
 
 ### 3.2 Non-Functional Requirements (NFR-01 to NFR-10)
-- **NFR-01 (Latency):** Sub-15ms offline execution; sub-1.8s Gemini Flash latency. *Details in [docs/02-hld.md](file:///docs/02-hld.md).*
-- **NFR-02 (Privacy):** Zero PII retention; ephemeral in-memory API key lifecycle. *Details in [docs/security/01-threat-model-and-safety.md](file:///docs/security/01-threat-model-and-safety.md).*
-- **NFR-03 (Accessibility):** WCAG 2.1 Level AA conformance; APCA contrast $\ge 4.5:1$. *Details in [docs/ui-ux/02-accessibility-and-a11y-matrix.md](file:///docs/ui-ux/02-accessibility-and-a11y-matrix.md).*
-- **NFR-04 (Repository Size):** Total repo footprint $< 10\text{ MB}$ (actual $< 2.0\text{ MB}$). *Details in [docs/04-competition-and-platform-research.md](file:///docs/04-competition-and-platform-research.md).*
-- **NFR-05 (Single Branch):** Exactly ONE branch (`main`). *Details in [ADR-010](file:///docs/06-adr/ADR-010-repo-size-and-single-branch-hygiene.md).*
-- **NFR-06 (Zero Build Step):** Pure modular web app (HTML5/CSS3/ES6+). *Details in [ADR-003](file:///docs/06-adr/ADR-003-static-client-side-runtime.md).*
-- **NFR-07 (Dual-Engine Fallback):** 100% feature parity in Offline Mode. *Details in [ADR-002](file:///docs/06-adr/ADR-002-dual-engine-fallback-strategy.md).*
-- **NFR-08 (Ergonomics):** Responsive across mobile, tablet, and desktop. *Details in [docs/ui-ux/01-design-system-and-tokens.md](file:///docs/ui-ux/01-design-system-and-tokens.md).*
-- **NFR-09 (Determinism):** Calculations produce mathematically identical results given identical inputs. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](file:///docs/lld/02-direct-impact-mathematical-spec.md).*
-- **NFR-10 (High-Contrast Themes):** Legible under outdoor smog haze. *Details in [docs/ui-ux/01-design-system-and-tokens.md](file:///docs/ui-ux/01-design-system-and-tokens.md).*
+- **NFR-01 (Latency):** Sub-15ms offline execution; sub-1.8s Gemini Flash latency. *Details in [docs/02-hld.md](docs/02-hld.md).*
+- **NFR-02 (Privacy):** Zero PII retention; ephemeral in-memory API key lifecycle. *Details in [docs/security/01-threat-model-and-safety.md](docs/security/01-threat-model-and-safety.md).*
+- **NFR-03 (Accessibility):** WCAG 2.1 Level AA conformance; APCA contrast $\ge 4.5:1$. *Details in [docs/ui-ux/02-accessibility-and-a11y-matrix.md](docs/ui-ux/02-accessibility-and-a11y-matrix.md).*
+- **NFR-04 (Repository Size):** Total repo footprint $< 10\text{ MB}$ (actual $< 2.0\text{ MB}$). *Details in [docs/04-competition-and-platform-research.md](docs/04-competition-and-platform-research.md).*
+- **NFR-05 (Single Branch):** Exactly ONE branch (`main`). *Details in [ADR-010](docs/06-adr/ADR-010-repo-size-and-single-branch-hygiene.md).*
+- **NFR-06 (Zero Build Step):** Pure modular web app (HTML5/CSS3/ES6+). *Details in [ADR-003](docs/06-adr/ADR-003-static-client-side-runtime.md).*
+- **NFR-07 (Dual-Engine Fallback):** 100% feature parity in Offline Mode. *Details in [ADR-002](docs/06-adr/ADR-002-dual-engine-fallback-strategy.md).*
+- **NFR-08 (Ergonomics):** Responsive across mobile, tablet, and desktop. *Details in [docs/ui-ux/01-design-system-and-tokens.md](docs/ui-ux/01-design-system-and-tokens.md).*
+- **NFR-09 (Determinism):** Calculations produce mathematically identical results given identical inputs. *Details in [docs/lld/02-direct-impact-mathematical-spec.md](docs/lld/02-direct-impact-mathematical-spec.md).*
+- **NFR-10 (High-Contrast Themes):** Legible under outdoor smog haze. *Details in [docs/ui-ux/01-design-system-and-tokens.md](docs/ui-ux/01-design-system-and-tokens.md).*
 - **NFR-11 (Credential Transport):** The API key SHALL be held in memory only and sent only in a request header to the Gemini API. Source: GitHub Issue #10. Added: 2026-11-28.
 - **NFR-12 (Data Minimisation):** Coordinates SHALL be rounded to about 1 km before leaving the device and SHALL NOT be sent to Gemini. Source: GitHub Issues #9 and #11. Added: 2026-11-28.
 - **NFR-13 (Testability):** Automated tests SHALL NOT call any real external service. Source: GitHub Issue #13. Added: 2026-11-28.
+- **NFR-03 (Updated 2026-11-28):** Keyboard use and ARIA behaviour are tested automatically in Chromium. Colour contrast, other browsers and real screen readers are not yet verified.
+- **NFR-14 (Honest Figures):** Impact figures SHALL be presented as planning estimates with their assumptions documented. Source: GitHub Issue #15. Added: 2026-11-28.
 
 ---
 
 ## 4. Authoritative Specifications & Architecture Suite Links
 
 For the exhaustive engineering specifications, reference the authoritative documentation suite:
-- [Detailed SRS & Verification Index (VCRX)](file:///docs/05-srs-detailed.md)
-- [Gemini 3.8 Flash Prompt Engineering Specification](file:///docs/02-gemini-prompt-engineering.md)
-- [Data Structures & Computational Complexity (LLD-04)](file:///docs/lld/04-data-structures-and-algorithms.md)
-- [State Management, Event Loop & Memory Model (LLD-05)](file:///docs/lld/05-state-management-and-event-loop.md)
-- [Error Handling, Algebraic Types & Branded Primitives (LLD-06)](file:///docs/lld/06-error-handling-and-algebraic-types.md)
-- [Component Design & Module Interfaces (LLD-03)](file:///docs/lld/03-component-design-and-interfaces.md)
-- [High-Level Design & C4 Models](file:///docs/02-hld.md)
-- [API Contracts & JSON Schemas](file:///docs/03-api-contract.md)
-- [The 10 Architectural Decision Records (ADRs)](file:///docs/06-adr/)
-- [Meteorological Inversion Engine (LLD)](file:///docs/lld/01-meteorological-inversion-engine.md)
-- [Direct Impact Mathematical Specification (LLD)](file:///docs/lld/02-direct-impact-mathematical-spec.md)
-- [Modular Component Interfaces (LLD)](file:///docs/lld/03-component-design-and-interfaces.md)
-- [Accessibility Matrix & WCAG 2.1 AA Audit](file:///docs/ui-ux/02-accessibility-and-a11y-matrix.md)
-- [STRIDE Threat Model & Security Architecture](file:///docs/security/01-threat-model-and-safety.md)
-- [Resilience & Circuit Breaker Architecture](file:///docs/resilience/01-offline-degradation-and-fallback.md)
-- [Triad Testing Strategy & Test Catalog](file:///docs/testing/01-triad-test-strategy.md)
-- [Rubric Compliance & Scorecard Matrix](file:///docs/08-rubric-compliance-matrix.md)
-- [Canonical Mermaid UML Diagrams Suite](file:///uml/)
+- [Detailed SRS & Verification Index (VCRX)](docs/05-srs-detailed.md)
+- [Gemini 3.8 Flash Prompt Engineering Specification](docs/02-gemini-prompt-engineering.md)
+- [Data Structures & Computational Complexity (LLD-04)](docs/lld/04-data-structures-and-algorithms.md)
+- [State Management, Event Loop & Memory Model (LLD-05)](docs/lld/05-state-management-and-event-loop.md)
+- [Error Handling, Algebraic Types & Branded Primitives (LLD-06)](docs/lld/06-error-handling-and-algebraic-types.md)
+- [Component Design & Module Interfaces (LLD-03)](docs/lld/03-component-design-and-interfaces.md)
+- [High-Level Design & C4 Models](docs/02-hld.md)
+- [API Contracts & JSON Schemas](docs/03-api-contract.md)
+- [Architectural Decision Records (ADRs)](docs/06-adr/)
+- [Meteorological Inversion Engine (LLD)](docs/lld/01-meteorological-inversion-engine.md)
+- [Direct Impact Mathematical Specification (LLD)](docs/lld/02-direct-impact-mathematical-spec.md)
+- [Modular Component Interfaces (LLD)](docs/lld/03-component-design-and-interfaces.md)
+- [Accessibility Matrix & WCAG 2.1 AA Audit](docs/ui-ux/02-accessibility-and-a11y-matrix.md)
+- [STRIDE Threat Model & Security Architecture](docs/security/01-threat-model-and-safety.md)
+- [Resilience & Circuit Breaker Architecture](docs/resilience/01-offline-degradation-and-fallback.md)
+- [Triad Testing Strategy & Test Catalog](docs/testing/01-triad-test-strategy.md)
+- [Rubric Traceability Matrix](docs/08-rubric-compliance-matrix.md)
+- [Canonical Mermaid UML Diagrams Suite](uml/)
 
 ---
 
@@ -94,6 +99,9 @@ For the exhaustive engineering specifications, reference the authoritative docum
 - **AC-17:** Encoding then decoding a shared link returns the same profile.
 - **AC-13 (Updated 2026-11-28):** A failure while the value on screen is not from the feed says it is not live. The time scrubber scales a live reading from its observation hour.
 - **AC-15 (Updated 2026-11-28):** While a newly chosen city's live reading is loading, automatic advice waits for it or for the failure; Recalculate is never held.
+- **AC-18:** Changing the hack, fuel, heating or commute changes at least one impact figure or explanation, and no sealing advice is offered while solid fuel burns indoors.
+- **AC-19:** At AQI 30 the offline plan contains no sealing or N95 advice, and changing a household input changes the plan.
+- **AC-20:** An insight that states a figure, contains markup or a link, or names an unknown choice is not shown.
 
 ## 6. Out of Scope
 
@@ -108,3 +116,4 @@ For the exhaustive engineering specifications, reference the authoritative docum
 |------|---------|------|----------------|--------|
 | 2026-11-28 | 1.2.0 | Live data binding, live AQI, resilience, scenario testing | Added FR-13 to FR-17, NFR-11 to NFR-13 and AC-13 to AC-17 | Done |
 | 2026-11-28 | 1.2.1 | Fix known limitations (#14) | Updated AC-13 and AC-15; revised protection score curve, keyboard tabs and served files | Done |
+| 2026-11-28 | 1.3.0 | Make choices drive impact and advice (#15) | Added FR-18 to FR-20, NFR-14 and AC-18 to AC-20; updated NFR-03; removed unused modules | Done |

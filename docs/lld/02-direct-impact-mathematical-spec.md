@@ -1,4 +1,6 @@
 # Direct Impact Mathematical Specification & Environmental Calculus
+
+> Design record. Parts of this document describe components that were removed or replaced in version 1.3.0, such as the application controller class, the reducer, the time engine, the signals and error modules and the fixed protection efficiency. The source code is authoritative.
 ## CleanAir Guardian (VayuRakshak) — Piecewise Breakpoints, expm1 Stability & WTW Carbon LCA
 
 **Component:** `src/js/impact-calculator.js`  

@@ -6,7 +6,7 @@
 
 import { contextToHashToken } from '../../src/js/state-codec.js';
 import { getDiurnalInversion, projectDiurnalReading } from '../../src/js/air-quality-engine.js';
-import { test, expect, defaultModel, computeImpact, liveAqiFor, OBSERVED_AT } from './fixtures.js';
+import { test, expect, defaultModel, liveAqiFor, OBSERVED_AT } from './fixtures.js';
 
 const CONTEXTS = [
   { label: 'default household', aqi: 395 },
@@ -18,6 +18,30 @@ const CONTEXTS = [
   { label: 'maximum AQI', aqi: 999, city: 'Ulaanbaatar', heatingMethod: 'open_fire', commuteKm: 1 },
   { label: 'detected place name', aqi: 301, city: 'Karol Bagh, New Delhi' }
 ];
+
+/**
+ * Daily CO2e in kg that moving a motorised commute to the metro saves, from the published
+ * well-to-wheel factors in grams per km.
+ *
+ * @param {Object} model - Household context.
+ * @returns {number} Saving rounded to two decimals, zero for walking, cycling and the metro.
+ */
+function commuteSavingKg({ commuteMode, commuteKm }) {
+  const gramsPerKm = { private_car: 240, two_wheeler: 60 }[commuteMode];
+  return gramsPerKm ? Math.round((gramsPerKm - 28) * commuteKm / 10) / 100 : 0;
+}
+
+/**
+ * Daily CO2e in kg that six hours on a heat pump save against the current heater. Space
+ * heaters carry no emission factor in the model.
+ *
+ * @param {Object} model - Household context.
+ * @returns {number} Saving rounded to two decimals.
+ */
+function heatingSavingKg({ heatingMethod }) {
+  const gramsPerHour = { open_fire: 930, electric_radiator: 288 }[heatingMethod];
+  return gramsPerHour ? Math.round((gramsPerHour - 96) * 6 / 10) / 100 : 0;
+}
 
 /**
  * Severity label the screen must show for an AQI.
@@ -32,22 +56,25 @@ function severityFor(aqi) {
 }
 
 test.describe('on-device consistency', () => {
-  test('the default household shows hand calculated figures', async ({ app, page }) => {
+  test('the default household shows hand calculated figures', async ({ app }) => {
     const token = contextToHashToken(defaultModel({ aqi: 395, simulatedHour: null }));
     await app.open(`#${token}`);
 
     await expect.poll(() => app.figures()).toMatchObject({
       hero: '395',
-      avoided: '1078 µg',
-      cigarettes: '16.2 Cigs',
+      avoided: '818 µg',
+      cigarettes: '12.3 Cigs',
       carbon: '0.45 kg',
-      score: '89%',
-      unshielded: '1341 µg (20.2 Cigs)',
-      shielded: '263 µg (4.0 Cigs)',
-      delta: 'Saved: 1078 µg (16.2 Cigs)'
+      score: '59%',
+      unshielded: '1394 µg (21.0 Cigs)',
+      shielded: '576 µg (8.7 Cigs)',
+      delta: 'Saved: 818 µg (12.3 Cigs)',
+      reduction: '-58.7% Inhaled Dose',
+      barWidth: 41.3,
+      contributions: 'Avoided today: indoor air 655 µg · window timing 112 µg · travel 51 µg'
     });
-    await expect(app.advisory).toContainText('1078 µg');
-    await expect(page.locator('#alternatives-container')).toContainText('avoids 0.45 kg CO2e');
+    await expect(app.advisory).toContainText('818 µg');
+    await expect(app.alternatives).toContainText('save about 0.45 kg CO2e a day');
   });
 
   for (const { label, ...overrides } of CONTEXTS) {
@@ -59,13 +86,15 @@ test.describe('on-device consistency', () => {
       await expect(page.locator('#hero-severity-badge')).toHaveText(severityFor(model.aqi));
       await expect(page.locator('#badge-cleaning-status'))
         .toHaveText(model.aqi > 200 ? 'DRY SWEEPING PROHIBITED' : 'STANDARD DAMP DUSTING');
-      const alternatives = page.locator('#alternatives-container');
-      if (['private_car', 'two_wheeler'].includes(model.commuteMode)) {
-        await expect(alternatives).toContainText(`avoids ${computeImpact(model).carbonSavedKg} kg CO2e`);
+      const commuteKg = commuteSavingKg(model);
+      if (commuteKg > 0) {
+        await expect(app.alternatives).toContainText(`save about ${commuteKg} kg CO2e a day`);
       } else {
-        await expect(alternatives).toContainText('already low-carbon');
-        await expect(page.locator('#metric-carbon-saved')).toHaveText('0 kg');
+        await expect(app.alternatives).toContainText('already low-carbon');
       }
+      const totalKg = Math.round((commuteKg + heatingSavingKg(model)) * 100) / 100;
+      await expect(page.locator('#metric-carbon-saved')).toHaveText(`${totalKg} kg`);
+      await expect(app.breakdownItems).toHaveCount(5);
       const visible = await page.locator('main').innerText();
       expect(visible).not.toMatch(/NaN|undefined|Infinity|\[object/);
     });
@@ -116,6 +145,7 @@ test.describe('model mode consistency', () => {
     ['solo car', (app) => app.choose('commute', 'private_car'), { commuteMode: 'private_car' }],
     ['longer commute', (app) => app.kmSlider.fill('37'), { commuteKm: 37 }],
     ['sealed home', (app) => app.housing.selectOption('sealed_apartment'), { housingType: 'sealed_apartment' }],
+    ['PC fan hack', (app) => app.hack('pc_fan_stealth'), { hackId: 'pc_fan_stealth' }],
     ['pregnant resident', (app) => app.setVulnerability(8, true), { vulnBits: 11 }],
     ['manual low AQI', (app) => app.aqiSlider.fill('73'), { aqi: 73, aqiSource: 'manual' }]
   ];
@@ -176,9 +206,19 @@ test.describe('model mode consistency', () => {
   test('the prompt carries only whitelisted household fields', async ({ app, mocks }) => {
     await app.open();
     await app.activate();
-    expect(Object.keys(mocks.gemini.calls[0].facts).sort()).toEqual([
-      'aqi', 'aqiSource', 'city', 'commuteKm', 'commuteMode', 'computed', 'cookingMethod',
-      'heatingMethod', 'housingType', 'vulnerabilities'
+    const { facts } = mocks.gemini.calls[0];
+    expect(Object.keys(facts).sort()).toEqual([
+      'aqi', 'aqiBand', 'aqiSource', 'choices', 'city', 'commuteKm', 'commuteMode', 'computed',
+      'cookingMethod', 'heatingMethod', 'housingType', 'vulnerabilities'
     ]);
+    expect(facts.aqiBand).toBe(severityFor(facts.aqi).toLowerCase().replace('_', ' '));
+    expect(facts.choices.map((item) => item.choice))
+      .toEqual(['iaq_hack', 'cooking', 'heating', 'commute', 'housing']);
+    for (const item of facts.choices) {
+      expect(Object.keys(item).sort()).toEqual(['choice', 'co2e', 'current', 'inhaledPm25']);
+      for (const finding of [item.inhaledPm25, item.co2e]) {
+        expect(['can_improve', 'already_best', 'not_modelled']).toContain(finding);
+      }
+    }
   });
 });

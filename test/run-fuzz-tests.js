@@ -1,15 +1,18 @@
 /**
  * @fileoverview Property-Based Fuzz Testing Suite (QuickCheck Architecture).
  * Tests 10,000 pseudorandomly generated state vectors using Xorshift128+ PRNG to prove
- * algebraic closure, absence of NaN/Infinity, non-negative dosage avoided, and lossless codec isomorphism.
+ * algebraic closure, absence of NaN/Infinity, non-negative dosage avoided, balanced impact accounting,
+ * the solid-fuel safety rule, dose monotonicity in AQI and lossless codec isomorphism.
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
-import { aqiToMassConcentration, calculateParticulateAvoidance, calculateRoomClearance, dosageToCigarettes } from '../src/js/impact-calculator.js';
+import {
+  aqiToMassConcentration, calculateParticulateAvoidance, dosageToCigarettes, computeImpact,
+  listProtectionMeasures, burnsSolidFuel, HACK_EFFECTS
+} from '../src/js/impact-calculator.js';
 import { getDiurnalInversion, getVulnerabilityMultiplier } from '../src/js/air-quality-engine.js';
 import { packContextTo5Bytes, unpackContextFrom5Bytes } from '../src/js/state-codec.js';
-import { METRO_BASIN_PRESETS, createContext } from '../src/js/config.js';
-import { makeAQI, makeConcentration, makeHour } from '../src/js/errors.js';
+import { METRO_BASIN_PRESETS } from '../src/js/config.js';
 import { sanitizeCityInput } from '../src/js/gemini-service.js';
 import { PlanFactory } from '../src/js/offline-advisor.js';
 
@@ -46,6 +49,43 @@ const ITERATIONS = 10000;
 const cookingMethods = ['induction', 'png', 'lpg', 'biomass'];
 const heatingMethods = ['electric_radiator', 'space_heater', 'heat_pump', 'open_fire'];
 const commuteModes = ['walk_cycle', 'two_wheeler', 'public_transit', 'private_car'];
+const housingTypes = ['sealed_apartment', 'standard_flat', 'drafty_home'];
+const hackIds = Object.keys(HACK_EFFECTS);
+
+/**
+ * Checks every impact-model property for one household.
+ *
+ * <p>Contribution rounding allows the indoor air share to fall at most 2 ug below zero,
+ * because it is the remainder of four independently rounded figures.
+ *
+ * @param {Object} context - Random household context.
+ * @param {number} aqiStep - Non-negative AQI increase used for the monotonicity property.
+ * @returns {string} Name of the first broken property, or an empty string.
+ */
+function brokenImpactProperty(context, aqiStep) {
+  const impact = computeImpact(context);
+  const figures = [
+    impact.pm25UgM3, impact.unshieldedDoseUg, impact.protectedDoseUg, impact.pm25AvoidedUg,
+    impact.unshieldedCigarettes, impact.protectedCigarettes, impact.cigarettesAvoided,
+    impact.carbonSavedKg, impact.protectionScorePercent
+  ];
+  if (!figures.every((value) => Number.isFinite(value) && value >= 0)) return 'finite non-negative figures';
+  if (impact.protectionScorePercent > 100) return 'score within 100';
+  if (impact.unshieldedDoseUg - impact.protectedDoseUg !== impact.pm25AvoidedUg) return 'dose accounting';
+  const { indoorAirUg, airingUg, travelUg } = impact.contributions;
+  if (indoorAirUg + airingUg + travelUg !== impact.pm25AvoidedUg) return 'contributions sum';
+  if (airingUg < 0 || travelUg < 0 || indoorAirUg < -2) return 'contribution sign';
+  const housing = impact.choices.find((choice) => choice.choice === 'housing');
+  const isFuelBurning = burnsSolidFuel({ cooking: context.cookingMethod, heating: context.heatingMethod });
+  if (isFuelBurning && housing.alternative !== null) return 'solid-fuel safety';
+  if (!impact.choices.every((c) => Number.isFinite(c.pm25DeltaUg) && c.co2eDeltaKg >= 0)) return 'choice deltas';
+  const worse = computeImpact({ ...context, aqi: context.aqi + aqiStep });
+  if (worse.unshieldedDoseUg < impact.unshieldedDoseUg) return 'dose monotonic in AQI';
+  if ((listProtectionMeasures(context).length === 0) !== (impact.pm25AvoidedUg === 0)) {
+    return 'measures empty exactly when nothing is avoided';
+  }
+  return '';
+}
 
 let violations = 0;
 
@@ -96,15 +136,6 @@ for (let i = 0; i < ITERATIONS; i++) {
     break;
   }
 
-  // Invariant 5: Room clearance is in [0.0, 1.0]
-  const cadr = prng.nextInt(50, 500);
-  const clearance = calculateRoomClearance(cadr, 54, hoursShifted);
-  if (clearance < 0.0 || clearance > 1.0 || Number.isNaN(clearance)) {
-    violations++;
-    console.error(`Violation Inv5 at iter ${i}: clearance=${clearance}`);
-    break;
-  }
-
   // Invariant 6: 5-Byte binary packing roundtrip isomorphism for clamped ranges
   const clampedCtx = {
     aqi: Math.max(0, Math.min(999, Math.round(aqi))),
@@ -130,27 +161,19 @@ for (let i = 0; i < ITERATIONS; i++) {
     break;
   }
 
-  // Invariant 7: makeAQI bounds invariance [0, 999]
-  const clampedAQI = makeAQI(aqi);
-  if (!Number.isInteger(clampedAQI) || clampedAQI < 0 || clampedAQI > 999) {
+  const brokenProperty = brokenImpactProperty({
+    aqi,
+    vulnBits,
+    cookingMethod: cook,
+    heatingMethod: heat,
+    commuteMode: commute,
+    commuteKm: distance,
+    housingType: housingTypes[prng.nextInt(0, housingTypes.length - 1)],
+    hackId: hackIds[prng.nextInt(0, hackIds.length - 1)]
+  }, prng.nextInt(0, 300));
+  if (brokenProperty) {
     violations++;
-    console.error(`Violation Inv7 at iter ${i}: clampedAQI=${clampedAQI}`);
-    break;
-  }
-
-  // Invariant 8: makeConcentration non-negative invariance
-  const nonNegConc = makeConcentration(conc);
-  if (!Number.isFinite(nonNegConc) || nonNegConc < 0) {
-    violations++;
-    console.error(`Violation Inv8 at iter ${i}: nonNegConc=${nonNegConc}`);
-    break;
-  }
-
-  // Invariant 9: makeHour cyclic interval [0.0, 24.0)
-  const normHour = makeHour(hour);
-  if (!Number.isFinite(normHour) || normHour < 0.0 || normHour >= 24.0) {
-    violations++;
-    console.error(`Violation Inv9 at iter ${i}: normHour=${normHour}`);
+    console.error(`Violation of impact property "${brokenProperty}" at iter ${i}: aqi=${aqi}, vulnBits=${vulnBits}`);
     break;
   }
 

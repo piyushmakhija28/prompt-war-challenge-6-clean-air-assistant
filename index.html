@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com https://air-quality-api.open-meteo.com https://api.bigdatacloud.net https://nominatim.openstreetmap.org; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>CleanAir Guardian (VayuRakshak) — Winter Smog & Community Assistant</title>
-  <meta name="description" content="Autonomous AI Assistant for navigating severe winter temperature inversions, diurnal pollution routines, and low-cost DIY clean air hacks. Powered by Google Gemini 3.8 Flash.">
+  <meta name="description" content="Autonomous AI Assistant for navigating severe winter temperature inversions, diurnal pollution routines, and low-cost DIY clean air hacks. Powered by Google Gemini.">
   <meta name="theme-color" content="#020617">
   <!-- OpenGraph Metadata -->
   <meta property="og:title" content="CleanAir Guardian (VayuRakshak) — Winter Smog & Community Assistant">
-  <meta property="og:description" content="Autonomous AI Assistant for navigating severe winter temperature inversions, diurnal pollution routines, and low-cost DIY clean air hacks. Powered by Google Gemini 3.8 Flash.">
+  <meta property="og:description" content="Autonomous AI Assistant for navigating severe winter temperature inversions, diurnal pollution routines, and low-cost DIY clean air hacks. Powered by Google Gemini.">
   <meta property="og:type" content="website">
   <!-- Twitter Card Metadata -->
   <meta name="twitter:card" content="summary_large_image">
@@ -274,7 +274,7 @@
 
       <!-- Ephemeral Gemini Key Drawer -->
       <div class="key-drawer">
-        <h3 style="font-size:0.875rem; font-weight:600; margin-bottom:8px; color:#94a3b8;">Google Gemini AI Settings (Gemini 3 Flash / 3.8 Flash)</h3>
+        <h3 style="font-size:0.875rem; font-weight:600; margin-bottom:8px; color:#94a3b8;">Google Gemini AI Settings</h3>
         <form id="form-gemini-key" style="margin:0; padding:0;">
           <input type="password" id="input-gemini-key" class="form-input" aria-label="Gemini API key" placeholder="Paste Gemini API Key (AIzaSy...)" autocomplete="off">
           <div style="display:flex; gap:8px; margin-top:8px;">
@@ -295,7 +295,7 @@
           <span id="hero-aqi-number" class="aqi-large">395</span>
           <span id="hero-severity-badge" class="severity-pill">SEVERE</span>
         </div>
-        <p id="hero-inversion-notice" class="inversion-notice">Evaluating diurnal planetary boundary layer height...</p>
+        <p id="hero-inversion-notice" class="inversion-notice">Checking today's air mixing...</p>
         <p id="source-advice" class="source-line" role="status">Advice: Offline (on-device)</p>
       </div>
 
@@ -311,7 +311,7 @@
         </div>
         <div class="metric-card">
           <div id="metric-carbon-saved" class="metric-value">-- kg</div>
-          <div class="metric-label">CO₂e Avoided</div>
+          <div class="metric-label">CO₂e You Could Save</div>
         </div>
         <div class="metric-card">
           <div id="metric-protection-score" class="metric-value">--%</div>
@@ -324,15 +324,15 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
           <h4 style="font-size:0.875rem; font-weight:700; color:#e2e8f0; text-transform:uppercase; letter-spacing:0.05em; margin:0;">Inhaled Particulate Shield Comparison</h4>
           <div style="display:flex; align-items:center; gap:6px;">
-            <span id="badge-shield-delta" class="badge-shield-delta">Saved: 583 µg (8.8 Cigs)</span>
-            <span id="badge-shield-reduction" class="badge-engine" style="color:#10b981; border-color:#10b981; font-weight:700;">-80.4% Inhaled Dose</span>
+            <span id="badge-shield-delta" class="badge-shield-delta">Saved: --</span>
+            <span id="badge-shield-reduction" class="badge-engine" style="color:#10b981; border-color:#10b981; font-weight:700;">-- Inhaled Dose</span>
           </div>
         </div>
         <!-- Unshielded Bar -->
         <div style="margin-bottom:12px;">
           <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#cbd5e1;">
-            <span id="label-unshielded-desc">🔴 Unshielded Exposure (Standard Flat / Two-Wheeler)</span>
-            <span id="text-unshielded-dose" style="font-family:monospace; font-weight:700; color:#f87171;">725 µg (10.9 Cigs)</span>
+            <span id="label-unshielded-desc">🔴 Unshielded Exposure</span>
+            <span id="text-unshielded-dose" style="font-family:monospace; font-weight:700; color:#f87171;">--</span>
           </div>
           <div class="gauge-bar-bg">
             <div id="bar-unshielded-dose" class="gauge-bar-fill fill-red" style="width:100%;"></div>
@@ -341,13 +341,21 @@
         <!-- Protected Bar -->
         <div>
           <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:#cbd5e1;">
-            <span id="label-protected-desc">🟢 CleanAir Guardian Shield (Diurnal Shift / N95 / CR-Box)</span>
-            <span id="text-protected-dose" style="font-family:monospace; font-weight:700; color:#34d399;">142 µg (2.1 Cigs)</span>
+            <span id="label-protected-desc">🟢 With CleanAir Plan</span>
+            <span id="text-protected-dose" style="font-family:monospace; font-weight:700; color:#34d399;">--</span>
           </div>
           <div class="gauge-bar-bg">
-            <div id="bar-protected-dose" class="gauge-bar-fill fill-green" style="width:19.6%;"></div>
+            <div id="bar-protected-dose" class="gauge-bar-fill fill-green" style="width:100%;"></div>
           </div>
         </div>
+      </div>
+
+      <!-- Per-choice impact explanation -->
+      <div class="exposure-comparison-card" aria-labelledby="heading-impact-breakdown">
+        <h4 id="heading-impact-breakdown" class="impact-breakdown-title">How Your Choices Change the Impact</h4>
+        <p id="impact-contributions" class="impact-contributions"></p>
+        <ul id="impact-breakdown-container" class="impact-breakdown-list"></ul>
+        <p class="source-line">Planning estimates from the app's exposure model, not measurements.</p>
       </div>
 
       <h3 style="font-size:1.125rem; font-weight:700; margin-bottom:12px;">Community Advisory</h3>
@@ -362,14 +370,14 @@
         <div class="hack-tab-bar" role="tablist" aria-label="Selectable DIY Air Quality Hacks">
           <button type="button" class="hack-tab-btn active" data-hack="corsi_rosenthal" role="tab" aria-selected="true">CR Box (273 CFM)</button>
           <button type="button" class="hack-tab-btn" data-hack="pc_fan_stealth" role="tab" aria-selected="false" tabindex="-1">PC Fan (85 CFM)</button>
-          <button type="button" class="hack-tab-btn" data-hack="wet_towel_emergency" role="tab" aria-selected="false" tabindex="-1">Wet Towel (30 CFM)</button>
+          <button type="button" class="hack-tab-btn" data-hack="wet_towel_emergency" role="tab" aria-selected="false" tabindex="-1">Wet Towel (Stopgap)</button>
           <button type="button" class="hack-tab-btn" data-hack="kitchen_vent_scrub" role="tab" aria-selected="false" tabindex="-1">Vent Scrub (180 CFM)</button>
         </div>
         <div class="iaq-header" style="margin-top:12px;">
           <span id="iaq-hack-title" class="iaq-title">DIY Corsi-Rosenthal Box</span>
           <div class="iaq-badges">
             <span id="iaq-hack-cadr" class="iaq-badge">CADR: 273 CFM</span>
-            <span id="iaq-hack-cost" class="iaq-badge">Cost: $35</span>
+            <span id="iaq-hack-cost" class="iaq-badge">Cost: --</span>
           </div>
         </div>
         <h5 style="font-size:11px; text-transform:uppercase; color:#94a3b8; margin:8px 0 4px 0; font-weight:700;">Required Materials</h5>
@@ -434,7 +442,7 @@
               <option value="85">12V PC-Fan Mini Box (85 CFM)</option>
               <option value="450">Commercial Large Air Purifier (450 CFM)</option>
               <option value="180">Kitchen Exhaust Scrubber (180 CFM)</option>
-              <option value="30">Emergency Wet-Towel Fan (30 CFM)</option>
+              <option value="30">Emergency Wet Towels (rough 30 CFM)</option>
               <option value="custom">Custom Clean Air Delivery Rate (CFM)...</option>
             </select>
           </div>

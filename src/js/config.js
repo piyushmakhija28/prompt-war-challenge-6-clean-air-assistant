@@ -45,7 +45,8 @@ export const WTW_EMISSION_FACTORS = Object.freeze({
   METRO_RAIL_PER_PASS_KM: 28, // 0g direct + 28g upstream electric grid
   WALK_CYCLE_PER_KM: 0,       // Zero emissions
   BIOMASS_HEATER_PER_HR: 930, // 850g direct + 80g harvest/transport
-  ELECTRIC_RADIATOR_PER_HR: 288 // 0g direct + 288g upstream grid (0.72 kg/kWh * 0.4 kWh)
+  ELECTRIC_RADIATOR_PER_HR: 288, // 0g direct + 288g upstream grid (0.72 kg/kWh * 0.4 kWh)
+  HEAT_PUMP_PER_HR: 96        // same heat as the radiator at an assumed coefficient of performance of 3
 });
 
 /**
@@ -183,34 +184,3 @@ export const TARGET_PERSONAS = Object.freeze({
     commuteKm: 14
   }
 });
-
-/**
- * Factory function creating monomorphic UserContext instances for V8 IC optimization.
- * Initializes properties in strictly identical lexical sequence.
- * Conforms to LLD 03 §4.1.
- *
- * @param {string} city - Metropolitan urban air basin name.
- * @param {number} aqi - Air Quality Index scalar.
- * @param {number} vulnBits - 5-bit vulnerability bitmask.
- * @param {number} cookIdx - Cooking method index (0-3).
- * @param {number} heatIdx - Heating method index (0-3).
- * @param {number} commuteIdx - Commute mode index (0-3).
- * @param {number|null} [timeHour=null] - Simulated decimal hour.
- * @returns {Object} Monomorphic context object.
- */
-export function createContext(city, aqi, vulnBits, cookIdx, heatIdx, commuteIdx, timeHour = null) {
-  const cookingMethods = ['induction', 'png', 'lpg', 'biomass'];
-  const heatingMethods = ['electric_radiator', 'space_heater', 'heat_pump', 'open_fire'];
-  const commuteModes = ['walk_cycle', 'two_wheeler', 'public_transit', 'private_car'];
-
-  return {
-    city: String(city || 'Delhi NCR'),
-    aqi: Number(aqi) || 0,
-    vulnBits: Number(vulnBits) || 0,
-    cookingMethod: cookingMethods[Number(cookIdx) || 2] || 'lpg',
-    heatingMethod: heatingMethods[Number(heatIdx) || 1] || 'space_heater',
-    commuteMode: commuteModes[Number(commuteIdx) || 1] || 'two_wheeler',
-    commuteKm: 14,
-    simulatedHour: timeHour !== null ? Number(timeHour) : null
-  };
-}

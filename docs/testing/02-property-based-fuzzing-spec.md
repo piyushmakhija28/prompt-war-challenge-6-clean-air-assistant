@@ -1,4 +1,6 @@
 # Property-Based Fuzz Testing Specification & Algebraic Invariants
+
+> Design record. Parts of this document describe components that were removed or replaced in version 1.3.0, such as the application controller class, the reducer, the time engine, the signals and error modules and the fixed protection efficiency. The source code is authoritative.
 ## CleanAir Guardian (VayuRakshak) — QuickCheck Architecture & Seedable Xorshift128+ PRNG
 
 **Document Identifier:** TEST-FUZZ-PW-CHALLENGE-6-V1.0  

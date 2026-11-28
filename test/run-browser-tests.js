@@ -99,6 +99,22 @@ function sleep(ms) {
 }
 
 /**
+ * Polls a page expression until it is truthy or the time limit passes.
+ * @param {CDPClient} cdp
+ * @param {string} expression
+ * @param {number} [timeoutMs=3000]
+ * @returns {Promise<boolean>} Whether the expression became truthy in time.
+ */
+async function waitFor(cdp, expression, timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await cdp.evaluate(expression)) return true;
+    await sleep(50);
+  }
+  return false;
+}
+
+/**
  * Fetches JSON metadata from Chrome's remote debugging HTTP port.
  * @param {string} endpoint
  * @returns {Promise<any>}
@@ -469,9 +485,8 @@ async function main() {
     );
 
     // BR-TEST-007: Bilingual Advisory Language Toggle & Screen Reader Announcer
-    await sleep(1100);
     await cdp.evaluate('document.getElementById("btn-toggle-lang").click()');
-    await sleep(200);
+    await waitFor(cdp, 'document.getElementById("a11y-announcer").textContent.includes("Hindi")');
     const langLabelText = await cdp.evaluate('document.getElementById("label-current-lang").textContent');
     const announcerText = await cdp.evaluate('document.getElementById("a11y-announcer").textContent');
     assert(
@@ -623,49 +638,58 @@ async function main() {
     );
 
     // BR-TEST-014: Circuit Breaker State Degradation & Banner Notification
+    const hiddenGlobals = await cdp.evaluate(
+      'window.keyStore === undefined && window.planProvider === undefined'
+    );
     await cdp.evaluate(`
       (() => {
-        if (window.planProvider && window.planProvider.circuitBreaker) {
-          window.planProvider.circuitBreaker.recordSuccess();
-          window.planProvider.circuitBreaker.recordFailure();
-          window.planProvider.circuitBreaker.recordFailure();
-        }
+        window.originalFetch = window.fetch;
+        window.stubbedGeminiCalls = 0;
+        window.fetch = (url, init) => {
+          if (!String(url).includes('generativelanguage.googleapis.com')) {
+            return window.originalFetch(url, init);
+          }
+          window.stubbedGeminiCalls++;
+          const body = ${JSON.stringify(mockExternalBody('https://generativelanguage.googleapis.com/'))};
+          return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+        };
+        document.getElementById('input-gemini-key').value = 'browser-suite-mock-key';
+        document.getElementById('btn-save-key').click();
       })()
     `);
+    await sleep(500);
+    const callsAfterSave = await cdp.evaluate('window.stubbedGeminiCalls');
     const cbState = await cdp.evaluate(`
-      window.planProvider && window.planProvider.circuitBreaker ? window.planProvider.circuitBreaker.getState() : 'UNKNOWN'
-    `);
-    await cdp.evaluate(`
       (() => {
-        if (window.keyStore) {
-          window.keyStore.setKey('AIzaSyD-mock-key-for-cb-test');
-        }
-        const btnGen = document.getElementById('btn-generate-plan');
-        if (btnGen) {
-          btnGen.disabled = false;
-          btnGen.click();
-        }
+        const breaker = window.__cleanAirTestUtils.circuitBreaker;
+        breaker.recordFailure();
+        breaker.recordFailure();
+        return breaker.getState();
       })()
     `);
+    await cdp.evaluate('document.getElementById("btn-generate-plan").click()');
     await sleep(300);
     const cbBannerVisible = await cdp.evaluate('!document.getElementById("status-banner").classList.contains("hidden")');
     const cbBannerText = await cdp.evaluate('document.getElementById("status-banner").textContent');
+    const callsAfterGenerate = await cdp.evaluate('window.stubbedGeminiCalls');
     await cdp.evaluate(`
       (() => {
-        if (window.planProvider && window.planProvider.circuitBreaker) {
-          window.planProvider.circuitBreaker.recordSuccess();
-        }
-        if (window.keyStore) {
-          window.keyStore.purge();
-        }
+        window.__cleanAirTestUtils.circuitBreaker.recordSuccess();
+        document.getElementById('btn-clear-key').click();
+        window.fetch = window.originalFetch;
       })()
     `);
+    const hasKeyAfterPurge = await cdp.evaluate('window.__cleanAirTestUtils.hasApiKey()');
     assert(
+      hiddenGlobals &&
+      callsAfterSave === 1 &&
       cbState === 'OPEN' &&
       cbBannerVisible &&
-      cbBannerText.includes('rate limit paused'),
+      cbBannerText.includes('rate limit paused') &&
+      callsAfterGenerate === callsAfterSave &&
+      hasKeyAfterPurge === false,
       'BR-TEST-014',
-      `CircuitBreaker.getState() reflects OPEN state and displays rate limit paused banner upon generation attempt (cbState=${cbState}, bannerVisible=${cbBannerVisible}, bannerText="${cbBannerText}")`
+      `An open circuit breaker blocks the next Gemini request and shows the rate limit paused banner (globalsHidden=${hiddenGlobals}, calls=${callsAfterSave}/${callsAfterGenerate}, cbState=${cbState}, bannerVisible=${cbBannerVisible}, bannerText="${cbBannerText}", hasKeyAfterPurge=${hasKeyAfterPurge})`
     );
     // BR-TEST-009: Visual Snapshot Capture via CDP Page.captureScreenshot
     const screenshotDir = path.join(ROOT_DIR, 'test', 'screenshots');

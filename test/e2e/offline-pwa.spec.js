@@ -107,7 +107,7 @@ test('the service worker caches the shell and nothing sensitive', async ({ app, 
     return entries;
   });
 
-  expect([...new Set(cached.map((entry) => entry.name))]).toEqual(['cleanair-guardian-v1.4']);
+  expect([...new Set(cached.map((entry) => entry.name))]).toEqual(['cleanair-guardian-v1.5']);
   for (const file of [
     'index.html', 'manifest.webmanifest', 'src/css/style.css', 'src/js/app.js', 'src/js/live-aqi.js',
     'src/js/gemini-service.js', 'src/js/impact-calculator.js', 'src/js/offline-advisor.js'
@@ -115,6 +115,7 @@ test('the service worker caches the shell and nothing sensitive', async ({ app, 
     expect(cached.some((entry) => new URL(entry.url).pathname === `/${file}`), file).toBe(true);
   }
   expect(cached.every((entry) => new URL(entry.url).origin === server.origin)).toBe(true);
+  expect(cached.filter((entry) => /\/(signals|errors)\.js$/.test(new URL(entry.url).pathname))).toEqual([]);
   expect(cached.map((entry) => entry.body).join('')).not.toContain(FAKE_KEY);
 });
 

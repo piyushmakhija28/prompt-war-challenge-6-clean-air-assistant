@@ -113,7 +113,9 @@ test.describe('round trip of every option', () => {
     await app.kmSlider.fill('49');
     await app.setVulnerability(8, true);
     await expect(app.kmLabel).toHaveText('49 km');
-    await expect(page.locator('#hero-inversion-notice')).toContainText('nocturnal');
+    await expect(page.locator('#hero-inversion-notice'))
+      .toContainText('Mornings and evenings are usually a little hazier than midday.');
+    await expect(page.locator('#hero-inversion-notice')).not.toContainText('nocturnal');
     await expect(app.heroAqi).toHaveText('0');
     const before = await readScreen(page);
     await page.reload();

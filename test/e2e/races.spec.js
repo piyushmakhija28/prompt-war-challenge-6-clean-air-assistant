@@ -212,14 +212,13 @@ test.describe('changes during a request', () => {
     await app.expectIdle();
   });
 
-  test('hack tab and language toggle during a request do not restart it', async ({ app, mocks }) => {
+  test('language toggle and time scrubbing during a request do not restart it', async ({ app, mocks }) => {
     await app.open();
     const gate = mocks.gemini.hold();
     await app.saveKey();
     await expect.poll(() => mocks.gemini.calls.length).toBe(1);
 
     await app.freeze();
-    await app.hack('pc_fan_stealth');
     await app.langButton.click();
     await app.timeSlider.fill('13');
     await app.advance(3000);
@@ -228,9 +227,34 @@ test.describe('changes during a request', () => {
 
     await app.settleAdvice(defaultModel());
     await expect(app.advisory).toHaveAttribute('lang', 'hi');
-    await expect(app.page.locator('#iaq-hack-title')).toContainText('PC-Fan');
     await expect(app.timeLabel).toHaveText('13:00');
     expect(mocks.gemini.calls).toHaveLength(1);
+  });
+
+  test('switching the hack during a request aborts it and asks for advice on the new hack', async ({ app, page, mocks }) => {
+    const aborted = [];
+    page.on('requestfailed', (request) => {
+      if (request.url().includes('generativelanguage')) aborted.push(request.failure().errorText);
+    });
+    await app.open();
+    const older = mocks.gemini.hold();
+    await app.saveKey();
+    await expect.poll(() => mocks.gemini.calls.length).toBe(1);
+
+    await app.freeze();
+    await app.hack('pc_fan_stealth');
+    await expect.poll(() => aborted).toEqual(['net::ERR_ABORTED']);
+    await expect(app.sourceAdvice).toHaveText('Advice: Refreshing');
+    await app.advanceUntilCalls(mocks.gemini, 2);
+    await older.release();
+
+    const model = defaultModel({ hackId: 'pc_fan_stealth' });
+    await app.settleAdvice(model);
+    await app.expectFigures(model);
+    await expect(app.schedule).not.toContainText(tagFor(defaultModel()));
+    await app.expectIdle();
+    expect(mocks.gemini.calls.map((call) => call.facts.choices.find((item) => item.choice === 'iaq_hack').current))
+      .toEqual(['corsi_rosenthal', 'pc_fan_stealth']);
   });
 
   test('a key replaced mid-flight is used for the advice that is shown', async ({ app, mocks }) => {
