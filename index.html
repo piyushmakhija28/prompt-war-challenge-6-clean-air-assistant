@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://generativelanguage.googleapis.com; img-src 'self' data:; font-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com https://air-quality-api.open-meteo.com https://api.bigdatacloud.net https://nominatim.openstreetmap.org; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>CleanAir Guardian (VayuRakshak) — Winter Smog & Community Assistant</title>
   <meta name="description" content="Autonomous AI Assistant for navigating severe winter temperature inversions, diurnal pollution routines, and low-cost DIY clean air hacks. Powered by Google Gemini 3.8 Flash.">
   <meta name="theme-color" content="#020617">
@@ -75,6 +75,7 @@
             </svg>
           </button>
         </div>
+        <p class="privacy-note">Locating you sends coordinates rounded to about 1 km to Open-Meteo, BigDataCloud and OpenStreetMap.</p>
       </fieldset>
 
       <fieldset class="form-fieldset">
@@ -82,11 +83,16 @@
         <div class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
           <span>Ambient AQI</span>
           <div style="display:flex; align-items:center; gap:6px;">
-            <input type="number" id="input-aqi-number" class="form-input" style="width:72px; text-align:right; font-family:monospace; font-weight:700; color:#38bdf8; padding:3px 6px; min-height:30px; font-size:14px;" min="10" max="800" value="395" aria-label="Exact Ambient Air Quality Index">
+            <input type="number" id="input-aqi-number" class="form-input" style="width:72px; text-align:right; font-family:monospace; font-weight:700; color:#38bdf8; padding:3px 6px; min-height:30px; font-size:14px;" min="0" max="999" value="395" aria-label="Exact Ambient Air Quality Index">
             <span style="font-size:11px; color:#94a3b8;">AQI</span>
           </div>
         </div>
-        <input type="range" id="input-aqi-slider" class="range-slider" min="10" max="800" step="5" value="395" aria-label="Ambient Air Quality Index Slider">
+        <input type="range" id="input-aqi-slider" class="range-slider" min="0" max="999" step="1" value="395" aria-label="Ambient Air Quality Index Slider">
+        <div class="live-aqi-row">
+          <span id="source-aqi" class="source-line" role="status">AQI: Manual</span>
+          <button id="btn-live-aqi" type="button" class="btn-secondary btn-live-aqi">Use live AQI</button>
+        </div>
+        <p class="privacy-note"><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo.com</a> (CC BY 4.0). Modelled hourly estimate, not a local sensor reading.</p>
       </fieldset>
 
       <fieldset class="form-fieldset">
@@ -270,13 +276,14 @@
       <div class="key-drawer">
         <h3 style="font-size:0.875rem; font-weight:600; margin-bottom:8px; color:#94a3b8;">Google Gemini AI Settings (Gemini 3 Flash / 3.8 Flash)</h3>
         <form id="form-gemini-key" style="margin:0; padding:0;">
-          <input type="password" id="input-gemini-key" class="form-input" placeholder="Paste Gemini API Key (AIzaSy...)" autocomplete="off">
+          <input type="password" id="input-gemini-key" class="form-input" aria-label="Gemini API key" placeholder="Paste Gemini API Key (AIzaSy...)" autocomplete="off">
           <div style="display:flex; gap:8px; margin-top:8px;">
             <button id="btn-save-key" class="btn-secondary" type="button" style="min-height:38px; padding:6px 12px;">Activate (In-Memory)</button>
             <button id="btn-clear-key" class="btn-secondary" type="button" style="min-height:38px; padding:6px 12px; color:#f87171;">Purge Key</button>
           </div>
         </form>
-        <p id="key-status-text" class="key-status">🔒 100% Ephemeral: Held in volatile RAM. Never saved to disk, server, or localStorage.</p>
+        <p class="privacy-note">Your key is sent only to the Google Gemini API.</p>
+        <p id="key-status-text" class="key-status" role="status">🔒 100% Ephemeral: Held in volatile RAM. Never saved to disk, server, or localStorage.</p>
       </div>
     </section>
 
@@ -289,6 +296,7 @@
           <span id="hero-severity-badge" class="severity-pill">SEVERE</span>
         </div>
         <p id="hero-inversion-notice" class="inversion-notice">Evaluating diurnal planetary boundary layer height...</p>
+        <p id="source-advice" class="source-line" role="status">Advice: Offline (on-device)</p>
       </div>
 
       <!-- Telemetry Metrics Grid -->
@@ -341,6 +349,9 @@
           </div>
         </div>
       </div>
+
+      <h3 style="font-size:1.125rem; font-weight:700; margin-bottom:12px;">Community Advisory</h3>
+      <div id="advisory-preview" class="advisory-preview" lang="en"></div>
 
       <!-- Diurnal Hourly Schedule -->
       <h3 style="font-size:1.125rem; font-weight:700; margin-bottom:12px;">Hourly Low-Emission Schedule</h3>
@@ -474,6 +485,6 @@
     </section>
   </main>
 
-  <script type="module" src="src/js/app.js?v=2.2.0"></script>
+  <script type="module" src="src/js/app.js?v=3.0.0"></script>
 </body>
 </html>

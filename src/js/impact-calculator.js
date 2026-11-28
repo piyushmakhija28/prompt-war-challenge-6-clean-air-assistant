@@ -7,6 +7,19 @@
  */
 
 import { BREAKPOINTS, WTW_EMISSION_FACTORS, INFILTRATION_COEFFICIENTS } from './config.js';
+import { getVulnerabilityMultiplier } from './air-quality-engine.js';
+
+/**
+ * Fixed physiological and filtration assumptions behind every dose figure shown in the app.
+ * @readonly
+ */
+export const DOSE_MODEL = Object.freeze({
+  DAILY_VOLUME_M3: 10.8,
+  ACTIVITY_FACTOR: 1.3,
+  DEPOSITION_FRACTION: 0.28,
+  SHIELD_EFFICIENCY: 0.8041,
+  DEFAULT_COMMUTE_KM: 14
+});
 
 /**
  * Resolves the numeric building envelope particulate infiltration coefficient (alpha_inf)
@@ -57,7 +70,37 @@ export function aqiToMassConcentration(aqi) {
     }
   }
 
-  return 380.0;
+  const lower = BREAKPOINTS[high];
+  const upper = BREAKPOINTS[low];
+  const fraction = (val - lower.iHi) / (upper.iLo - lower.iHi);
+  return Math.round((lower.bHi + fraction * (upper.bLo - lower.bHi)) * 100) / 100;
+}
+
+/**
+ * Converts a PM2.5 mass concentration back to the application's AQI scale.
+ * Exact inverse of {@link aqiToMassConcentration}, so live sensor readings and manual
+ * slider values share one scale.
+ *
+ * @param {number} concentration - PM2.5 concentration in ug/m3.
+ * @returns {number} Integer AQI clamped to the 0-999 range.
+ */
+export function massConcentrationToAqi(concentration) {
+  const c = Number(concentration) || 0;
+  if (c <= 0) return 0;
+
+  const last = BREAKPOINTS[BREAKPOINTS.length - 1];
+  if (c > last.bHi) {
+    return Math.min(999, Math.round(last.iHi + (c - last.bHi) / 0.80));
+  }
+
+  const index = BREAKPOINTS.findIndex((bp) => c <= bp.bHi);
+  const bp = BREAKPOINTS[index];
+  if (c < bp.bLo) {
+    const lower = BREAKPOINTS[index - 1];
+    const fraction = (c - lower.bHi) / (bp.bLo - lower.bHi);
+    return Math.round(lower.iHi + fraction * (bp.iLo - lower.iHi));
+  }
+  return Math.round(bp.iLo + ((c - bp.bLo) / (bp.bHi - bp.bLo)) * (bp.iHi - bp.iLo));
 }
 
 /**
@@ -189,4 +232,61 @@ export function calculateCarbonAvoidance(currentMode, alternativeMode, quantity)
 
   const savedGrams = Math.max(0, baselineFactor - alternativeFactor) * q;
   return Math.round((savedGrams / 1000) * 100) / 100;
+}
+
+/**
+ * Single source of truth for every impact number shown on screen, written into the
+ * community advisory, and sent to Gemini as grounding facts.
+ *
+ * <p>The protection score keeps its original three-hour exposure basis so that it still
+ * varies across the AQI range instead of saturating on the daily dose.
+ *
+ * @param {Object} ctx - Household context (aqi, vulnBits, housingType, commuteMode, commuteKm).
+ * @returns {Readonly<{pm25UgM3: number, unshieldedDoseUg: number, protectedDoseUg: number,
+ *   pm25AvoidedUg: number, reductionPct: number, unshieldedCigarettes: number,
+ *   protectedCigarettes: number, cigarettesAvoided: number, carbonSavedKg: number,
+ *   protectionScorePercent: number}>} Frozen impact summary.
+ */
+export function computeImpact(ctx) {
+  const aqi = Math.max(0, Math.min(999, Math.round(Number(ctx.aqi) || 0)));
+  const pm25UgM3 = aqiToMassConcentration(aqi);
+  const alphaInf = getHousingInfiltrationCoefficient(ctx.housingType || 'standard_flat');
+  const vulnMult = getVulnerabilityMultiplier(ctx.vulnBits || 0);
+
+  const unshieldedDoseUg = Math.round(
+    pm25UgM3 * (alphaInf * 0.75 + 0.25) * DOSE_MODEL.DAILY_VOLUME_M3 *
+    DOSE_MODEL.ACTIVITY_FACTOR * DOSE_MODEL.DEPOSITION_FRACTION * vulnMult
+  );
+  const protectedDoseUg = Math.round(unshieldedDoseUg * (1 - DOSE_MODEL.SHIELD_EFFICIENCY));
+  const pm25AvoidedUg = unshieldedDoseUg - protectedDoseUg;
+  const reductionPct = unshieldedDoseUg > 0
+    ? Math.min(99.9, (pm25AvoidedUg / unshieldedDoseUg) * 100)
+    : 0;
+
+  const unshieldedCigarettes = dosageToCigarettes(unshieldedDoseUg);
+  const protectedCigarettes = dosageToCigarettes(protectedDoseUg);
+  const cigarettesAvoided = Math.round(Math.max(0, unshieldedCigarettes - protectedCigarettes) * 100) / 100;
+
+  const commuteKm = Number(ctx.commuteKm ?? DOSE_MODEL.DEFAULT_COMMUTE_KM) || 0;
+  const mode = ctx.commuteMode || 'two_wheeler';
+  const carbonSavedKg = mode === 'private_car' || mode === 'two_wheeler'
+    ? calculateCarbonAvoidance(mode, 'metro', commuteKm)
+    : 0;
+
+  const filteredIndoor = pm25UgM3 * alphaInf * 0.22;
+  const windowDose = calculateParticulateAvoidance(pm25UgM3, filteredIndoor, 3.0, 0.45 * vulnMult, DOSE_MODEL.DEPOSITION_FRACTION);
+  const protectionScorePercent = Math.min(98, Math.round(65 + (windowDose / 12) * 5));
+
+  return Object.freeze({
+    pm25UgM3,
+    unshieldedDoseUg,
+    protectedDoseUg,
+    pm25AvoidedUg,
+    reductionPct,
+    unshieldedCigarettes,
+    protectedCigarettes,
+    cigarettesAvoided,
+    carbonSavedKg,
+    protectionScorePercent
+  });
 }

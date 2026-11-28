@@ -94,6 +94,25 @@ export const METRO_BASIN_COORDINATES = Object.freeze({
 });
 
 /**
+ * Sanitizes an arbitrary string into a safe single-line place name.
+ * Conforms to Security 01 §4 Whitelist Regex Input Sanitization Contract.
+ *
+ * @param {string} rawString - Unfiltered user input.
+ * @returns {string} Letters, digits, spaces, commas, dots and hyphens, at most 50 characters.
+ */
+export function sanitizeCityInput(rawString) {
+  if (typeof rawString !== 'string') return 'Delhi NCR';
+  const sanitized = rawString
+    .replace(/\s+/g, ' ')
+    .replace(/[^\p{L}\p{M}\p{N} ,.-]/gu, '')
+    .trim()
+    .slice(0, 50)
+    .replace(/[\uD800-\uDBFF]$/, '')
+    .trim();
+  return sanitized.length > 0 ? sanitized : 'Delhi NCR';
+}
+
+/**
  * Canonical default household profile.
  * @readonly
  * @type {Readonly<{city: string, aqi: number, vulnBits: number, cookingMethod: string, heatingMethod: string, commuteMode: string, commuteKm: number}>}

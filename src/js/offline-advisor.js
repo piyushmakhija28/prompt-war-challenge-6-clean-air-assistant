@@ -6,15 +6,10 @@
  * @module offline-advisor
  */
 
-import { getDiurnalInversion, getVulnerabilityMultiplier } from './air-quality-engine.js';
-import {
-  aqiToMassConcentration,
-  calculateParticulateAvoidance,
-  calculateCarbonAvoidance,
-  dosageToCigarettes,
-  getHousingInfiltrationCoefficient
-} from './impact-calculator.js';
-import { INFILTRATION_COEFFICIENTS } from './config.js';
+import { getDiurnalInversion } from './air-quality-engine.js';
+import { computeImpact } from './impact-calculator.js';
+
+export const ACTION_TYPES = Object.freeze(['SHIFT_INDOORS', 'SAFE_VENTILATION', 'SEAL_HOME', 'COMMUTE_SHIELD']);
 
 /**
  * 4-Hack Verified Low-Cost Indoor Air Quality Catalog.
@@ -138,6 +133,24 @@ export function getCleaningProtocol(aqi) {
 }
 
 /**
+ * Wraps model-written advisory text with the header and impact line computed on device.
+ *
+ * @param {string} body - Advisory narrative.
+ * @param {Object} ctx - Household context.
+ * @param {{pm25AvoidedUg: number}} impact - Shared impact summary.
+ * @param {'en'|'hi'} lang - Advisory language.
+ * @returns {string} Shareable bulletin.
+ */
+export function frameAdvisory(body, ctx, impact, lang) {
+  const city = ctx.city || 'Delhi NCR';
+  const aqi = Math.max(0, Math.min(999, Math.round(Number(ctx.aqi) || 0)));
+  if (lang === 'hi') {
+    return `🚨 स्वच्छ वायु समुदाय परामर्श - ${city} (AQI ${aqi}):\n${body}\n• सुरक्षित उपायों से प्रतिदिन लगभग ${impact.pm25AvoidedUg} µg PM2.5 कम साँस में जाएगा।`;
+  }
+  return `🚨 CleanAir Community Advisory for ${city} (AQI ${aqi}):\n${body}\n• Estimated PM2.5 inhalation avoided with these steps: ${impact.pm25AvoidedUg} µg per day.`;
+}
+
+/**
  * Generates formatted community advisories in English or Hindi (हिन्दी).
  *
  * @param {Object} ctx - Household lifestyle context.
@@ -190,6 +203,22 @@ export function generateCommunityAdvisory(ctx, plan, lang = 'en') {
  */
 
 /**
+ * Maps the shared impact summary onto the plan schema's quantifiedImpact shape.
+ *
+ * @param {ReturnType<typeof computeImpact>} impact - Shared impact summary.
+ * @returns {{pm25InhalationAvoidedMicrograms: number, cigaretteEquivalentsAvoided: number,
+ *   co2eSavedKg: number, protectionScorePercent: number}} Plan-shaped impact block.
+ */
+export function toQuantifiedImpact(impact) {
+  return {
+    pm25InhalationAvoidedMicrograms: impact.pm25AvoidedUg,
+    cigaretteEquivalentsAvoided: impact.cigarettesAvoided,
+    co2eSavedKg: impact.carbonSavedKg,
+    protectionScorePercent: impact.protectionScorePercent
+  };
+}
+
+/**
  * Deterministically generates an actionable clean air plan matching the Gemini 3.8 Flash schema.
  * Operates purely on local rule-based decision trees with zero network calls in < 15ms.
  * Complexity: O(1) time, O(1) auxiliary space.
@@ -205,7 +234,6 @@ export function generateOfflineCleanAirPlan(ctx, options = {}) {
     : 7.5; // default to morning peak for assessment
 
   const diurnal = getDiurnalInversion(simHour, rawAQI);
-  const vulnMult = getVulnerabilityMultiplier(ctx.vulnBits || 0);
 
   let severity = 'MODERATE';
   if (rawAQI <= 50) severity = 'GOOD';
@@ -215,29 +243,9 @@ export function generateOfflineCleanAirPlan(ctx, options = {}) {
   else if (rawAQI <= 400) severity = 'SEVERE';
   else severity = 'HAZARDOUS';
 
-  const cOut = aqiToMassConcentration(rawAQI);
-  const alphaInf = getHousingInfiltrationCoefficient(ctx.housingType || 'standard_flat');
-  const cInUnmitigated = cOut * alphaInf;
-  const cInFiltered = cInUnmitigated * 0.22; // ~78% removal with Corsi-Rosenthal / HEPA
-
-  const dosageAvoided = calculateParticulateAvoidance(
-    cOut,
-    cInFiltered,
-    3.0, // 3 hours shifted/protected
-    0.45 * vulnMult,
-    0.28
-  );
-
-  const cigAvoided = dosageToCigarettes(dosageAvoided);
-
-  const commuteDistance = Math.max(0, Number(ctx.commuteKm) || 12);
-  const carbonSaved = calculateCarbonAvoidance(
-    ctx.commuteMode === 'private_car' ? 'private_car' : 'two_wheeler',
-    'metro',
-    commuteDistance
-  );
-
-  const protectionScore = Math.min(98, Math.round(65 + (dosageAvoided / 12) * 5));
+  const impact = computeImpact(ctx);
+  const dosageAvoided = impact.pm25AvoidedUg;
+  const carbonSaved = impact.carbonSavedKg;
 
   let morningCommuteAdvice = rawAQI > 250
     ? 'Morning temperature inversion trap active. Particulate compressed near ground. Cancel outdoor morning exercise; keep all balcony doors sealed.'
@@ -288,18 +296,39 @@ export function generateOfflineCleanAirPlan(ctx, options = {}) {
   const selectedHackId = options.hackId || ctx.hackId || 'corsi_rosenthal';
   const iaqHack = IAQ_HACKS_CATALOG[selectedHackId] || IAQ_HACKS_CATALOG.corsi_rosenthal;
 
+  const commuteChoice = {
+    private_car: 'Solo Car Commute',
+    two_wheeler: 'Two-Wheeler Commute',
+    public_transit: 'Public Transit Commute',
+    walk_cycle: 'Walking / Cycling Commute'
+  }[ctx.commuteMode] || 'Two-Wheeler Commute';
+
+  const alreadyLowCarbon = ctx.commuteMode === 'public_transit' || ctx.commuteMode === 'walk_cycle';
+
+  const cooksElectric = ctx.cookingMethod === 'induction';
+
   const sustainableAlternatives = [
     {
       category: 'Urban Transit',
-      currentChoice: ctx.commuteMode === 'private_car' ? 'Solo Car Commute' : 'Two-Wheeler Commute',
-      cleanAlternative: 'Metro Rail or Carpool Cluster with N95 Mask',
-      benefit: `Reduces personal roadside particulate exposure by 78% and avoids ${carbonSaved} kg CO2e daily.`
+      currentChoice: commuteChoice,
+      cleanAlternative: alreadyLowCarbon
+        ? 'Keep this low-carbon commute; travel in the solar window with an N95 mask'
+        : 'Metro Rail or Carpool Cluster with N95 Mask',
+      benefit: alreadyLowCarbon
+        ? 'Your commute is already low-carbon. Timing and a sealed mask cut roadside particulate exposure further.'
+        : `Reduces personal roadside particulate exposure by 78% and avoids ${carbonSaved} kg CO2e daily.`
     },
     {
       category: 'Home Cooking & Heating',
-      currentChoice: ctx.cookingMethod === 'biomass' ? 'Biomass / Solid Fuel' : 'Gas Cooking with Unvented Exhaust',
-      cleanAlternative: 'Induction Cooktop and 1:00 PM Solar-Window Ventilation',
-      benefit: 'Eliminates indoor nitrogen dioxide (NO2) spikes that exacerbate asthma attacks in children and seniors.'
+      currentChoice: cooksElectric
+        ? 'Induction Cooking'
+        : (ctx.cookingMethod === 'biomass' ? 'Biomass / Solid Fuel' : 'Gas Cooking with Unvented Exhaust'),
+      cleanAlternative: cooksElectric
+        ? 'Keep induction cooking and ventilate in the 1:00 PM solar window'
+        : 'Induction Cooktop and 1:00 PM Solar-Window Ventilation',
+      benefit: cooksElectric
+        ? 'Your cooktop adds no combustion gases. Timed ventilation clears cooking particles without admitting peak smog.'
+        : 'Eliminates indoor nitrogen dioxide (NO2) spikes that exacerbate asthma attacks in children and seniors.'
     }
   ];
 
@@ -321,12 +350,7 @@ export function generateOfflineCleanAirPlan(ctx, options = {}) {
     iaqHack,
     cleaningProtocol: getCleaningProtocol(rawAQI),
     sustainableAlternatives,
-    quantifiedImpact: {
-      pm25InhalationAvoidedMicrograms: dosageAvoided,
-      cigaretteEquivalentsAvoided: cigAvoided,
-      co2eSavedKg: carbonSaved,
-      protectionScorePercent: protectionScore
-    },
+    quantifiedImpact: toQuantifiedImpact(impact),
     communityAdvisory,
     bilingualAdvisory: {
       en: communityAdvisoryEn,
@@ -367,8 +391,18 @@ export class PlanFactory {
     return Object.freeze({
       severityLevel: raw.severityLevel || 'MODERATE',
       diurnalWindowNotice: raw.diurnalWindowNotice || 'Standard diurnal schedule.',
-      hourlyRoutines: Array.isArray(raw.hourlyRoutines) ? raw.hourlyRoutines.map(Object.freeze) : [],
-      iaqHack: Object.freeze(raw.iaqHack || { title: 'Damp Wet-Mopping', materials: [], steps: [] }),
+      hourlyRoutines: Array.isArray(raw.hourlyRoutines)
+        ? raw.hourlyRoutines.filter((r) => r && typeof r === 'object').map((r) => Object.freeze({
+          ...r,
+          actionType: ACTION_TYPES.includes(r.actionType) ? r.actionType : 'SHIFT_INDOORS'
+        }))
+        : [],
+      iaqHack: Object.freeze({
+        title: 'Damp Wet-Mopping',
+        ...raw.iaqHack,
+        materials: Array.isArray(raw.iaqHack?.materials) ? raw.iaqHack.materials : [],
+        steps: Array.isArray(raw.iaqHack?.steps) ? raw.iaqHack.steps : []
+      }),
       cleaningProtocol: raw.cleaningProtocol ? Object.freeze(raw.cleaningProtocol) : null,
       sustainableAlternatives: Array.isArray(raw.sustainableAlternatives) ? raw.sustainableAlternatives.map(Object.freeze) : [],
       quantifiedImpact: Object.freeze({

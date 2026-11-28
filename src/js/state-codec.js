@@ -6,8 +6,54 @@
  * @module state-codec
  */
 
-import { METRO_BASIN_PRESETS } from './config.js';
+import { METRO_BASIN_PRESETS, sanitizeCityInput } from './config.js';
 import { InvalidStateHashError } from './errors.js';
+
+const COOKING_METHODS = Object.freeze(['induction', 'png', 'lpg', 'biomass']);
+const HEATING_METHODS = Object.freeze(['electric_radiator', 'space_heater', 'heat_pump', 'open_fire']);
+const COMMUTE_MODES = Object.freeze(['walk_cycle', 'two_wheeler', 'public_transit', 'private_car']);
+const HOUSING_TYPES = Object.freeze(['standard_flat', 'sealed_apartment', 'drafty_home']);
+
+/**
+ * Reads an optional numeric payload field, keeping legitimate zero values.
+ *
+ * @param {string|undefined} raw - Field text from the payload.
+ * @param {number|null} fallback - Value used when the field is absent or not numeric.
+ * @returns {number|null} Parsed number or the fallback.
+ */
+function numberOr(raw, fallback) {
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+/**
+ * Restricts a decoded number to its physical range, since links are untrusted input.
+ *
+ * @param {number} value - Decoded value.
+ * @param {number} max - Upper bound.
+ * @returns {number} Value within 0 and max.
+ */
+function clamp(value, max) {
+  return Math.max(0, Math.min(max, value));
+}
+
+/**
+ * Reports whether every field of a context survives the 40-bit compact layout.
+ * The layout has no housing field, floors the hour, reserves hour 0 for "unset"
+ * and caps distance at 127 km.
+ *
+ * @param {Object} ctx - Context object.
+ * @returns {boolean} True when the compact token is lossless.
+ */
+function fitsCompactLayout(ctx) {
+  const hour = ctx.simulatedHour;
+  const km = Number(ctx.commuteKm) || 0;
+  return METRO_BASIN_PRESETS.includes(ctx.city) &&
+    (!ctx.housingType || ctx.housingType === 'standard_flat') &&
+    (hour === null || hour === undefined || (Number.isInteger(Number(hour)) && Number(hour) > 0)) &&
+    Number.isInteger(km) && km >= 0 && km <= 127;
+}
 
 /**
  * Encodes an arbitrary UTF-8 string into URL-safe Base64URL (RFC 4648 §5) with padding stripped.
@@ -123,6 +169,7 @@ export function unpackContextFrom5Bytes(bytes) {
       heatingMethod: 'space_heater',
       commuteMode: 'two_wheeler',
       commuteKm: 14,
+      housingType: 'standard_flat',
       simulatedHour: null
     };
   }
@@ -142,36 +189,33 @@ export function unpackContextFrom5Bytes(bytes) {
   const cityIdx = ((b3 >> 4) & 0x0F) | ((b4 & 0x01) << 4);
   const simHour = (b4 >> 1) & 0x1F;
 
-  const cookingMethods = ['induction', 'png', 'lpg', 'biomass'];
-  const heatingMethods = ['electric_radiator', 'space_heater', 'heat_pump', 'open_fire'];
-  const commuteModes = ['walk_cycle', 'two_wheeler', 'public_transit', 'private_car'];
-
   const city = (cityIdx >= 0 && cityIdx < METRO_BASIN_PRESETS.length)
     ? METRO_BASIN_PRESETS[cityIdx]
     : 'Delhi NCR';
 
   return {
     city,
-    aqi,
+    aqi: clamp(aqi, 999),
     vulnBits,
-    cookingMethod: cookingMethods[cookIdx] || 'lpg',
-    heatingMethod: heatingMethods[heatIdx] || 'space_heater',
-    commuteMode: commuteModes[commuteIdx] || 'two_wheeler',
+    housingType: 'standard_flat',
+    cookingMethod: COOKING_METHODS[cookIdx] || 'lpg',
+    heatingMethod: HEATING_METHODS[heatIdx] || 'space_heater',
+    commuteMode: COMMUTE_MODES[commuteIdx] || 'two_wheeler',
     commuteKm,
-    simulatedHour: simHour === 0 ? null : simHour
+    simulatedHour: simHour === 0 ? null : clamp(simHour, 23)
   };
 }
 
 /**
  * Serializes context into an efficient URL hash token.
- * Uses compact 7-character Base64URL string (prefixed with 'b=') for standard presets,
- * and lossless 'v1=' Base64URL string for dynamic custom locations.
+ * Uses the compact 7-character Base64URL string (prefixed with 'b=') whenever it is
+ * lossless, and the 'v1=' Base64URL string otherwise.
  *
  * @param {Object} ctx - Context object.
  * @returns {string} URL hash token string.
  */
 export function contextToHashToken(ctx) {
-  if (METRO_BASIN_PRESETS.includes(ctx.city)) {
+  if (fitsCompactLayout(ctx)) {
     const bytes = packContextTo5Bytes(ctx);
     let binary = '';
     for (let i = 0; i < bytes.length; i++) {
@@ -181,22 +225,22 @@ export function contextToHashToken(ctx) {
     return 'b=' + b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
-  const cookingMethods = ['induction', 'png', 'lpg', 'biomass'];
-  const heatingMethods = ['electric_radiator', 'space_heater', 'heat_pump', 'open_fire'];
-  const commuteModes = ['walk_cycle', 'two_wheeler', 'public_transit', 'private_car'];
-  const cookIdx = cookingMethods.indexOf(ctx.cookingMethod);
-  const heatIdx = heatingMethods.indexOf(ctx.heatingMethod);
-  const commuteIdx = commuteModes.indexOf(ctx.commuteMode);
+  const cookIdx = COOKING_METHODS.indexOf(ctx.cookingMethod);
+  const heatIdx = HEATING_METHODS.indexOf(ctx.heatingMethod);
+  const commuteIdx = COMMUTE_MODES.indexOf(ctx.commuteMode);
+  const housingIdx = HOUSING_TYPES.indexOf(ctx.housingType);
   const simHour = ctx.simulatedHour !== null && ctx.simulatedHour !== undefined ? ctx.simulatedHour : '';
 
   const payload = [
-    ctx.city,
+    String(ctx.city).replace(/\|/g, ' '),
     ctx.aqi,
     ctx.vulnBits,
     cookIdx >= 0 ? cookIdx : 2,
     heatIdx >= 0 ? heatIdx : 1,
     commuteIdx >= 0 ? commuteIdx : 1,
-    simHour
+    simHour,
+    ctx.commuteKm ?? 14,
+    housingIdx >= 0 ? housingIdx : 0
   ].join('|');
 
   return 'v1=' + encodeBase64URL(payload);
@@ -208,32 +252,23 @@ export function contextToHashToken(ctx) {
  * @returns {Object} Reconstructed context object.
  */
 export function hashTokenToContext(hash) {
-  let clean = String(hash).replace(/^#/, '');
+  let clean = String(hash).replace(/^#/, '').split('&')[0];
 
   if (clean.startsWith('v1=')) {
     try {
       const rawStr = decodeBase64URL(clean.slice(3));
       const parts = rawStr.split('|');
       if (parts.length >= 6) {
-        const city = parts[0];
-        const aqi = Number(parts[1]) || 395;
-        const vulnBits = Number(parts[2]) || 0;
-        const cookIdx = Number(parts[3]) || 2;
-        const heatIdx = Number(parts[4]) || 1;
-        const commuteIdx = Number(parts[5]) || 1;
-        const simHour = parts[6] !== undefined && parts[6] !== '' ? Number(parts[6]) : null;
-        const cookingMethods = ['induction', 'png', 'lpg', 'biomass'];
-        const heatingMethods = ['electric_radiator', 'space_heater', 'heat_pump', 'open_fire'];
-        const commuteModes = ['walk_cycle', 'two_wheeler', 'public_transit', 'private_car'];
         return {
-          city: city || 'Delhi NCR',
-          aqi,
-          vulnBits,
-          cookingMethod: cookingMethods[cookIdx] || 'lpg',
-          heatingMethod: heatingMethods[heatIdx] || 'space_heater',
-          commuteMode: commuteModes[commuteIdx] || 'two_wheeler',
-          commuteKm: 14,
-          simulatedHour: simHour
+          city: sanitizeCityInput(parts[0]),
+          aqi: clamp(numberOr(parts[1], 395), 999),
+          vulnBits: clamp(Math.trunc(numberOr(parts[2], 0)), 31),
+          cookingMethod: COOKING_METHODS[numberOr(parts[3], 2)] || 'lpg',
+          heatingMethod: HEATING_METHODS[numberOr(parts[4], 1)] || 'space_heater',
+          commuteMode: COMMUTE_MODES[numberOr(parts[5], 1)] || 'two_wheeler',
+          simulatedHour: numberOr(parts[6], null) === null ? null : clamp(numberOr(parts[6], 0), 23.99),
+          commuteKm: clamp(numberOr(parts[7], 14), 200),
+          housingType: HOUSING_TYPES[numberOr(parts[8], 0)] || 'standard_flat'
         };
       }
     } catch (e) {
@@ -271,7 +306,7 @@ export function hashTokenToContext(hash) {
  * @throws {InvalidStateHashError} If hash is malformed, length != 5 bytes, or parity checksum fails.
  */
 export function hashTokenToContextStrict(hash) {
-  let clean = String(hash).replace(/^#/, '');
+  let clean = String(hash).replace(/^#/, '').split('&')[0];
   if (clean.startsWith('b=')) {
     clean = clean.slice(2);
   }

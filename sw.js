@@ -4,7 +4,7 @@
  * Conforms to Level 2.2 Docstrings-Only documentation governance.
  */
 
-const CACHE_NAME = 'cleanair-guardian-v1.2';
+const CACHE_NAME = 'cleanair-guardian-v1.3';
 
 const STATIC_ASSETS = [
   './',
@@ -21,6 +21,7 @@ const STATIC_ASSETS = [
   './src/js/signals.js',
   './src/js/errors.js',
   './src/js/event-bus.js',
+  './src/js/live-aqi.js',
   './src/js/app.js'
 ];
 
@@ -53,37 +54,33 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
+  if (event.request.method !== 'GET' || requestUrl.origin !== location.origin) return;
 
-  if (requestUrl.origin === location.origin) {
-    event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          return caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            if (event.request.mode === 'navigate') {
-              return caches.match('./index.html') || caches.match('./');
-            }
-            return new Response('Offline resource unavailable', {
-              status: 503,
-              statusText: 'Service Unavailable',
-              headers: { 'Content-Type': 'text/plain' }
-            });
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
           });
-        })
-    );
-    return;
-  }
-
-  event.respondWith(fetch(event.request));
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html') || caches.match('./');
+          }
+          return new Response('Offline resource unavailable', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain' }
+          });
+        });
+      })
+  );
 });
